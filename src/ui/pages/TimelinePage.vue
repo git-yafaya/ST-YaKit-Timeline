@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { EntryId } from '@/timeline/types';
+import DeepListbox from '@/ui/components/DeepListbox.vue';
+import type { DeepListboxOption } from '@/ui/components/deep-listbox';
 import type {
   TimelineEntryState,
   TimelineEntrySummary,
@@ -29,6 +31,18 @@ const searchQuery = ref('');
 const selectedGroupId = ref('');
 const statusFilter = ref<TimelineStatusFilter>('all');
 const selectedSource = ref<TimelineEntrySummary | null>(null);
+
+const groupOptions = computed<readonly DeepListboxOption[]>(() => {
+  if (props.groups.length === 0) return [{ value: '', label: '时间线分组：无', disabled: true }];
+  return props.groups.map(group => ({ value: group.id, label: `时间线分组：${group.name}` }));
+});
+
+const statusOptions: readonly DeepListboxOption[] = [
+  { value: 'all', label: '状态：全部' },
+  { value: 'active', label: '状态：生效中' },
+  { value: 'inactive', label: '状态：未生效' },
+  { value: 'warning', label: '状态：异常' },
+];
 
 const currentGroup = computed(() => {
   return props.groups.find(group => group.id === selectedGroupId.value) ?? props.groups[0] ?? null;
@@ -67,6 +81,16 @@ function statusLabel(state: TimelineEntryState): string {
   return '未生效';
 }
 
+function selectGroupFilter(groupId: string): void {
+  if (props.groups.some(group => group.id === groupId)) selectedGroupId.value = groupId;
+}
+
+function selectStatusFilter(status: string): void {
+  if (status === 'all' || status === 'active' || status === 'inactive' || status === 'warning') {
+    statusFilter.value = status;
+  }
+}
+
 function setMode(mode: 'auto' | 'manual'): void {
   if (!currentGroup.value || currentGroup.value.mode === mode) return;
   emit('changeMode', currentGroup.value.id, mode);
@@ -103,22 +127,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
       </label>
 
       <div class="timeline-filters">
-        <label>
-          <span class="sr-only">时间线分组</span>
-          <select v-model="selectedGroupId" :disabled="groups.length === 0">
-            <option v-if="groups.length === 0" value="">时间线分组：无</option>
-            <option v-for="group in groups" :key="group.id" :value="group.id">时间线分组：{{ group.name }}</option>
-          </select>
-        </label>
-        <label>
-          <span class="sr-only">条目状态</span>
-          <select v-model="statusFilter">
-            <option value="all">状态：全部</option>
-            <option value="active">状态：生效中</option>
-            <option value="inactive">状态：未生效</option>
-            <option value="warning">状态：异常</option>
-          </select>
-        </label>
+        <DeepListbox
+          :disabled="groups.length === 0"
+          label="时间线分组"
+          :model-value="selectedGroupId"
+          :options="groupOptions"
+          @update:model-value="selectGroupFilter"
+        />
+        <DeepListbox
+          label="条目状态"
+          :model-value="statusFilter"
+          :options="statusOptions"
+          @update:model-value="selectStatusFilter"
+        />
       </div>
     </div>
 

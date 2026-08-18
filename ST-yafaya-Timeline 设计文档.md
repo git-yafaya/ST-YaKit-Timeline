@@ -2006,6 +2006,8 @@ AI分析
 - 大弹窗外层尺寸固定，不得因 Tab 内容多少发生伸缩；顶部导航和上下文栏固定，只有中间内容区独立滚动
 - Tab 的 Normal / Hover / Active / Focus 状态必须冻结几何尺寸：宽高、内边距、边框宽度、字号、字重和行高均不得变化；只允许改变文字色、背景、边框色、阴影 / 焦点环或绝对定位伪元素
 - Tab 切换仅让背景、文字颜色和底部指示条以 150～200ms `ease-out` 过渡；新内容区只允许 `opacity` 与 `translateY(4px)` 淡入，禁止对宽高、padding、font-weight 或任何布局尺寸做动画
+- 时间线页与设置页不得使用原生 `<select>`；统一使用深色自定义 Listbox，弹层绝对定位且不撑开父容器，采用 Timeline Blue 选中态、低对比深色 Hover、圆角、Shadow，以及 150～180ms `opacity + translateY(4px)` 动画
+- 主内容区和 Listbox 选项层统一使用细窄深色自定义滚动条：轨道透明或低对比，滑块为低饱和蓝灰且 Hover 时轻微提亮；使用 `scrollbar-gutter: stable` 防止横向跳动，不得出现白色系统滚动条
 - 避免将需要主题变量的内容 Teleport 到 Shadow DOM 外部
 
 ---

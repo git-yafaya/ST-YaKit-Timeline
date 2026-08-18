@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import DeepListbox from '@/ui/components/DeepListbox.vue';
+import type { DeepListboxOption } from '@/ui/components/deep-listbox';
 import type {
   AiSettings,
   ApiProvider,
@@ -51,6 +53,12 @@ const categories: ReadonlyArray<{ description: string; icon: string; id: Setting
   { id: 'data', label: '数据管理', description: '导入与导出', icon: '▣' },
 ];
 
+const themeOptions: readonly DeepListboxOption[] = [
+  { value: 'follow', label: '跟随 SillyTavern' },
+  { value: 'light', label: '浅色' },
+  { value: 'dark', label: '深色' },
+];
+
 const connectionLabel = computed(() => {
   if (props.connectionStatus === 'testing') return '正在测试';
   if (props.connectionStatus === 'connected') return '已连接';
@@ -93,6 +101,10 @@ function saveGeneral(): void {
     theme: themeDraft.value,
     showSwitchNotifications: notificationDraft.value,
   });
+}
+
+function selectTheme(theme: string): void {
+  if (theme === 'follow' || theme === 'light' || theme === 'dark') themeDraft.value = theme;
 }
 
 function saveAi(): void {
@@ -150,14 +162,15 @@ function onImportFile(event: Event): void {
           <header><h2>常规</h2><p>配置插件的基础行为与显示主题。</p></header>
 
           <div class="settings-section">
-            <label class="settings-field">
+            <div class="settings-field">
               <span>主题</span>
-              <select v-model="themeDraft">
-                <option value="follow">跟随 SillyTavern</option>
-                <option value="light">浅色</option>
-                <option value="dark">深色</option>
-              </select>
-            </label>
+              <DeepListbox
+                label="主题"
+                :model-value="themeDraft"
+                :options="themeOptions"
+                @update:model-value="selectTheme"
+              />
+            </div>
           </div>
 
           <div class="settings-row">
