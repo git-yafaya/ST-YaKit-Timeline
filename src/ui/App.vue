@@ -4,11 +4,14 @@ import AppShell from '@/ui/components/AppShell.vue';
 import { getPageLabel } from '@/ui/navigation';
 import OverviewPage from '@/ui/pages/OverviewPage.vue';
 import type { OverviewGroupSummary } from '@/ui/pages/overview';
+import TimelinePageView from '@/ui/pages/TimelinePage.vue';
+import type { TimelineGroupDetail } from '@/ui/pages/timeline';
 import { closeTimeline, type TimelinePage, uiState } from '@/ui/state';
 
 const pageTitle = computed(() => getPageLabel(uiState.activePage));
 // 世界书适配层接入前保持为空，避免把 HTML 原型样例当成真实数据。
 const overviewGroups: readonly OverviewGroupSummary[] = [];
+const timelineGroups: readonly TimelineGroupDetail[] = [];
 
 function selectPage(page: TimelinePage): void {
   uiState.activePage = page;
@@ -37,6 +40,12 @@ function inspectTimeline(): void {
           :groups="overviewGroups"
           @inspect="inspectTimeline"
           @reanalyze="openAnalysis"
+        />
+
+        <TimelinePageView
+          v-else-if="uiState.activePage === 'timeline'"
+          :groups="timelineGroups"
+          @start-analysis="openAnalysis"
         />
 
         <template v-else>

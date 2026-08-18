@@ -1,0 +1,251 @@
+<script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import type { EntryId } from '@/timeline/types';
+import type {
+  TimelineEntryState,
+  TimelineEntrySummary,
+  TimelineGroupDetail,
+  TimelineStatusFilter,
+} from '@/ui/pages/timeline';
+
+const props = withDefaults(
+  defineProps<{
+    groups?: readonly TimelineGroupDetail[];
+  }>(),
+  {
+    groups: () => [],
+  },
+);
+
+const emit = defineEmits<{
+  changeMode: [groupId: string, mode: 'auto' | 'manual'];
+  deferConflict: [groupId: string, entryId: EntryId];
+  resolveConflict: [groupId: string, entryId: EntryId];
+  startAnalysis: [];
+  toggleEntry: [groupId: string, entryId: EntryId, enabled: boolean];
+}>();
+
+const searchQuery = ref('');
+const selectedGroupId = ref('');
+const statusFilter = ref<TimelineStatusFilter>('all');
+const selectedSource = ref<TimelineEntrySummary | null>(null);
+
+const currentGroup = computed(() => {
+  return props.groups.find(group => group.id === selectedGroupId.value) ?? props.groups[0] ?? null;
+});
+
+const filteredEntries = computed(() => {
+  const group = currentGroup.value;
+  if (!group) return [];
+
+  const query = searchQuery.value.trim().toLocaleLowerCase('zh-CN');
+  return group.entries.filter(entry => {
+    const matchesQuery =
+      query.length === 0 || `${entry.title} ${entry.originalComment}`.toLocaleLowerCase('zh-CN').includes(query);
+    const matchesStatus = statusFilter.value === 'all' || entry.state === statusFilter.value;
+    return matchesQuery && matchesStatus;
+  });
+});
+
+watch(
+  () => props.groups,
+  groups => {
+    if (groups.length === 0) {
+      selectedGroupId.value = '';
+      return;
+    }
+    if (!groups.some(group => group.id === selectedGroupId.value)) {
+      selectedGroupId.value = groups[0].id;
+    }
+  },
+  { immediate: true },
+);
+
+function statusLabel(state: TimelineEntryState): string {
+  if (state === 'active') return '生效中';
+  if (state === 'warning') return '异常';
+  return '未生效';
+}
+
+function setMode(mode: 'auto' | 'manual'): void {
+  if (!currentGroup.value || currentGroup.value.mode === mode) return;
+  emit('changeMode', currentGroup.value.id, mode);
+}
+
+function toggleEntry(entry: TimelineEntrySummary): void {
+  const group = currentGroup.value;
+  if (!group || group.mode === 'auto') return;
+  emit('toggleEntry', group.id, entry.entryId, !entry.enabled);
+}
+
+function closeSource(): void {
+  selectedSource.value = null;
+}
+
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || !selectedSource.value) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  closeSource();
+}
+
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onUnmounted(() => window.removeEventListener('keydown', onKeydown));
+</script>
+
+<template>
+  <div class="timeline-page">
+    <div class="timeline-toolbar">
+      <label class="timeline-search">
+        <span aria-hidden="true">⌕</span>
+        <span class="sr-only">搜索时间线条目</span>
+        <input v-model="searchQuery" type="search" placeholder="搜索AI标题或原条目名称..." />
+      </label>
+
+      <div class="timeline-filters">
+        <label>
+          <span class="sr-only">时间线分组</span>
+          <select v-model="selectedGroupId" :disabled="groups.length === 0">
+            <option v-if="groups.length === 0" value="">时间线分组：无</option>
+            <option v-for="group in groups" :key="group.id" :value="group.id">时间线分组：{{ group.name }}</option>
+          </select>
+        </label>
+        <label>
+          <span class="sr-only">条目状态</span>
+          <select v-model="statusFilter">
+            <option value="all">状态：全部</option>
+            <option value="active">状态：生效中</option>
+            <option value="inactive">状态：未生效</option>
+            <option value="warning">状态：异常</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <template v-if="currentGroup">
+      <div class="timeline-group-heading">
+        <div class="timeline-group-summary">
+          <h1>{{ currentGroup.name }}</h1>
+          <span class="timeline-count">{{ currentGroup.entries.length }} 条目</span>
+          <span class="timeline-current-node">
+            <span aria-hidden="true">⌁</span>
+            当前节点：{{ currentGroup.activeEntryTitle ?? '尚未匹配' }}
+          </span>
+        </div>
+
+        <div class="mode-switch" aria-label="时间线组运行模式">
+          <button
+            type="button"
+            :class="{ 'is-active': currentGroup.mode === 'auto' }"
+            @click="setMode('auto')"
+          >
+            自动
+          </button>
+          <button
+            type="button"
+            :class="{ 'is-active': currentGroup.mode === 'manual' }"
+            @click="setMode('manual')"
+          >
+            手动
+          </button>
+        </div>
+      </div>
+
+      <div v-if="filteredEntries.length > 0" class="timeline-track">
+        <div class="timeline-axis" aria-hidden="true"></div>
+
+        <article
+          v-for="entry in filteredEntries"
+          :key="entry.entryId"
+          :class="['timeline-entry', `is-${entry.state}`]"
+        >
+          <span class="timeline-node" aria-hidden="true"></span>
+
+          <div v-if="entry.state !== 'warning'" class="timeline-entry-card">
+            <div class="timeline-entry-copy">
+              <div class="timeline-entry-title-row">
+                <h2>{{ entry.title }}</h2>
+                <span>{{ entry.rangeLabel }}</span>
+              </div>
+              <div class="timeline-entry-meta">
+                <span>原条目：<b>{{ entry.originalComment }}</b></span>
+                <span :class="['entry-status', `is-${entry.state}`]">
+                  <i aria-hidden="true"></i>{{ statusLabel(entry.state) }}
+                </span>
+              </div>
+            </div>
+
+            <div class="timeline-entry-actions">
+              <button class="source-button" type="button" @click="selectedSource = entry">查看正文</button>
+              <button
+                type="button"
+                role="switch"
+                :aria-checked="entry.enabled"
+                :aria-label="`${entry.title}启用状态`"
+                :class="['entry-toggle', { 'is-enabled': entry.enabled }]"
+                :disabled="currentGroup.mode === 'auto'"
+                @click="toggleEntry(entry)"
+              >
+                <span></span>
+              </button>
+            </div>
+          </div>
+
+          <div v-else class="timeline-conflict-card">
+            <div class="timeline-conflict-heading">
+              <div>
+                <div class="timeline-entry-title-row">
+                  <h2>{{ entry.title }}</h2>
+                  <span>{{ entry.rangeLabel }}</span>
+                </div>
+                <div class="entry-status is-warning"><i aria-hidden="true"></i>状态：异常</div>
+              </div>
+              <div class="conflict-actions">
+                <button type="button" @click="emit('deferConflict', currentGroup.id, entry.entryId)">暂不处理</button>
+                <button
+                  class="resolve-button"
+                  type="button"
+                  @click="emit('resolveConflict', currentGroup.id, entry.entryId)"
+                >
+                  处理冲突
+                </button>
+              </div>
+            </div>
+            <p class="conflict-message">{{ entry.warning ?? '该条目存在尚未处理的时间线配置异常。' }}</p>
+          </div>
+        </article>
+      </div>
+
+      <section v-else class="timeline-filter-empty">
+        <span aria-hidden="true">⌕</span>
+        <h2>没有符合当前筛选条件的条目</h2>
+        <p>请调整搜索关键词、分组或状态筛选。</p>
+      </section>
+    </template>
+
+    <section v-else class="timeline-filter-empty">
+      <span aria-hidden="true">◇</span>
+      <h2>当前世界书尚未建立时间线配置</h2>
+      <p>完成 AI 扫描并确认草稿后，时间线条目会显示在这里。</p>
+      <button class="primary-action" type="button" @click="$emit('startAnalysis')">开始扫描</button>
+    </section>
+
+    <div v-if="selectedSource" class="source-dialog-overlay" @click.self="closeSource">
+      <section class="source-dialog" role="dialog" aria-modal="true" aria-label="世界书原条目只读预览">
+        <header>
+          <div>
+            <h2>{{ selectedSource.title }}</h2>
+            <p>只读预览</p>
+          </div>
+          <button type="button" aria-label="关闭正文预览" @click="closeSource">×</button>
+        </header>
+        <div class="source-dialog-body">
+          <div class="source-dialog-meta">原条目：{{ selectedSource.originalComment }}</div>
+          <div class="source-dialog-content">
+            {{ selectedSource.contentPreview ?? '正文尚未读取。' }}
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</template>
