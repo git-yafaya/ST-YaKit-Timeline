@@ -2,6 +2,8 @@
 import { computed } from 'vue';
 import AppShell from '@/ui/components/AppShell.vue';
 import { getPageLabel } from '@/ui/navigation';
+import AnalysisPage from '@/ui/pages/AnalysisPage.vue';
+import type { AnalysisDraft, AnalysisProgress } from '@/ui/pages/analysis';
 import GroupPage from '@/ui/pages/GroupPage.vue';
 import type { GroupManagementSummary } from '@/ui/pages/groups';
 import OverviewPage from '@/ui/pages/OverviewPage.vue';
@@ -15,6 +17,8 @@ const pageTitle = computed(() => getPageLabel(uiState.activePage));
 const overviewGroups: readonly OverviewGroupSummary[] = [];
 const timelineGroups: readonly TimelineGroupDetail[] = [];
 const managementGroups: readonly GroupManagementSummary[] = [];
+const analysisDraft: AnalysisDraft | null = null;
+const analysisProgress: AnalysisProgress | null = null;
 
 function selectPage(page: TimelinePage): void {
   uiState.activePage = page;
@@ -55,6 +59,12 @@ function inspectTimeline(): void {
           v-else-if="uiState.activePage === 'groups'"
           :groups="managementGroups"
           @start-analysis="openAnalysis"
+        />
+
+        <AnalysisPage
+          v-else-if="uiState.activePage === 'analysis'"
+          :draft="analysisDraft"
+          :progress="analysisProgress"
         />
 
         <template v-else>
