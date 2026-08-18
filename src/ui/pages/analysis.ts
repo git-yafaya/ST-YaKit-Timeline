@@ -38,3 +38,8 @@ export interface AnalysisProgress {
   percent: number;
   stage: AnalysisStage;
 }
+
+export interface AnalysisErrorState {
+  message: string;
+  rawOutput?: string;
+}

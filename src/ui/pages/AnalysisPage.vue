@@ -6,6 +6,7 @@ import type {
   AnalysisDraftEntry,
   AnalysisDraftGroup,
   AnalysisEntryPatch,
+  AnalysisErrorState,
   AnalysisProgress,
   AnalysisScanMode,
   AnalysisStage,
@@ -13,12 +14,20 @@ import type {
 
 const props = withDefaults(
   defineProps<{
+    allowApply?: boolean;
+    canStart?: boolean;
     draft?: AnalysisDraft | null;
+    error?: AnalysisErrorState | null;
     progress?: AnalysisProgress | null;
+    sourceMessage?: string;
   }>(),
   {
+    allowApply: false,
+    canStart: false,
     draft: null,
+    error: null,
     progress: null,
+    sourceMessage: '',
   },
 );
 
@@ -144,26 +153,44 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <p>{{ draft ? '分析完成，请确认时间线草稿。' : '识别世界书中的时间线候选并生成配置草稿。' }}</p>
       </div>
       <div v-if="draft" class="analysis-heading-actions">
-        <button class="secondary-action" type="button" :disabled="Boolean(progress)" @click="$emit('startAnalysis', 'quick')">
+        <button class="secondary-action" type="button" :disabled="Boolean(progress) || !canStart" @click="$emit('startAnalysis', 'quick')">
           重新分析
         </button>
-        <button class="analysis-apply" type="button" :disabled="pendingCount > 0" @click="$emit('applyDraft')">
+        <button
+          class="analysis-apply"
+          type="button"
+          :disabled="pendingCount > 0 || !allowApply"
+          :title="allowApply ? '' : '正式配置持久化尚未接入'"
+          @click="$emit('applyDraft')"
+        >
           确认并应用
         </button>
       </div>
     </div>
 
+    <section v-if="error" class="analysis-error" role="alert">
+      <span aria-hidden="true">!</span>
+      <div>
+        <strong>分析未完成</strong>
+        <p>{{ error.message }}</p>
+        <details v-if="error.rawOutput">
+          <summary>查看最后一次原始输出</summary>
+          <pre>{{ error.rawOutput }}</pre>
+        </details>
+      </div>
+    </section>
+
     <section v-if="!draft" class="analysis-empty" aria-labelledby="analysis-empty-title">
       <span class="analysis-empty-icon" aria-hidden="true">✦</span>
       <h2 id="analysis-empty-title">尚未生成时间线分析草稿</h2>
-      <p>快速扫描会先在本地筛选候选；深度扫描会分析全部条目。两种方式都不会直接修改世界书。</p>
+      <p>{{ canStart ? '快速扫描会先在本地筛选候选；深度扫描会分析全部条目。两种方式都不会直接修改世界书。' : sourceMessage }}</p>
       <div class="analysis-scan-actions">
-        <button class="analysis-scan-card" type="button" :disabled="Boolean(progress)" @click="$emit('startAnalysis', 'quick')">
+        <button class="analysis-scan-card" type="button" :disabled="Boolean(progress) || !canStart" @click="$emit('startAnalysis', 'quick')">
           <span aria-hidden="true">⌁</span>
           <strong>快速扫描</strong>
           <small>先筛选明显候选，减少发送内容</small>
         </button>
-        <button class="analysis-scan-card" type="button" :disabled="Boolean(progress)" @click="$emit('startAnalysis', 'deep')">
+        <button class="analysis-scan-card" type="button" :disabled="Boolean(progress) || !canStart" @click="$emit('startAnalysis', 'deep')">
           <span aria-hidden="true">◎</span>
           <strong>深度扫描全部条目</strong>
           <small>适合格式特殊或可能被漏检的世界书</small>
@@ -261,7 +288,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <span>{{ selectedCount }} 个条目将被纳入时间线配置</span>
         <div>
           <button class="secondary-action" type="button" @click="$emit('discardDraft')">放弃草稿</button>
-          <button class="analysis-apply" type="button" :disabled="pendingCount > 0" @click="$emit('applyDraft')">确认并应用</button>
+          <button
+            class="analysis-apply"
+            type="button"
+            :disabled="pendingCount > 0 || !allowApply"
+            :title="allowApply ? '' : '正式配置持久化尚未接入'"
+            @click="$emit('applyDraft')"
+          >确认并应用</button>
         </div>
       </div>
     </template>

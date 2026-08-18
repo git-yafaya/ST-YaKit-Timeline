@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { AnalysisValidationError, runTimelineScan } from '@/analysis/scanner';
+import { generateTimelineAnalysis } from '@/st/ai-adapter';
 import {
   readCurrentHostScope,
   watchCurrentHostScope,
@@ -8,7 +10,13 @@ import {
 import AppShell from '@/ui/components/AppShell.vue';
 import { getPageLabel } from '@/ui/navigation';
 import AnalysisPage from '@/ui/pages/AnalysisPage.vue';
-import type { AnalysisDraft, AnalysisProgress } from '@/ui/pages/analysis';
+import type {
+  AnalysisDraft,
+  AnalysisEntryPatch,
+  AnalysisErrorState,
+  AnalysisProgress,
+  AnalysisScanMode,
+} from '@/ui/pages/analysis';
 import GroupPage from '@/ui/pages/GroupPage.vue';
 import type { GroupManagementSummary } from '@/ui/pages/groups';
 import LogsPage from '@/ui/pages/LogsPage.vue';
@@ -44,8 +52,9 @@ const pageTitle = computed(() => getPageLabel(uiState.activePage));
 const overviewGroups: readonly OverviewGroupSummary[] = [];
 const timelineGroups: readonly TimelineGroupDetail[] = [];
 const managementGroups: readonly GroupManagementSummary[] = [];
-const analysisDraft: AnalysisDraft | null = null;
-const analysisProgress: AnalysisProgress | null = null;
+const analysisDraft = ref<AnalysisDraft | null>(null);
+const analysisProgress = ref<AnalysisProgress | null>(null);
+const analysisError = ref<AnalysisErrorState | null>(null);
 const runtimeLogs: readonly TimelineLogEntry[] = [];
 const systemLogs: readonly TimelineLogEntry[] = [];
 const runtimeLogSummary: RuntimeLogSummary | null = null;
@@ -81,16 +90,49 @@ const worldbookName = computed(() => {
   if (hostScope.value.status === 'worldbook_unreadable') return '无法读取';
   return hostScope.value.status === 'no_character' ? '未选择角色' : '正在读取';
 });
+const canStartAnalysis = computed(() => (
+  hostScope.value.status === 'ready' && (hostScope.value.worldbook?.entries.length ?? 0) > 0
+));
+const analysisSourceMessage = computed(() => {
+  if (canStartAnalysis.value) return '';
+  if (hostScope.value.status === 'ready') return '当前角色绑定的世界书没有可分析条目。';
+  return hostScope.value.message || '当前角色世界书尚不可读取。';
+});
 const hostTheme = ref<ResolvedTheme>(detectSillyTavernTheme());
 const resolvedTheme = computed(() => resolveTheme(settings.general.theme, hostTheme.value));
 let hostScopeVersion = 0;
 let stopWatchingHostTheme: (() => void) | undefined;
 let stopWatchingHostScope: (() => void) | undefined;
+let analysisAbortController: AbortController | undefined;
+let analysisRequestVersion = 0;
+let activeAnalysisScopeKey = '';
+let analysisDraftScopeKey = '';
+
+function hostScopeKey(snapshot: HostScopeSnapshot): string {
+  return [snapshot.character?.id ?? '', snapshot.chatId ?? '', snapshot.worldbook?.key ?? ''].join('\u0000');
+}
+
+function stopAnalysisForScopeChange(): void {
+  if (!analysisProgress.value) return;
+  analysisRequestVersion += 1;
+  analysisAbortController?.abort();
+  analysisAbortController = undefined;
+  activeAnalysisScopeKey = '';
+  analysisProgress.value = null;
+  analysisError.value = { message: '角色、聊天或绑定世界书已变化，本次分析已安全停止。' };
+}
 
 async function refreshHostScope(): Promise<void> {
   const version = ++hostScopeVersion;
   const snapshot = await readCurrentHostScope();
-  if (version === hostScopeVersion) hostScope.value = snapshot;
+  if (version !== hostScopeVersion) return;
+  const nextScopeKey = hostScopeKey(snapshot);
+  if (activeAnalysisScopeKey && activeAnalysisScopeKey !== nextScopeKey) stopAnalysisForScopeChange();
+  if (analysisDraftScopeKey && analysisDraftScopeKey !== nextScopeKey) {
+    analysisDraft.value = null;
+    analysisDraftScopeKey = '';
+  }
+  hostScope.value = snapshot;
 }
 
 onMounted(() => {
@@ -104,6 +146,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   stopWatchingHostTheme?.();
   stopWatchingHostScope?.();
+  analysisAbortController?.abort();
   if (aiSaveResetTimer !== undefined) globalThis.clearTimeout(aiSaveResetTimer);
 });
 
@@ -113,6 +156,113 @@ function selectPage(page: TimelinePage): void {
 
 function openAnalysis(): void {
   selectPage('analysis');
+}
+
+async function startAnalysis(mode: AnalysisScanMode): Promise<void> {
+  const snapshot = hostScope.value;
+  const worldbook = snapshot.worldbook;
+  if (snapshot.status !== 'ready' || !worldbook || worldbook.entries.length === 0) {
+    analysisError.value = { message: analysisSourceMessage.value };
+    return;
+  }
+
+  analysisAbortController?.abort();
+  const controller = new AbortController();
+  analysisAbortController = controller;
+  const requestVersion = ++analysisRequestVersion;
+  const scopeKey = hostScopeKey(snapshot);
+  activeAnalysisScopeKey = scopeKey;
+  analysisError.value = null;
+  const aiSettings = { ...settings.ai };
+
+  try {
+    const draft = await runTimelineScan({
+      entries: worldbook.entries,
+      mode,
+      signal: controller.signal,
+      generate: (prompt, signal) => generateTimelineAnalysis(aiSettings, prompt, signal),
+      onProgress: progress => {
+        if (requestVersion === analysisRequestVersion && !controller.signal.aborted) {
+          analysisProgress.value = progress;
+        }
+      },
+    });
+    if (
+      requestVersion !== analysisRequestVersion ||
+      controller.signal.aborted ||
+      scopeKey !== hostScopeKey(hostScope.value)
+    ) return;
+    analysisDraft.value = draft;
+    analysisDraftScopeKey = scopeKey;
+  } catch (error) {
+    if (requestVersion !== analysisRequestVersion || controller.signal.aborted) return;
+    analysisError.value = {
+      message: error instanceof Error ? error.message : 'AI 分析失败',
+      rawOutput: error instanceof AnalysisValidationError ? error.rawOutput : undefined,
+    };
+  } finally {
+    if (requestVersion === analysisRequestVersion) {
+      analysisProgress.value = null;
+      analysisAbortController = undefined;
+      activeAnalysisScopeKey = '';
+    }
+  }
+}
+
+function cancelAnalysis(): void {
+  if (!analysisProgress.value) return;
+  analysisRequestVersion += 1;
+  analysisAbortController?.abort();
+  analysisAbortController = undefined;
+  activeAnalysisScopeKey = '';
+  analysisProgress.value = null;
+  analysisError.value = null;
+}
+
+function discardAnalysisDraft(): void {
+  if (analysisProgress.value) return;
+  analysisDraft.value = null;
+  analysisDraftScopeKey = '';
+  analysisError.value = null;
+}
+
+function toggleAnalysisEntry(groupId: string, entryId: string | number, selected: boolean): void {
+  if (!analysisDraft.value) return;
+  analysisDraft.value = {
+    ...analysisDraft.value,
+    groups: analysisDraft.value.groups.map(group => group.id !== groupId ? group : {
+      ...group,
+      entries: group.entries.map(entry => entry.entryId !== entryId ? entry : { ...entry, selected }),
+    }),
+  };
+}
+
+function updateAnalysisEntry(groupId: string, entryId: string | number, patch: AnalysisEntryPatch): void {
+  if (!analysisDraft.value) return;
+  analysisDraft.value = {
+    ...analysisDraft.value,
+    groups: analysisDraft.value.groups.map(group => group.id !== groupId ? group : {
+      ...group,
+      entries: group.entries.map(entry => entry.entryId !== entryId ? entry : {
+        ...entry,
+        ...patch,
+        confidence: 'high',
+        manuallyLocked: true,
+        warnings: [],
+      }),
+    }),
+  };
+}
+
+function createAnalysisGroup(name: string): void {
+  if (!analysisDraft.value) return;
+  analysisDraft.value = {
+    ...analysisDraft.value,
+    groups: [
+      ...analysisDraft.value.groups,
+      { id: `manual-group-${Date.now()}`, name, entries: [] },
+    ],
+  };
 }
 
 function inspectTimeline(): void {
@@ -245,7 +395,16 @@ function changeTheme(theme: ThemeMode): void {
             v-else-if="uiState.activePage === 'analysis'"
             key="analysis"
             :draft="analysisDraft"
+            :can-start="canStartAnalysis"
+            :error="analysisError"
             :progress="analysisProgress"
+            :source-message="analysisSourceMessage"
+            @cancel-analysis="cancelAnalysis"
+            @create-group="createAnalysisGroup"
+            @discard-draft="discardAnalysisDraft"
+            @start-analysis="startAnalysis"
+            @toggle-entry="toggleAnalysisEntry"
+            @update-entry="updateAnalysisEntry"
           />
 
           <LogsPage

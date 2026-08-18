@@ -1876,6 +1876,57 @@ h2 {
   color: var(--tl-text-muted);
 }
 
+.analysis-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--tl-danger-border);
+  border-radius: var(--tl-radius);
+  color: var(--tl-text);
+  background: var(--tl-danger-surface);
+}
+
+.analysis-error > span {
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--tl-danger);
+  border-radius: 999px;
+  color: var(--tl-danger);
+}
+
+.analysis-error > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.analysis-error p,
+.analysis-error summary {
+  margin-top: 4px;
+  color: var(--tl-text-muted);
+}
+
+.analysis-error summary {
+  cursor: pointer;
+}
+
+.analysis-error pre {
+  max-height: 220px;
+  overflow: auto;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--tl-border);
+  border-radius: 8px;
+  background: var(--tl-surface-subtle);
+  font: 11px/1.5 "JetBrains Mono", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .analysis-scan-actions {
   width: min(640px, 100%);
   display: grid;
