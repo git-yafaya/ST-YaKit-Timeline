@@ -158,23 +158,59 @@ button {
 }
 
 .timeline-tab {
-  padding: 9px 11px;
+  position: relative;
+  width: auto;
+  height: 38px;
+  padding: 0 11px;
+  border: 1px solid transparent;
   border-radius: 8px;
   color: var(--tl-text-muted);
   background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
   cursor: pointer;
-  transition: color 160ms ease, background 160ms ease;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .timeline-tab:hover {
   color: var(--tl-primary);
   background: var(--tl-surface-hover);
+  border-color: rgba(173, 198, 255, 0.18);
+}
+
+.timeline-tab:active {
+  color: var(--tl-primary);
+  background: rgba(0, 88, 190, 0.18);
+  border-color: rgba(173, 198, 255, 0.28);
+}
+
+.timeline-tab:focus {
+  outline: none;
+}
+
+.timeline-tab:focus-visible {
+  color: var(--tl-primary);
+  border-color: var(--tl-primary);
+  box-shadow: 0 0 0 2px rgba(173, 198, 255, 0.2);
 }
 
 .timeline-tab.is-active {
   color: var(--tl-primary);
-  font-weight: 700;
-  box-shadow: inset 0 -2px var(--tl-primary);
+  background: rgba(0, 88, 190, 0.1);
+  border-color: rgba(173, 198, 255, 0.2);
+}
+
+.timeline-tab.is-active::after {
+  content: "";
+  position: absolute;
+  right: 10px;
+  bottom: 2px;
+  left: 10px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--tl-primary);
+  pointer-events: none;
 }
 
 .action-icon {
