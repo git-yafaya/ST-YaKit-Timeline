@@ -2296,6 +2296,8 @@ interface WorldInfoAdapter {
 
 不得暴露“修改正文”等写接口给自动切换引擎。
 
+只读接入阶段使用当前 SillyTavern 上下文的 `characters[characterId].data.extensions.world` 识别角色主世界书，并仅对该精确名称调用 `loadWorldInfo`；原生条目 `disable` 字段在只读快照中映射为反向的 `enabled`。不得读取全局启用项或聊天额外挂载项来补猜角色绑定。
+
 ---
 
 # 69. `<wlog>` 解析器约束

@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import {
+  readCurrentHostScope,
+  watchCurrentHostScope,
+  type HostScopeSnapshot,
+} from '@/st/sillytavern-adapter';
 import AppShell from '@/ui/components/AppShell.vue';
 import { getPageLabel } from '@/ui/navigation';
 import AnalysisPage from '@/ui/pages/AnalysisPage.vue';
@@ -35,7 +40,7 @@ import type { TimelineGroupDetail } from '@/ui/pages/timeline';
 import { closeTimeline, type TimelinePage, uiState } from '@/ui/state';
 
 const pageTitle = computed(() => getPageLabel(uiState.activePage));
-// 世界书适配层接入前保持为空，避免把 HTML 原型样例当成真实数据。
+// 时间线业务配置接入前保持为空，避免把 HTML 原型样例当成真实数据。
 const overviewGroups: readonly OverviewGroupSummary[] = [];
 const timelineGroups: readonly TimelineGroupDetail[] = [];
 const managementGroups: readonly GroupManagementSummary[] = [];
@@ -59,18 +64,46 @@ const connectionRequestVersions = { sillytavern: 0, independent: 0 };
 const aiSaveStatus = ref<AiSaveStatus>('idle');
 const aiSaveMessage = ref('');
 let aiSaveResetTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
+const hostScope = ref<HostScopeSnapshot>({
+  character: null,
+  chatId: null,
+  message: '',
+  status: 'unavailable',
+  worldbook: null,
+});
+const characterName = computed(() => {
+  if (hostScope.value.character) return hostScope.value.character.name;
+  return hostScope.value.status === 'no_character' ? '未选择角色' : '正在读取';
+});
+const worldbookName = computed(() => {
+  if (hostScope.value.worldbook) return hostScope.value.worldbook.name;
+  if (hostScope.value.status === 'no_worldbook') return '未绑定';
+  if (hostScope.value.status === 'worldbook_unreadable') return '无法读取';
+  return hostScope.value.status === 'no_character' ? '未选择角色' : '正在读取';
+});
 const hostTheme = ref<ResolvedTheme>(detectSillyTavernTheme());
 const resolvedTheme = computed(() => resolveTheme(settings.general.theme, hostTheme.value));
+let hostScopeVersion = 0;
 let stopWatchingHostTheme: (() => void) | undefined;
+let stopWatchingHostScope: (() => void) | undefined;
+
+async function refreshHostScope(): Promise<void> {
+  const version = ++hostScopeVersion;
+  const snapshot = await readCurrentHostScope();
+  if (version === hostScopeVersion) hostScope.value = snapshot;
+}
 
 onMounted(() => {
   stopWatchingHostTheme = watchSillyTavernTheme(theme => {
     hostTheme.value = theme;
   });
+  stopWatchingHostScope = watchCurrentHostScope(() => void refreshHostScope());
+  void refreshHostScope();
 });
 
 onBeforeUnmount(() => {
   stopWatchingHostTheme?.();
+  stopWatchingHostScope?.();
   if (aiSaveResetTimer !== undefined) globalThis.clearTimeout(aiSaveResetTimer);
 });
 
@@ -177,6 +210,8 @@ function changeTheme(theme: ThemeMode): void {
       <AppShell
         v-if="uiState.open"
         :active-page="uiState.activePage"
+        :character-name="characterName"
+        :worldbook-name="worldbookName"
         @close="closeTimeline"
         @select-page="selectPage"
       >
