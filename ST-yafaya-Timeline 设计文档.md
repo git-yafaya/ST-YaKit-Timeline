@@ -2024,6 +2024,10 @@ follow | light | dark
 - Tab 切换仅让背景、文字颜色和底部指示条以 150～200ms `ease-out` 过渡；新内容区只允许 `opacity` 与 `translateY(4px)` 淡入，禁止对宽高、padding、font-weight 或任何布局尺寸做动画
 - 时间线页与设置页不得使用原生 `<select>`；统一使用 Token 驱动的自定义 Listbox，弹层绝对定位且不撑开父容器，采用 Timeline Blue 选中态、低对比 Hover、圆角、Shadow，以及 150～180ms `opacity + translateY(4px)` 动画
 - 主内容区和 Listbox 选项层统一使用细窄的 Token 驱动滚动条：轨道透明或低对比，滑块为低饱和蓝灰且 Hover 时轻微提亮；使用 `scrollbar-gutter: stable` 防止横向跳动，不得回退为不受主题控制的系统滚动条
+- 设置页采用移动端优先的单列 Accordion，不再使用左侧分类栏与右侧详情面板。常规、AI 分析、自动切换、数据管理默认折叠，只显示标题、副标题和展开箭头；展开动画限制在 150～180ms，不得改变页面宽度。
+- 设置页独立页头只保留标题、主题 Listbox、版本号和关闭按钮；主体独立滚动，底部主要导航固定在窗口内并以图标加文字显示，设置项保持高亮。
+- 设置页背景与卡片必须使用不透明语义 Token，Light Token 下呈浅色背景、白色或极浅灰卡片、弱边框、16～20px 圆角与轻阴影；不得使用毛玻璃或大面积高对比色块。
+- AI 分析折叠组按接口提供商、输入项、连接状态、操作按钮的顺序纵向排列，保留 SillyTavern API、独立 API、模型、连接测试和全部高级参数。
 - 避免将需要主题变量的内容 Teleport 到 Shadow DOM 外部
 
 ---

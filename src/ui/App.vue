@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import manifest from '../../manifest.json';
 import AppShell from '@/ui/components/AppShell.vue';
 import { getPageLabel } from '@/ui/navigation';
 import AnalysisPage from '@/ui/pages/AnalysisPage.vue';
@@ -19,6 +20,7 @@ import type { TimelineGroupDetail } from '@/ui/pages/timeline';
 import { closeTimeline, type TimelinePage, uiState } from '@/ui/state';
 
 const pageTitle = computed(() => getPageLabel(uiState.activePage));
+const appVersion = `v${manifest.version}`;
 // 世界书适配层接入前保持为空，避免把 HTML 原型样例当成真实数据。
 const overviewGroups: readonly OverviewGroupSummary[] = [];
 const timelineGroups: readonly TimelineGroupDetail[] = [];
@@ -131,7 +133,10 @@ function changeTheme(theme: ThemeMode): void {
             v-else-if="uiState.activePage === 'settings'"
             key="settings"
             :settings="settings"
+            :version="appVersion"
+            @close="closeTimeline"
             @save-general="saveGeneral"
+            @select-page="selectPage"
             @theme-change="changeTheme"
           />
 

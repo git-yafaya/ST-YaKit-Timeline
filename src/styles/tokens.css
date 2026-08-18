@@ -71,6 +71,8 @@
   --tl-shadow-listbox: 0 14px 34px rgb(var(--tl-shadow-rgb) / 34%), 0 2px 8px rgb(var(--tl-shadow-rgb) / 22%);
   --tl-shadow-popover: 0 10px 28px rgb(var(--tl-shadow-rgb) / 28%);
   --tl-shadow-modal: 0 12px 36px rgb(var(--tl-shadow-rgb) / 30%);
+  --tl-shadow-settings: 0 4px 18px rgb(var(--tl-shadow-rgb) / 6%);
+  --tl-shadow-settings-nav: 0 -4px 16px rgb(var(--tl-shadow-rgb) / 5%);
   --tl-scrollbar-thumb: rgb(var(--tl-scrollbar-rgb) / 68%);
   --tl-scrollbar-thumb-hover: rgb(var(--tl-scrollbar-hover-rgb) / 82%);
 }

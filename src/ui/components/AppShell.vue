@@ -30,21 +30,28 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     <div class="ambient-glow ambient-glow--primary" aria-hidden="true"></div>
     <div class="ambient-glow ambient-glow--tertiary" aria-hidden="true"></div>
 
-    <section class="timeline-window" role="dialog" aria-modal="true" aria-label="时间线管理">
+    <section
+      :class="['timeline-window', { 'timeline-window--settings': activePage === 'settings' }]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="时间线管理"
+    >
       <TopNav
+        v-if="activePage !== 'settings'"
         :active-page="activePage"
         @close="$emit('close')"
         @get-current-time="$emit('getCurrentTime')"
         @select-page="$emit('selectPage', $event)"
       />
       <ContextBar
+        v-if="activePage !== 'settings'"
         :character-name="characterName"
         :story-time="storyTime"
         :worldbook-name="worldbookName"
         @get-current-time="$emit('getCurrentTime')"
       />
 
-      <main class="timeline-content">
+      <main :class="['timeline-content', { 'timeline-content--settings': activePage === 'settings' }]">
         <slot />
       </main>
     </section>
