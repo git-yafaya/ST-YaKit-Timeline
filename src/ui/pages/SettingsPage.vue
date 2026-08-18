@@ -12,28 +12,23 @@ import type {
   SettingsSnapshot,
   ThemeMode,
 } from '@/ui/pages/settings';
-import type { TimelinePage } from '@/ui/state';
 
 const props = withDefaults(
   defineProps<{
     connectionStatus?: ConnectionStatus;
     settings: SettingsSnapshot;
-    version?: string;
   }>(),
   {
     connectionStatus: 'idle',
-    version: 'v0.1.0',
   },
 );
 
 const emit = defineEmits<{
-  close: [];
   exportConfig: [];
   importConfig: [file: File];
   saveAi: [settings: AiSettings];
   saveAutomation: [settings: AutomationSettings];
   saveGeneral: [settings: GeneralSettings];
-  selectPage: [page: TimelinePage];
   testConnection: [settings: AiSettings];
   themeChange: [theme: ThemeMode];
 }>();
@@ -57,14 +52,6 @@ const categories: ReadonlyArray<{ description: string; id: SettingsCategory; lab
   { id: 'analysis', label: 'AI 分析', description: '模型、接口与连接' },
   { id: 'automation', label: '自动切换', description: '时间变化与提醒' },
   { id: 'data', label: '数据管理', description: '导入、导出与安全' },
-];
-
-const settingsNavItems: ReadonlyArray<{ icon: string; id: TimelinePage; label: string }> = [
-  { id: 'overview', label: '总览', icon: '⌂' },
-  { id: 'timeline', label: '时间线', icon: '⌁' },
-  { id: 'groups', label: '分组', icon: '◇' },
-  { id: 'analysis', label: 'AI分析', icon: '✦' },
-  { id: 'settings', label: '设置', icon: '⚙' },
 ];
 
 const themeOptions: readonly DeepListboxOption[] = [
@@ -159,28 +146,14 @@ function onImportFile(event: Event): void {
 
 <template>
   <div class="settings-page">
-    <header class="settings-page-header">
-      <h1>设置</h1>
-      <div class="settings-header-actions">
-        <div class="settings-theme-control">
-          <DeepListbox
-            label="主题"
-            :model-value="themeDraft"
-            :options="themeOptions"
-            @update:model-value="selectTheme"
-          />
-        </div>
-        <span class="settings-version">{{ version }}</span>
-        <button class="settings-close" type="button" aria-label="关闭设置" @click="$emit('close')">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z" />
-          </svg>
-        </button>
+    <div class="page-heading settings-heading">
+      <div>
+        <h1>设置</h1>
+        <p>配置时间线管理的分析、切换与数据选项。</p>
       </div>
-    </header>
+    </div>
 
-    <div class="settings-scroll">
-      <div class="settings-accordion-list">
+    <div class="settings-accordion-list">
         <article
           v-for="category in categories"
           :key="category.id"
@@ -207,6 +180,17 @@ function onImportFile(event: Event): void {
             >
               <div class="settings-accordion-inner">
               <template v-if="category.id === 'general'">
+                <div class="settings-section">
+                  <div class="settings-field">
+                    <span>主题</span>
+                    <DeepListbox
+                      label="主题"
+                      :model-value="themeDraft"
+                      :options="themeOptions"
+                      @update:model-value="selectTheme"
+                    />
+                  </div>
+                </div>
                 <div class="settings-row">
                   <div><strong>切换成功通知</strong><p>时间线自动切换成功后显示提示消息。</p></div>
                   <button
@@ -293,20 +277,6 @@ function onImportFile(event: Event): void {
             </div>
           </Transition>
         </article>
-      </div>
     </div>
-
-    <nav class="settings-bottom-nav" aria-label="主要导航">
-      <button
-        v-for="item in settingsNavItems"
-        :key="item.id"
-        type="button"
-        :class="{ 'is-active': item.id === 'settings' }"
-        @click="$emit('selectPage', item.id)"
-      >
-        <i aria-hidden="true">{{ item.icon }}</i>
-        <span>{{ item.label }}</span>
-      </button>
-    </nav>
   </div>
 </template>

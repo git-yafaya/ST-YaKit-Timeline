@@ -347,33 +347,28 @@ button {
 }
 
 .timeline-content,
-.settings-scroll,
 .deep-listbox-options {
   scrollbar-width: thin;
   scrollbar-color: var(--tl-scrollbar-thumb) transparent;
 }
 
 .timeline-content::-webkit-scrollbar,
-.settings-scroll::-webkit-scrollbar,
 .deep-listbox-options::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 .timeline-content::-webkit-scrollbar-track,
-.settings-scroll::-webkit-scrollbar-track,
 .deep-listbox-options::-webkit-scrollbar-track {
   background: transparent;
 }
 
 .timeline-content::-webkit-scrollbar-corner,
-.settings-scroll::-webkit-scrollbar-corner,
 .deep-listbox-options::-webkit-scrollbar-corner {
   background: transparent;
 }
 
 .timeline-content::-webkit-scrollbar-thumb,
-.settings-scroll::-webkit-scrollbar-thumb,
 .deep-listbox-options::-webkit-scrollbar-thumb {
   border: 1px solid transparent;
   border-radius: 999px;
@@ -382,7 +377,6 @@ button {
 }
 
 .timeline-content::-webkit-scrollbar-thumb:hover,
-.settings-scroll::-webkit-scrollbar-thumb:hover,
 .deep-listbox-options::-webkit-scrollbar-thumb:hover {
   background: var(--tl-scrollbar-thumb-hover);
   background-clip: padding-box;
@@ -2569,112 +2563,19 @@ h2 {
   color: var(--tl-text-muted);
 }
 
-.timeline-window--settings {
-  background: var(--tl-bg);
-}
-
-.timeline-content--settings {
-  overflow: hidden;
-  padding: 0;
-  scrollbar-gutter: auto;
-}
-
 .settings-page {
-  height: 100%;
-  min-height: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  overflow: hidden;
-  background: var(--tl-bg);
+  min-height: 100%;
 }
 
-.settings-page-header {
-  position: relative;
-  z-index: 120;
-  min-height: 68px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--tl-border-subtle);
-  background: var(--tl-panel-solid);
+.settings-heading {
+  width: min(760px, 100%);
+  margin-right: auto;
+  margin-left: auto;
 }
 
-.settings-page-header h1 {
-  flex: 0 0 auto;
-  font-size: 22px;
-  line-height: 30px;
-}
-
-.settings-header-actions {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.settings-theme-control {
-  width: 178px;
-}
-
-.settings-theme-control .deep-listbox-trigger {
-  height: 38px;
-  border-color: var(--tl-border-soft);
-  border-radius: 12px;
-  background: var(--tl-surface-subtle);
-  font-size: 12px;
-}
-
-.settings-theme-control .deep-listbox-options {
-  right: 0;
-  left: auto;
-  width: 210px;
-}
-
-.settings-version {
-  flex: 0 0 auto;
+.settings-heading p {
+  margin-top: 4px;
   color: var(--tl-text-muted);
-  font-family: "JetBrains Mono", monospace;
-  font-size: 11px;
-}
-
-.settings-close {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  padding: 0;
-  border: 1px solid var(--tl-border-soft);
-  border-radius: 12px;
-  color: var(--tl-text-muted);
-  background: transparent;
-  cursor: pointer;
-  transition: color 160ms ease-out, background-color 160ms ease-out, border-color 160ms ease-out;
-}
-
-.settings-close:hover,
-.settings-close:focus-visible {
-  border-color: var(--tl-primary-border-soft);
-  color: var(--tl-text);
-  background: var(--tl-primary-surface-soft);
-}
-
-.settings-close svg {
-  width: 18px;
-  height: 18px;
-  fill: currentColor;
-}
-
-.settings-scroll {
-  min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 24px 20px 32px;
-  scrollbar-gutter: stable;
 }
 
 .settings-accordion-list {
@@ -2765,8 +2666,13 @@ h2 {
 
 .settings-accordion-inner {
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
   padding: 0 20px 20px;
+}
+
+.settings-accordion-enter-active .settings-accordion-inner,
+.settings-accordion-leave-active .settings-accordion-inner {
+  overflow: hidden;
 }
 
 .settings-section,
@@ -3050,59 +2956,6 @@ h2 {
   margin-bottom: 6px;
 }
 
-.settings-bottom-nav {
-  position: relative;
-  z-index: 110;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  padding: 7px max(10px, calc((100% - 560px) / 2));
-  border-top: 1px solid var(--tl-border-subtle);
-  background: var(--tl-panel-solid);
-  box-shadow: var(--tl-shadow-settings-nav);
-}
-
-.settings-bottom-nav > button {
-  min-width: 0;
-  height: 54px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px 2px;
-  border-radius: 12px;
-  color: var(--tl-text-muted);
-  background: transparent;
-  cursor: pointer;
-  transition: color 160ms ease-out, background-color 160ms ease-out;
-}
-
-.settings-bottom-nav > button:hover,
-.settings-bottom-nav > button:focus-visible {
-  color: var(--tl-text);
-  background: var(--tl-surface-subtle);
-}
-
-.settings-bottom-nav > button.is-active {
-  color: var(--tl-primary-deep);
-  background: var(--tl-primary-surface-soft);
-}
-
-.settings-bottom-nav i {
-  height: 20px;
-  font-size: 18px;
-  font-style: normal;
-  line-height: 20px;
-}
-
-.settings-bottom-nav span {
-  overflow: hidden;
-  font-size: 10px;
-  line-height: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .settings-accordion-enter-active,
 .settings-accordion-leave-active {
   transition: grid-template-rows 170ms ease-out, opacity 170ms ease-out, transform 170ms ease-out;
@@ -3220,13 +3073,6 @@ h2 {
     border-radius: 12px 12px 0 0;
   }
 
-  .timeline-window--settings {
-    height: 100vh;
-    height: 100dvh;
-    border: 0;
-    border-radius: 0;
-  }
-
   .timeline-nav-main {
     min-height: 60px;
     padding: 10px 14px;
@@ -3264,10 +3110,6 @@ h2 {
 
   .timeline-content {
     padding: 18px 14px 24px;
-  }
-
-  .timeline-content--settings {
-    padding: 0;
   }
 
   .timeline-toolbar {
@@ -3472,10 +3314,6 @@ h2 {
     width: 100%;
   }
 
-  .settings-scroll {
-    padding: 18px 12px 24px;
-  }
-
   .settings-accordion-list {
     gap: 12px;
   }
@@ -3489,48 +3327,6 @@ h2 {
     padding: 0 16px 16px;
   }
 
-  .settings-bottom-nav {
-    padding: 6px 4px;
-  }
-}
-
-@media (max-width: 480px) {
-  .settings-page-header {
-    min-height: 60px;
-    gap: 6px;
-    padding: 10px;
-  }
-
-  .settings-page-header h1 {
-    font-size: 18px;
-    line-height: 26px;
-  }
-
-  .settings-header-actions {
-    gap: 6px;
-  }
-
-  .settings-theme-control {
-    width: 120px;
-  }
-
-  .settings-theme-control .deep-listbox-trigger {
-    height: 36px;
-    padding: 0 9px;
-  }
-
-  .settings-theme-control .deep-listbox-options {
-    width: 190px;
-  }
-
-  .settings-version {
-    font-size: 9px;
-  }
-
-  .settings-close {
-    width: 36px;
-    height: 36px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
