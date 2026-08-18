@@ -43,7 +43,7 @@ const modelDraft = ref('');
 const temperatureDraft = ref(0.2);
 const maxTokensDraft = ref(4096);
 const timeoutDraft = ref(60);
-const jumpDaysDraft = ref(365);
+const jumpDaysDraft = ref('5');
 const showApiKey = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
@@ -59,6 +59,16 @@ const themeOptions: readonly DeepListboxOption[] = [
   { value: 'light', label: '浅色' },
   { value: 'dark', label: '深色' },
 ];
+
+const jumpDayOptions: readonly DeepListboxOption[] = [5, 10, 15, 20, 25, 30].map(days => ({
+  value: String(days),
+  label: `${days} 天`,
+}));
+
+function normalizeJumpDays(days: number): string {
+  const value = String(Math.round(Number(days)));
+  return jumpDayOptions.some(option => option.value === value) ? value : '5';
+}
 
 const connectionLabel = computed(() => {
   if (props.connectionStatus === 'testing') return '正在测试';
@@ -79,7 +89,7 @@ watch(
     temperatureDraft.value = settings.ai.temperature;
     maxTokensDraft.value = settings.ai.maxOutputTokens;
     timeoutDraft.value = settings.ai.timeoutSeconds;
-    jumpDaysDraft.value = settings.automation.largeJumpNoticeDays;
+    jumpDaysDraft.value = normalizeJumpDays(settings.automation.largeJumpNoticeDays);
     showApiKey.value = false;
   },
   { immediate: true },
@@ -114,6 +124,11 @@ function selectTheme(theme: string): void {
   emit('themeChange', theme);
 }
 
+function selectJumpDays(days: string): void {
+  if (!jumpDayOptions.some(option => option.value === days)) return;
+  jumpDaysDraft.value = days;
+}
+
 function saveAi(): void {
   emit('saveAi', currentAiSettings());
 }
@@ -124,7 +139,7 @@ function testConnection(): void {
 
 function saveAutomation(): void {
   emit('saveAutomation', {
-    largeJumpNoticeDays: Math.max(1, Math.round(Number(jumpDaysDraft.value) || 365)),
+    largeJumpNoticeDays: Number(jumpDaysDraft.value) || 5,
   });
 }
 
@@ -256,7 +271,15 @@ function onImportFile(event: Event): void {
 
               <template v-else-if="category.id === 'automation'">
                 <div class="settings-section">
-                  <label class="settings-field settings-number-field"><span>大跨度时间跳跃提醒阈值</span><div><input v-model.number="jumpDaysDraft" type="number" min="1" step="1" /><b>天</b></div></label>
+                  <div class="settings-field settings-number-field">
+                    <span>大跨度时间跳跃提醒阈值</span>
+                    <DeepListbox
+                      label="大跨度时间跳跃提醒阈值"
+                      :model-value="jumpDaysDraft"
+                      :options="jumpDayOptions"
+                      @update:model-value="selectJumpDays"
+                    />
+                  </div>
                   <p class="settings-help">向前跳跃超过阈值时仍按新日期同步，只显示轻量提醒；时间倒退始终需要人工确认。</p>
                 </div>
                 <div class="settings-actions"><button class="settings-primary" type="button" @click="saveAutomation">保存自动切换设置</button></div>

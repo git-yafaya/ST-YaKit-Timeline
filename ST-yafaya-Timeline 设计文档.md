@@ -155,7 +155,7 @@ extension_settings.st_yafaya_timeline
   "globalSettings": {
     "theme": "follow",
     "switchToastEnabled": true,
-    "largeJumpDays": 365,
+    "largeJumpDays": 5,
     "ai": {
       "mode": "sillytavern",
       "openaiCompatible": {
@@ -479,7 +479,7 @@ V1 不在用户发送下一条消息前执行世界书状态保险校验。
 如果跨度超过配置阈值：
 
 ```text
-默认：365 天
+默认：5 天
 ```
 
 显示轻量提醒：
@@ -493,7 +493,7 @@ V1 不在用户发送下一条消息前执行世界书状态保险校验。
 
 不要求人工确认。
 
-阈值可在设置中修改。
+阈值可在设置中通过自定义 Listbox 修改，可选 5、10、15、20、25、30 天。
 
 ---
 

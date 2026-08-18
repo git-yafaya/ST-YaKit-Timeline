@@ -41,7 +41,7 @@ const settings = reactive<SettingsSnapshot>({
     maxOutputTokens: 4096,
     timeoutSeconds: 60,
   },
-  automation: { largeJumpNoticeDays: 365 },
+  automation: { largeJumpNoticeDays: 5 },
 });
 const hostTheme = ref<ResolvedTheme>(detectSillyTavernTheme());
 const resolvedTheme = computed(() => resolveTheme(settings.general.theme, hostTheme.value));
