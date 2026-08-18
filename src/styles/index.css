@@ -170,18 +170,18 @@ button {
   font-weight: 600;
   line-height: 20px;
   cursor: pointer;
-  transition: color 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition: color 180ms ease-out, background-color 180ms ease-out;
 }
 
 .timeline-tab:hover {
   color: var(--tl-primary);
-  background: var(--tl-surface-hover);
+  background-color: var(--tl-surface-hover);
   border-color: rgba(173, 198, 255, 0.18);
 }
 
 .timeline-tab:active {
   color: var(--tl-primary);
-  background: rgba(0, 88, 190, 0.18);
+  background-color: rgba(0, 88, 190, 0.18);
   border-color: rgba(173, 198, 255, 0.28);
 }
 
@@ -197,11 +197,11 @@ button {
 
 .timeline-tab.is-active {
   color: var(--tl-primary);
-  background: rgba(0, 88, 190, 0.1);
+  background-color: rgba(0, 88, 190, 0.1);
   border-color: rgba(173, 198, 255, 0.2);
 }
 
-.timeline-tab.is-active::after {
+.timeline-tab::after {
   content: "";
   position: absolute;
   right: 10px;
@@ -210,7 +210,16 @@ button {
   height: 2px;
   border-radius: 999px;
   background: var(--tl-primary);
+  opacity: 0;
   pointer-events: none;
+  transform: scaleX(0.6);
+  transform-origin: center;
+  transition: opacity 180ms ease-out, transform 180ms ease-out;
+}
+
+.timeline-tab.is-active::after {
+  opacity: 1;
+  transform: scaleX(1);
 }
 
 .action-icon {
@@ -2809,6 +2818,15 @@ h2 {
 .timeline-fade-leave-to .timeline-window {
   opacity: 0;
   transform: translateY(10px) scale(0.99);
+}
+
+.timeline-page-enter-active {
+  transition: opacity 180ms ease-out, transform 180ms ease-out;
+}
+
+.timeline-page-enter-from {
+  opacity: 0;
+  transform: translateY(4px);
 }
 
 @media (max-width: 900px) {

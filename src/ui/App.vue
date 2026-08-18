@@ -63,48 +63,53 @@ function inspectTimeline(): void {
         @close="closeTimeline"
         @select-page="selectPage"
       >
-        <OverviewPage
-          v-if="uiState.activePage === 'overview'"
-          :groups="overviewGroups"
-          @inspect="inspectTimeline"
-          @reanalyze="openAnalysis"
-        />
+        <Transition name="timeline-page" mode="out-in">
+          <OverviewPage
+            v-if="uiState.activePage === 'overview'"
+            key="overview"
+            :groups="overviewGroups"
+            @inspect="inspectTimeline"
+            @reanalyze="openAnalysis"
+          />
 
-        <TimelinePageView
-          v-else-if="uiState.activePage === 'timeline'"
-          :groups="timelineGroups"
-          @start-analysis="openAnalysis"
-        />
+          <TimelinePageView
+            v-else-if="uiState.activePage === 'timeline'"
+            key="timeline"
+            :groups="timelineGroups"
+            @start-analysis="openAnalysis"
+          />
 
-        <GroupPage
-          v-else-if="uiState.activePage === 'groups'"
-          :groups="managementGroups"
-          @start-analysis="openAnalysis"
-        />
+          <GroupPage
+            v-else-if="uiState.activePage === 'groups'"
+            key="groups"
+            :groups="managementGroups"
+            @start-analysis="openAnalysis"
+          />
 
-        <AnalysisPage
-          v-else-if="uiState.activePage === 'analysis'"
-          :draft="analysisDraft"
-          :progress="analysisProgress"
-        />
+          <AnalysisPage
+            v-else-if="uiState.activePage === 'analysis'"
+            key="analysis"
+            :draft="analysisDraft"
+            :progress="analysisProgress"
+          />
 
-        <LogsPage
-          v-else-if="uiState.activePage === 'logs'"
-          :runtime-logs="runtimeLogs"
-          :runtime-summary="runtimeLogSummary"
-          :system-logs="systemLogs"
-          :system-summary="systemLogSummary"
-        />
+          <LogsPage
+            v-else-if="uiState.activePage === 'logs'"
+            key="logs"
+            :runtime-logs="runtimeLogs"
+            :runtime-summary="runtimeLogSummary"
+            :system-logs="systemLogs"
+            :system-summary="systemLogSummary"
+          />
 
-        <SettingsPage v-else-if="uiState.activePage === 'settings'" :settings="settings" />
+          <SettingsPage v-else-if="uiState.activePage === 'settings'" key="settings" :settings="settings" />
 
-        <template v-else>
-          <div class="empty-state">
+          <div v-else key="fallback" class="empty-state">
             <span class="empty-icon" aria-hidden="true">◇</span>
             <h1>{{ pageTitle }}</h1>
             <p>页面入口已建立，功能将在对应领域模块接入后启用。</p>
           </div>
-        </template>
+        </Transition>
       </AppShell>
     </Transition>
   </div>
