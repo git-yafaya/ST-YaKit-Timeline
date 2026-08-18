@@ -2831,9 +2831,21 @@ h2 {
   font-style: normal;
 }
 
-.provider-options button > strong {
+.provider-options button > div {
   min-width: 0;
   flex: 1 1 auto;
+}
+
+.provider-options button > div > strong,
+.provider-options button > div > small {
+  display: block;
+}
+
+.provider-options button > div > small {
+  margin-top: 3px;
+  color: var(--tl-text-muted);
+  font-size: 11px;
+  line-height: 16px;
 }
 
 .settings-ai-fields,

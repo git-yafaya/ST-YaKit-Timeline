@@ -209,16 +209,20 @@ function onImportFile(event: Event): void {
                   <span class="settings-section-label">接口提供商</span>
                   <div class="provider-options">
                     <button type="button" :class="{ 'is-active': providerDraft === 'sillytavern' }" @click="providerDraft = 'sillytavern'">
-                      <span aria-hidden="true">⌁</span><strong>SillyTavern API</strong><i v-if="providerDraft === 'sillytavern'">✓</i>
+                      <span aria-hidden="true">⌁</span>
+                      <div><strong>跟随主 API</strong><small>使用 SillyTavern 当前主 API / 当前模型</small></div>
+                      <i v-if="providerDraft === 'sillytavern'">✓</i>
                     </button>
                     <button type="button" :class="{ 'is-active': providerDraft === 'independent' }" @click="providerDraft = 'independent'">
-                      <span aria-hidden="true">◎</span><strong>独立 API</strong><i v-if="providerDraft === 'independent'">✓</i>
+                      <span aria-hidden="true">◎</span>
+                      <div><strong>副 API</strong><small>使用单独配置的备用接口</small></div>
+                      <i v-if="providerDraft === 'independent'">✓</i>
                     </button>
                   </div>
                 </div>
 
                 <div v-if="providerDraft === 'sillytavern'" class="settings-section settings-ai-fields">
-                  <label class="settings-field"><span>模型选择</span><input v-model="modelDraft" type="text" placeholder="留空则使用 SillyTavern 当前模型" /></label>
+                  <label class="settings-field"><span>模型选择</span><input v-model="modelDraft" type="text" placeholder="留空则跟随主 API 当前模型" /></label>
                 </div>
 
                 <div v-else class="settings-section settings-ai-fields">
