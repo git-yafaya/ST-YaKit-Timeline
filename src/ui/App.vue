@@ -11,8 +11,20 @@ import type { RuntimeLogSummary, SystemLogSummary, TimelineLogEntry } from '@/ui
 import OverviewPage from '@/ui/pages/OverviewPage.vue';
 import type { OverviewGroupSummary } from '@/ui/pages/overview';
 import SettingsPage from '@/ui/pages/SettingsPage.vue';
-import type { GeneralSettings, SettingsSnapshot, ThemeMode } from '@/ui/pages/settings';
-import { loadGeneralSettings, saveGeneralSettings } from '@/ui/settings-store';
+import type {
+  AiSettings,
+  AutomationSettings,
+  GeneralSettings,
+  SettingsSnapshot,
+  ThemeMode,
+} from '@/ui/pages/settings';
+import {
+  DEFAULT_SETTINGS,
+  loadSettings,
+  saveAiSettings,
+  saveAutomationSettings,
+  saveGeneralSettings,
+} from '@/ui/settings-store';
 import { detectSillyTavernTheme, resolveTheme, type ResolvedTheme, watchSillyTavernTheme } from '@/ui/theme';
 import TimelinePageView from '@/ui/pages/TimelinePage.vue';
 import type { TimelineGroupDetail } from '@/ui/pages/timeline';
@@ -29,20 +41,7 @@ const runtimeLogs: readonly TimelineLogEntry[] = [];
 const systemLogs: readonly TimelineLogEntry[] = [];
 const runtimeLogSummary: RuntimeLogSummary | null = null;
 const systemLogSummary: SystemLogSummary | null = null;
-const defaultGeneralSettings: GeneralSettings = { theme: 'follow', showSwitchNotifications: true };
-const settings = reactive<SettingsSnapshot>({
-  general: loadGeneralSettings(defaultGeneralSettings),
-  ai: {
-    provider: 'sillytavern',
-    apiUrl: '',
-    apiKey: '',
-    model: '',
-    temperature: 0.2,
-    maxOutputTokens: 4096,
-    timeoutSeconds: 60,
-  },
-  automation: { largeJumpNoticeDays: 5 },
-});
+const settings = reactive<SettingsSnapshot>(loadSettings(DEFAULT_SETTINGS));
 const hostTheme = ref<ResolvedTheme>(detectSillyTavernTheme());
 const resolvedTheme = computed(() => resolveTheme(settings.general.theme, hostTheme.value));
 let stopWatchingHostTheme: (() => void) | undefined;
@@ -70,6 +69,16 @@ function inspectTimeline(): void {
 function saveGeneral(nextSettings: GeneralSettings): void {
   settings.general = { ...nextSettings };
   saveGeneralSettings(nextSettings);
+}
+
+function saveAi(nextSettings: AiSettings): void {
+  settings.ai = { ...nextSettings };
+  saveAiSettings(nextSettings);
+}
+
+function saveAutomation(nextSettings: AutomationSettings): void {
+  settings.automation = { ...nextSettings };
+  saveAutomationSettings(nextSettings);
 }
 
 function changeTheme(theme: ThemeMode): void {
@@ -131,6 +140,8 @@ function changeTheme(theme: ThemeMode): void {
             v-else-if="uiState.activePage === 'settings'"
             key="settings"
             :settings="settings"
+            @save-ai="saveAi"
+            @save-automation="saveAutomation"
             @save-general="saveGeneral"
             @theme-change="changeTheme"
           />

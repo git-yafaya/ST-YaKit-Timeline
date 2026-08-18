@@ -1,22 +1,99 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadGeneralSettings, saveGeneralSettings } from '@/ui/settings-store';
+import type { SettingsSnapshot } from '@/ui/pages/settings';
+import {
+  DEFAULT_SETTINGS,
+  loadGeneralSettings,
+  loadSettings,
+  saveAiSettings,
+  saveAutomationSettings,
+  saveGeneralSettings,
+} from '@/ui/settings-store';
+
+function installSillyTavern(extensionSettings: Record<string, unknown> = {}) {
+  const saveSettingsDebounced = vi.fn();
+  globalThis.SillyTavern = {
+    getContext: () => ({ extensionSettings, saveSettingsDebounced }),
+  };
+  return { extensionSettings, saveSettingsDebounced };
+}
 
 afterEach(() => {
   globalThis.SillyTavern = undefined;
 });
 
-describe('general settings persistence', () => {
-  it('loads the stored theme preference without creating a third resolved theme', () => {
-    globalThis.SillyTavern = {
-      getContext: () => ({
-        extensionSettings: {
-          st_yafaya_timeline: {
-            globalSettings: { theme: 'follow', switchToastEnabled: false },
+describe('settings persistence', () => {
+  it('loads all stored setting sections from the SillyTavern namespace', () => {
+    installSillyTavern({
+      st_yafaya_timeline: {
+        globalSettings: {
+          theme: 'dark',
+          switchToastEnabled: false,
+          largeJumpDays: 20,
+          ai: {
+            mode: 'independent',
+            openaiCompatible: {
+              baseUrl: 'https://api.example.test/v1',
+              apiKey: 'secret-key',
+              model: 'example-model',
+              temperature: 0.7,
+              maxTokens: 8192,
+              timeoutSec: 120,
+            },
           },
         },
-        saveSettingsDebounced: vi.fn(),
-      }),
-    };
+      },
+    });
+
+    expect(loadSettings(DEFAULT_SETTINGS)).toEqual({
+      general: { theme: 'dark', showSwitchNotifications: false },
+      ai: {
+        provider: 'independent',
+        apiUrl: 'https://api.example.test/v1',
+        apiKey: 'secret-key',
+        model: 'example-model',
+        temperature: 0.7,
+        maxOutputTokens: 8192,
+        timeoutSeconds: 120,
+      },
+      automation: { largeJumpNoticeDays: 20 },
+    });
+  });
+
+  it('uses defaults when stored values are absent or invalid', () => {
+    installSillyTavern({
+      st_yafaya_timeline: {
+        globalSettings: {
+          theme: 'system',
+          switchToastEnabled: 'yes',
+          largeJumpDays: 365,
+          ai: {
+            mode: 'unknown',
+            openaiCompatible: {
+              baseUrl: 42,
+              apiKey: null,
+              model: false,
+              temperature: 3,
+              maxTokens: 0,
+              timeoutSec: Number.NaN,
+            },
+          },
+        },
+      },
+    });
+
+    expect(loadSettings(DEFAULT_SETTINGS)).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it('returns defaults when SillyTavern context is unavailable', () => {
+    expect(loadSettings(DEFAULT_SETTINGS)).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it('keeps the focused general-settings loader compatible', () => {
+    installSillyTavern({
+      st_yafaya_timeline: {
+        globalSettings: { theme: 'follow', switchToastEnabled: false },
+      },
+    });
 
     expect(loadGeneralSettings({ theme: 'dark', showSwitchNotifications: true })).toEqual({
       theme: 'follow',
@@ -24,20 +101,127 @@ describe('general settings persistence', () => {
     });
   });
 
-  it('writes manual theme choices through SillyTavern extension settings', () => {
-    const extensionSettings: Record<string, unknown> = {};
-    const saveSettingsDebounced = vi.fn();
-    globalThis.SillyTavern = {
-      getContext: () => ({ extensionSettings, saveSettingsDebounced }),
-    };
+  it('saves general settings without replacing other plugin data', () => {
+    const { extensionSettings, saveSettingsDebounced } = installSillyTavern({
+      st_yafaya_timeline: {
+        worldbooks: { bookA: { groups: [] } },
+        globalSettings: {
+          largeJumpDays: 15,
+          ai: { mode: 'sillytavern' },
+        },
+      },
+    });
 
     saveGeneralSettings({ theme: 'light', showSwitchNotifications: true });
 
     expect(extensionSettings).toEqual({
       st_yafaya_timeline: {
-        globalSettings: { theme: 'light', switchToastEnabled: true },
+        worldbooks: { bookA: { groups: [] } },
+        globalSettings: {
+          largeJumpDays: 15,
+          ai: { mode: 'sillytavern' },
+          theme: 'light',
+          switchToastEnabled: true,
+        },
       },
     });
     expect(saveSettingsDebounced).toHaveBeenCalledOnce();
+  });
+
+  it('saves AI settings while retaining automation, worldbooks, and unknown AI fields', () => {
+    const { extensionSettings, saveSettingsDebounced } = installSillyTavern({
+      st_yafaya_timeline: {
+        worldbooks: { bookA: { groups: [] } },
+        globalSettings: {
+          theme: 'dark',
+          largeJumpDays: 25,
+          ai: {
+            scanStrategy: 'deep',
+            openaiCompatible: { organization: 'example-org' },
+          },
+        },
+      },
+    });
+
+    saveAiSettings({
+      provider: 'independent',
+      apiUrl: 'https://api.example.test/v1',
+      apiKey: 'secret-key',
+      model: 'example-model',
+      temperature: 0.4,
+      maxOutputTokens: 6000,
+      timeoutSeconds: 90,
+    });
+
+    expect(extensionSettings).toEqual({
+      st_yafaya_timeline: {
+        worldbooks: { bookA: { groups: [] } },
+        globalSettings: {
+          theme: 'dark',
+          largeJumpDays: 25,
+          ai: {
+            scanStrategy: 'deep',
+            mode: 'independent',
+            openaiCompatible: {
+              organization: 'example-org',
+              baseUrl: 'https://api.example.test/v1',
+              apiKey: 'secret-key',
+              model: 'example-model',
+              temperature: 0.4,
+              maxTokens: 6000,
+              timeoutSec: 90,
+            },
+          },
+        },
+      },
+    });
+    expect(saveSettingsDebounced).toHaveBeenCalledOnce();
+  });
+
+  it('saves an allowed jump threshold without replacing AI settings', () => {
+    const { extensionSettings, saveSettingsDebounced } = installSillyTavern({
+      st_yafaya_timeline: {
+        globalSettings: {
+          theme: 'follow',
+          ai: { mode: 'independent' },
+        },
+      },
+    });
+
+    saveAutomationSettings({ largeJumpNoticeDays: 30 });
+
+    expect(extensionSettings).toEqual({
+      st_yafaya_timeline: {
+        globalSettings: {
+          theme: 'follow',
+          ai: { mode: 'independent' },
+          largeJumpDays: 30,
+        },
+      },
+    });
+    expect(saveSettingsDebounced).toHaveBeenCalledOnce();
+  });
+
+  it('normalizes unsupported jump thresholds to five days before saving', () => {
+    const { extensionSettings } = installSillyTavern();
+
+    saveAutomationSettings({ largeJumpNoticeDays: 365 });
+
+    const snapshot = loadSettings(DEFAULT_SETTINGS);
+    expect(snapshot.automation).toEqual({ largeJumpNoticeDays: 5 });
+    expect(extensionSettings).toMatchObject({
+      st_yafaya_timeline: { globalSettings: { largeJumpDays: 5 } },
+    });
+  });
+
+  it('does not mutate the provided fallback snapshot', () => {
+    const fallback: SettingsSnapshot = structuredClone(DEFAULT_SETTINGS);
+    installSillyTavern({
+      st_yafaya_timeline: { globalSettings: { theme: 'light', largeJumpDays: 10 } },
+    });
+
+    loadSettings(fallback);
+
+    expect(fallback).toEqual(DEFAULT_SETTINGS);
   });
 });
