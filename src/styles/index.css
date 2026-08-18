@@ -2961,6 +2961,21 @@ h2 {
   padding-top: 16px;
 }
 
+.settings-operation-status {
+  margin-top: 8px;
+  color: var(--tl-text-muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.settings-operation-status.is-saved {
+  color: var(--tl-success);
+}
+
+.settings-operation-status.is-error {
+  color: var(--tl-danger);
+}
+
 .settings-number-field {
   width: 100%;
 }

@@ -14,7 +14,9 @@ import SettingsPage from '@/ui/pages/SettingsPage.vue';
 import { fetchAvailableModels } from '@/ui/model-provider';
 import type {
   AiSettings,
+  AiSaveStatus,
   AutomationSettings,
+  ConnectionStates,
   GeneralSettings,
   ModelCatalogs,
   SettingsSnapshot,
@@ -49,6 +51,14 @@ const modelCatalogs = reactive<ModelCatalogs>({
   independent: { status: 'idle', models: [], message: '' },
 });
 const modelRequestVersions = { sillytavern: 0, independent: 0 };
+const connectionStates = reactive<ConnectionStates>({
+  sillytavern: { status: 'idle', message: '' },
+  independent: { status: 'idle', message: '' },
+});
+const connectionRequestVersions = { sillytavern: 0, independent: 0 };
+const aiSaveStatus = ref<AiSaveStatus>('idle');
+const aiSaveMessage = ref('');
+let aiSaveResetTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 const hostTheme = ref<ResolvedTheme>(detectSillyTavernTheme());
 const resolvedTheme = computed(() => resolveTheme(settings.general.theme, hostTheme.value));
 let stopWatchingHostTheme: (() => void) | undefined;
@@ -59,7 +69,10 @@ onMounted(() => {
   });
 });
 
-onBeforeUnmount(() => stopWatchingHostTheme?.());
+onBeforeUnmount(() => {
+  stopWatchingHostTheme?.();
+  if (aiSaveResetTimer !== undefined) globalThis.clearTimeout(aiSaveResetTimer);
+});
 
 function selectPage(page: TimelinePage): void {
   uiState.activePage = page;
@@ -79,8 +92,16 @@ function saveGeneral(nextSettings: GeneralSettings): void {
 }
 
 function saveAi(nextSettings: AiSettings): void {
-  settings.ai = { ...nextSettings };
-  saveAiSettings(nextSettings);
+  const saved = saveAiSettings(nextSettings);
+  aiSaveStatus.value = saved ? 'saved' : 'error';
+  aiSaveMessage.value = saved ? 'AI 设置已保存' : '保存失败：无法写入 SillyTavern 扩展设置';
+  if (saved) settings.ai = { ...nextSettings };
+
+  if (aiSaveResetTimer !== undefined) globalThis.clearTimeout(aiSaveResetTimer);
+  aiSaveResetTimer = globalThis.setTimeout(() => {
+    aiSaveStatus.value = 'idle';
+    aiSaveMessage.value = '';
+  }, 3000);
 }
 
 function saveAutomation(nextSettings: AutomationSettings): void {
@@ -106,6 +127,40 @@ async function requestModels(nextSettings: AiSettings): Promise<void> {
     catalog.models = [];
     catalog.status = 'error';
     catalog.message = error instanceof Error ? error.message : '获取模型失败';
+  }
+}
+
+async function testConnection(nextSettings: AiSettings): Promise<void> {
+  const provider = nextSettings.provider;
+  const connectionVersion = ++connectionRequestVersions[provider];
+  const modelVersion = ++modelRequestVersions[provider];
+  const connection = connectionStates[provider];
+  const catalog = modelCatalogs[provider];
+  connection.status = 'testing';
+  connection.message = '正在测试连接…';
+  catalog.status = 'loading';
+  catalog.message = '';
+
+  try {
+    const models = await fetchAvailableModels(nextSettings);
+    if (connectionVersion !== connectionRequestVersions[provider]) return;
+    connection.status = 'connected';
+    connection.message = `连接成功，可用模型 ${models.length} 个`;
+    if (modelVersion === modelRequestVersions[provider]) {
+      catalog.models = models;
+      catalog.status = 'loaded';
+      catalog.message = `已获取 ${models.length} 个模型`;
+    }
+  } catch (error) {
+    if (connectionVersion !== connectionRequestVersions[provider]) return;
+    const message = error instanceof Error ? error.message : '连接测试失败';
+    connection.status = 'error';
+    connection.message = message;
+    if (modelVersion === modelRequestVersions[provider]) {
+      catalog.models = [];
+      catalog.status = 'error';
+      catalog.message = message;
+    }
   }
 }
 
@@ -167,12 +222,16 @@ function changeTheme(theme: ThemeMode): void {
           <SettingsPage
             v-else-if="uiState.activePage === 'settings'"
             key="settings"
+            :ai-save-message="aiSaveMessage"
+            :ai-save-status="aiSaveStatus"
+            :connection-states="connectionStates"
             :model-catalogs="modelCatalogs"
             :settings="settings"
             @request-models="requestModels"
             @save-ai="saveAi"
             @save-automation="saveAutomation"
             @save-general="saveGeneral"
+            @test-connection="testConnection"
             @theme-change="changeTheme"
           />
 

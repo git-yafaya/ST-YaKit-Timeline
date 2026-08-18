@@ -110,21 +110,26 @@ function getStoredGlobalSettings(context: SillyTavernContext | null): TimelineGl
 
 function updateGlobalSettings(
   update: (globalSettings: TimelineGlobalSettingsRecord) => TimelineGlobalSettingsRecord,
-): void {
+): boolean {
   const context = getContext();
-  if (!context) return;
+  if (!context) return false;
 
-  const currentNamespace = context.extensionSettings[SETTINGS_NAMESPACE];
-  const namespace: TimelineSettingsRecord = isRecord(currentNamespace)
-    ? { ...currentNamespace }
-    : {};
-  const currentGlobalSettings = isRecord(namespace.globalSettings)
-    ? namespace.globalSettings as TimelineGlobalSettingsRecord
-    : {};
+  try {
+    const currentNamespace = context.extensionSettings[SETTINGS_NAMESPACE];
+    const namespace: TimelineSettingsRecord = isRecord(currentNamespace)
+      ? { ...currentNamespace }
+      : {};
+    const currentGlobalSettings = isRecord(namespace.globalSettings)
+      ? namespace.globalSettings as TimelineGlobalSettingsRecord
+      : {};
 
-  namespace.globalSettings = update(currentGlobalSettings);
-  context.extensionSettings[SETTINGS_NAMESPACE] = namespace;
-  context.saveSettingsDebounced();
+    namespace.globalSettings = update(currentGlobalSettings);
+    context.extensionSettings[SETTINGS_NAMESPACE] = namespace;
+    context.saveSettingsDebounced();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function loadSettings(fallback: SettingsSnapshot): SettingsSnapshot {
@@ -185,15 +190,15 @@ export function loadGeneralSettings(fallback: GeneralSettings): GeneralSettings 
   };
 }
 
-export function saveGeneralSettings(settings: GeneralSettings): void {
-  updateGlobalSettings(globalSettings => ({
+export function saveGeneralSettings(settings: GeneralSettings): boolean {
+  return updateGlobalSettings(globalSettings => ({
     ...globalSettings,
     theme: settings.theme,
     switchToastEnabled: settings.showSwitchNotifications,
   }));
 }
 
-export function saveAiSettings(settings: AiSettings): void {
+export function saveAiSettings(settings: AiSettings): boolean {
   const normalizedSettings: AiSettings = {
     provider: isApiProvider(settings.provider) ? settings.provider : DEFAULT_SETTINGS.ai.provider,
     apiUrl: storedString(settings.apiUrl, DEFAULT_SETTINGS.ai.apiUrl),
@@ -218,7 +223,7 @@ export function saveAiSettings(settings: AiSettings): void {
     ),
   };
 
-  updateGlobalSettings(globalSettings => {
+  return updateGlobalSettings(globalSettings => {
     const currentAi = isRecord(globalSettings.ai)
       ? globalSettings.ai as TimelineAiSettingsRecord
       : {};
@@ -245,8 +250,8 @@ export function saveAiSettings(settings: AiSettings): void {
   });
 }
 
-export function saveAutomationSettings(settings: AutomationSettings): void {
-  updateGlobalSettings(globalSettings => ({
+export function saveAutomationSettings(settings: AutomationSettings): boolean {
+  return updateGlobalSettings(globalSettings => ({
     ...globalSettings,
     largeJumpDays: normalizeJumpNoticeDays(settings.largeJumpNoticeDays),
   }));

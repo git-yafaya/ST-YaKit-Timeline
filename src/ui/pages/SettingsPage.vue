@@ -4,9 +4,10 @@ import DeepListbox from '@/ui/components/DeepListbox.vue';
 import type { DeepListboxOption } from '@/ui/components/deep-listbox';
 import type {
   AiSettings,
+  AiSaveStatus,
   ApiProvider,
   AutomationSettings,
-  ConnectionStatus,
+  ConnectionStates,
   GeneralSettings,
   ModelCatalogs,
   SettingsCategory,
@@ -16,12 +17,19 @@ import type {
 
 const props = withDefaults(
   defineProps<{
-    connectionStatus?: ConnectionStatus;
+    aiSaveMessage?: string;
+    aiSaveStatus?: AiSaveStatus;
+    connectionStates?: ConnectionStates;
     modelCatalogs?: ModelCatalogs;
     settings: SettingsSnapshot;
   }>(),
   {
-    connectionStatus: 'idle',
+    aiSaveMessage: '',
+    aiSaveStatus: 'idle',
+    connectionStates: () => ({
+      sillytavern: { status: 'idle', message: '' },
+      independent: { status: 'idle', message: '' },
+    }),
     modelCatalogs: () => ({
       sillytavern: { status: 'idle', models: [], message: '' },
       independent: { status: 'idle', models: [], message: '' },
@@ -77,10 +85,12 @@ function normalizeJumpDays(days: number): string {
   return jumpDayOptions.some(option => option.value === value) ? value : '5';
 }
 
+const currentConnectionState = computed(() => props.connectionStates[providerDraft.value]);
 const connectionLabel = computed(() => {
-  if (props.connectionStatus === 'testing') return '正在测试';
-  if (props.connectionStatus === 'connected') return '已连接';
-  if (props.connectionStatus === 'error') return '连接失败';
+  if (currentConnectionState.value.message) return currentConnectionState.value.message;
+  if (currentConnectionState.value.status === 'testing') return '正在测试连接…';
+  if (currentConnectionState.value.status === 'connected') return '连接成功';
+  if (currentConnectionState.value.status === 'error') return '连接失败';
   return '尚未测试';
 });
 
@@ -323,12 +333,20 @@ function onImportFile(event: Event): void {
 
                 <div class="settings-connection-status">
                   <span>连接状态</span>
-                  <p :class="`is-${connectionStatus}`"><i aria-hidden="true"></i>{{ connectionLabel }}</p>
+                  <p :class="`is-${currentConnectionState.status}`" aria-live="polite"><i aria-hidden="true"></i>{{ connectionLabel }}</p>
                 </div>
                 <div class="settings-actions">
-                  <button class="secondary-action" type="button" :disabled="connectionStatus === 'testing'" @click="testConnection">测试连接</button>
+                  <button class="secondary-action" type="button" :disabled="currentConnectionState.status === 'testing'" @click="testConnection">
+                    {{ currentConnectionState.status === 'testing' ? '测试中…' : '测试连接' }}
+                  </button>
                   <button class="settings-primary" type="button" @click="saveAi">保存 AI 设置</button>
                 </div>
+                <p
+                  v-if="aiSaveStatus !== 'idle'"
+                  :class="['settings-operation-status', `is-${aiSaveStatus}`]"
+                  role="status"
+                  aria-live="polite"
+                >{{ aiSaveMessage }}</p>
               </template>
 
               <template v-else-if="category.id === 'automation'">

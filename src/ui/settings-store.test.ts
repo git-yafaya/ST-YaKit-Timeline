@@ -151,7 +151,7 @@ describe('settings persistence', () => {
       },
     });
 
-    saveAiSettings({
+    const saved = saveAiSettings({
       provider: 'independent',
       apiUrl: 'https://api.example.test/v1',
       apiKey: 'secret-key',
@@ -161,6 +161,7 @@ describe('settings persistence', () => {
       timeoutSeconds: 90,
     });
 
+    expect(saved).toBe(true);
     expect(extensionSettings).toEqual({
       st_yafaya_timeline: {
         worldbooks: { bookA: { groups: [] } },
@@ -231,5 +232,23 @@ describe('settings persistence', () => {
     loadSettings(fallback);
 
     expect(fallback).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it('reports a failed save when SillyTavern context is unavailable', () => {
+    expect(saveAiSettings(DEFAULT_SETTINGS.ai)).toBe(false);
+  });
+
+  it('reports a failed save when SillyTavern rejects the scheduled write', () => {
+    const extensionSettings: Record<string, unknown> = {};
+    globalThis.SillyTavern = {
+      getContext: () => ({
+        extensionSettings,
+        saveSettingsDebounced: () => {
+          throw new Error('save failed');
+        },
+      }),
+    };
+
+    expect(saveAiSettings(DEFAULT_SETTINGS.ai)).toBe(false);
   });
 });

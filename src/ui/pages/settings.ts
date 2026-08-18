@@ -1,4 +1,5 @@
 export type ApiProvider = 'sillytavern' | 'independent';
+export type AiSaveStatus = 'idle' | 'saved' | 'error';
 export type ConnectionStatus = 'idle' | 'testing' | 'connected' | 'error';
 export type SettingsCategory = 'general' | 'analysis' | 'automation' | 'data';
 export type ThemeMode = 'follow' | 'light' | 'dark';
@@ -36,3 +37,10 @@ export interface ModelCatalog {
 }
 
 export type ModelCatalogs = Record<ApiProvider, ModelCatalog>;
+
+export interface ConnectionState {
+  message: string;
+  status: ConnectionStatus;
+}
+
+export type ConnectionStates = Record<ApiProvider, ConnectionState>;
