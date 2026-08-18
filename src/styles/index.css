@@ -89,7 +89,9 @@ button {
 
 .timeline-window {
   width: min(1200px, 100%);
-  max-height: min(80vh, 860px);
+  height: min(80vh, 860px);
+  height: min(80dvh, 860px);
+  max-height: none;
   position: relative;
   z-index: 1;
   display: flex;
@@ -230,6 +232,7 @@ button {
 }
 
 .timeline-context {
+  flex: 0 0 auto;
   padding: 13px 24px;
   border-bottom: 1px solid var(--tl-border);
   color: var(--tl-text-muted);
@@ -297,10 +300,13 @@ button {
 }
 
 .timeline-content {
-  min-height: 360px;
-  flex: 1 1 auto;
+  min-height: 0;
+  flex: 1 1 0;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 24px;
+  scrollbar-gutter: stable;
 }
 
 .page-heading {
@@ -2835,7 +2841,9 @@ h2 {
 
   .timeline-window {
     width: 100%;
-    max-height: 94dvh;
+    height: 94vh;
+    height: 94dvh;
+    max-height: none;
     border-radius: 12px 12px 0 0;
   }
 

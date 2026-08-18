@@ -2003,6 +2003,7 @@ AI分析
 - 防止 SillyTavern 第三方主题污染插件
 - 防止插件 CSS 反向污染 SillyTavern
 - 大弹窗使用 fixed 定位
+- 大弹窗外层尺寸固定，不得因 Tab 内容多少发生伸缩；顶部导航和上下文栏固定，只有中间内容区独立滚动
 - 避免将需要主题变量的内容 Teleport 到 Shadow DOM 外部
 
 ---
