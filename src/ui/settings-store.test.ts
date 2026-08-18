@@ -22,6 +22,14 @@ afterEach(() => {
 });
 
 describe('settings persistence', () => {
+  it('uses the configured AI defaults for new installations', () => {
+    expect(DEFAULT_SETTINGS.ai).toMatchObject({
+      temperature: 0.9,
+      maxOutputTokens: 23333,
+      timeoutSeconds: 180,
+    });
+  });
+
   it('loads all stored setting sections from the SillyTavern namespace', () => {
     installSillyTavern({
       st_yafaya_timeline: {

@@ -11,10 +11,12 @@ import type { RuntimeLogSummary, SystemLogSummary, TimelineLogEntry } from '@/ui
 import OverviewPage from '@/ui/pages/OverviewPage.vue';
 import type { OverviewGroupSummary } from '@/ui/pages/overview';
 import SettingsPage from '@/ui/pages/SettingsPage.vue';
+import { fetchAvailableModels } from '@/ui/model-provider';
 import type {
   AiSettings,
   AutomationSettings,
   GeneralSettings,
+  ModelCatalogs,
   SettingsSnapshot,
   ThemeMode,
 } from '@/ui/pages/settings';
@@ -42,6 +44,11 @@ const systemLogs: readonly TimelineLogEntry[] = [];
 const runtimeLogSummary: RuntimeLogSummary | null = null;
 const systemLogSummary: SystemLogSummary | null = null;
 const settings = reactive<SettingsSnapshot>(loadSettings(DEFAULT_SETTINGS));
+const modelCatalogs = reactive<ModelCatalogs>({
+  sillytavern: { status: 'idle', models: [], message: '' },
+  independent: { status: 'idle', models: [], message: '' },
+});
+const modelRequestVersions = { sillytavern: 0, independent: 0 };
 const hostTheme = ref<ResolvedTheme>(detectSillyTavernTheme());
 const resolvedTheme = computed(() => resolveTheme(settings.general.theme, hostTheme.value));
 let stopWatchingHostTheme: (() => void) | undefined;
@@ -79,6 +86,27 @@ function saveAi(nextSettings: AiSettings): void {
 function saveAutomation(nextSettings: AutomationSettings): void {
   settings.automation = { ...nextSettings };
   saveAutomationSettings(nextSettings);
+}
+
+async function requestModels(nextSettings: AiSettings): Promise<void> {
+  const provider = nextSettings.provider;
+  const version = ++modelRequestVersions[provider];
+  const catalog = modelCatalogs[provider];
+  catalog.status = 'loading';
+  catalog.message = '';
+
+  try {
+    const models = await fetchAvailableModels(nextSettings);
+    if (version !== modelRequestVersions[provider]) return;
+    catalog.models = models;
+    catalog.status = 'loaded';
+    catalog.message = `已获取 ${models.length} 个模型`;
+  } catch (error) {
+    if (version !== modelRequestVersions[provider]) return;
+    catalog.models = [];
+    catalog.status = 'error';
+    catalog.message = error instanceof Error ? error.message : '获取模型失败';
+  }
 }
 
 function changeTheme(theme: ThemeMode): void {
@@ -139,7 +167,9 @@ function changeTheme(theme: ThemeMode): void {
           <SettingsPage
             v-else-if="uiState.activePage === 'settings'"
             key="settings"
+            :model-catalogs="modelCatalogs"
             :settings="settings"
+            @request-models="requestModels"
             @save-ai="saveAi"
             @save-automation="saveAutomation"
             @save-general="saveGeneral"

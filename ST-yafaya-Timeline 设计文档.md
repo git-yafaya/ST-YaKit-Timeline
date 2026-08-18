@@ -162,8 +162,8 @@ extension_settings.st_yafaya_timeline
         "baseUrl": "",
         "apiKey": "",
         "model": "",
-        "temperature": 0.2,
-        "maxTokens": 8192,
+        "temperature": 0.9,
+        "maxTokens": 23333,
         "timeoutSec": 180
       }
     }
@@ -1724,6 +1724,8 @@ AI 新建议：
 
 AI 分析通过 SillyTavern 当前可用模型能力发送分析请求。
 
+设置页提供“获取模型”操作，通过 SillyTavern 当前主 API 的模型接口加载候选项并展示为自定义 Listbox；模型留空时继续跟随主 API 当前模型，选择候选模型时保存对应模型 ID。
+
 具体调用方式以当前实际运行环境中可用的 SillyTavern API 为准。
 
 ---
@@ -1734,10 +1736,13 @@ AI 分析通过 SillyTavern 当前可用模型能力发送分析请求。
 
 - API URL
 - API Key
+- 模型选择（获取模型后使用自定义 Listbox）
 - 模型名称
 - Temperature
 - 最大输出 Token
 - 请求超时
+
+在“模型选择”中选择候选项后，必须同步更新下方“模型名称”；模型名称仍允许手工输入。默认 Temperature 为 `0.9`，最大输出 Token 为 `23333`，请求超时为 `180` 秒。
 
 V1 不额外实现：
 
@@ -2032,6 +2037,7 @@ follow | light | dark
 - 设置卡片使用不透明语义 Token；Light Token 下呈白色或极浅灰卡片、弱边框、16～20px 圆角与轻阴影，不得使用毛玻璃或大面积高对比色块。
 - AI 分析折叠组按接口提供商、输入项、连接状态、操作按钮的顺序纵向排列，保留 SillyTavern API、独立 API、模型、连接测试和全部高级参数。
 - 接口提供商显示为“跟随主 API / 使用 SillyTavern 当前主 API / 当前模型”和“副 API / 使用单独配置的备用接口”；默认选择跟随主 API，模型留空时跟随主 API 当前模型。
+- 主 API 与副 API 均提供“获取模型”按钮及自定义 Listbox；副 API 的模型 Listbox 位于“模型名称”上方，选中后同步模型名称。模型列表浮层不得撑开 Accordion 或外层 Modal。
 - 避免将需要主题变量的内容 Teleport 到 Shadow DOM 外部
 
 ---

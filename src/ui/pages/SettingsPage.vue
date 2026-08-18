@@ -8,6 +8,7 @@ import type {
   AutomationSettings,
   ConnectionStatus,
   GeneralSettings,
+  ModelCatalogs,
   SettingsCategory,
   SettingsSnapshot,
   ThemeMode,
@@ -16,16 +17,22 @@ import type {
 const props = withDefaults(
   defineProps<{
     connectionStatus?: ConnectionStatus;
+    modelCatalogs?: ModelCatalogs;
     settings: SettingsSnapshot;
   }>(),
   {
     connectionStatus: 'idle',
+    modelCatalogs: () => ({
+      sillytavern: { status: 'idle', models: [], message: '' },
+      independent: { status: 'idle', models: [], message: '' },
+    }),
   },
 );
 
 const emit = defineEmits<{
   exportConfig: [];
   importConfig: [file: File];
+  requestModels: [settings: AiSettings];
   saveAi: [settings: AiSettings];
   saveAutomation: [settings: AutomationSettings];
   saveGeneral: [settings: GeneralSettings];
@@ -40,9 +47,9 @@ const providerDraft = ref<ApiProvider>('sillytavern');
 const apiUrlDraft = ref('');
 const apiKeyDraft = ref('');
 const modelDraft = ref('');
-const temperatureDraft = ref(0.2);
-const maxTokensDraft = ref(4096);
-const timeoutDraft = ref(60);
+const temperatureDraft = ref(0.9);
+const maxTokensDraft = ref(23333);
+const timeoutDraft = ref(180);
 const jumpDaysDraft = ref('5');
 const showApiKey = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -75,6 +82,19 @@ const connectionLabel = computed(() => {
   if (props.connectionStatus === 'connected') return '已连接';
   if (props.connectionStatus === 'error') return '连接失败';
   return '尚未测试';
+});
+
+const currentModelCatalog = computed(() => props.modelCatalogs[providerDraft.value]);
+const fetchedModelOptions = computed<readonly DeepListboxOption[]>(() => {
+  const models = [...currentModelCatalog.value.models];
+  const currentModel = modelDraft.value.trim();
+  if (currentModel && !models.includes(currentModel)) models.unshift(currentModel);
+  return models.map(model => ({ value: model, label: model }));
+});
+const modelStatusLabel = computed(() => {
+  if (currentModelCatalog.value.status === 'loading') return '正在获取模型…';
+  if (currentModelCatalog.value.status === 'idle') return '点击“获取模型”加载可用模型列表。';
+  return currentModelCatalog.value.message;
 });
 
 watch(
@@ -127,6 +147,15 @@ function selectTheme(theme: string): void {
 function selectJumpDays(days: string): void {
   if (!jumpDayOptions.some(option => option.value === days)) return;
   jumpDaysDraft.value = days;
+}
+
+function selectModel(model: string): void {
+  if (!fetchedModelOptions.value.some(option => option.value === model)) return;
+  modelDraft.value = model;
+}
+
+function requestModels(): void {
+  emit('requestModels', currentAiSettings());
 }
 
 function saveAi(): void {
@@ -237,7 +266,23 @@ function onImportFile(event: Event): void {
                 </div>
 
                 <div v-if="providerDraft === 'sillytavern'" class="settings-section settings-ai-fields">
-                  <label class="settings-field"><span>模型选择</span><input v-model="modelDraft" type="text" placeholder="留空则跟随主 API 当前模型" /></label>
+                  <div class="settings-field settings-model-field">
+                    <span>模型选择</span>
+                    <div class="settings-model-control">
+                      <DeepListbox
+                        :disabled="currentModelCatalog.status !== 'loaded' || fetchedModelOptions.length === 0"
+                        label="主 API 模型选择"
+                        :model-value="modelDraft"
+                        :options="fetchedModelOptions"
+                        placeholder="留空则跟随主 API 当前模型"
+                        @update:model-value="selectModel"
+                      />
+                      <button class="secondary-action" type="button" :disabled="currentModelCatalog.status === 'loading'" @click="requestModels">
+                        {{ currentModelCatalog.status === 'loading' ? '获取中…' : '获取模型' }}
+                      </button>
+                    </div>
+                    <small :class="['settings-model-status', { 'is-error': currentModelCatalog.status === 'error' }]" aria-live="polite">{{ modelStatusLabel }}</small>
+                  </div>
                 </div>
 
                 <div v-else class="settings-section settings-ai-fields">
@@ -251,6 +296,23 @@ function onImportFile(event: Event): void {
                       </button>
                     </div>
                   </label>
+                  <div class="settings-field settings-model-field">
+                    <span>模型选择</span>
+                    <div class="settings-model-control">
+                      <DeepListbox
+                        :disabled="currentModelCatalog.status !== 'loaded' || fetchedModelOptions.length === 0"
+                        label="副 API 模型选择"
+                        :model-value="modelDraft"
+                        :options="fetchedModelOptions"
+                        placeholder="获取模型后选择"
+                        @update:model-value="selectModel"
+                      />
+                      <button class="secondary-action" type="button" :disabled="currentModelCatalog.status === 'loading'" @click="requestModels">
+                        {{ currentModelCatalog.status === 'loading' ? '获取中…' : '获取模型' }}
+                      </button>
+                    </div>
+                    <small :class="['settings-model-status', { 'is-error': currentModelCatalog.status === 'error' }]" aria-live="polite">{{ modelStatusLabel }}</small>
+                  </div>
                   <label class="settings-field"><span>模型名称</span><input v-model="modelDraft" type="text" autocomplete="off" /></label>
                   <div class="settings-number-grid">
                     <label class="settings-field"><span>Temperature</span><input v-model.number="temperatureDraft" type="number" min="0" max="2" step="0.1" /></label>

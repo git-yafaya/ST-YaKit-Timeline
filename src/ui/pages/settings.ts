@@ -2,6 +2,7 @@ export type ApiProvider = 'sillytavern' | 'independent';
 export type ConnectionStatus = 'idle' | 'testing' | 'connected' | 'error';
 export type SettingsCategory = 'general' | 'analysis' | 'automation' | 'data';
 export type ThemeMode = 'follow' | 'light' | 'dark';
+export type ModelLoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
 
 export interface AiSettings {
   apiKey: string;
@@ -27,3 +28,11 @@ export interface SettingsSnapshot {
   automation: AutomationSettings;
   general: GeneralSettings;
 }
+
+export interface ModelCatalog {
+  message: string;
+  models: readonly string[];
+  status: ModelLoadStatus;
+}
+
+export type ModelCatalogs = Record<ApiProvider, ModelCatalog>;

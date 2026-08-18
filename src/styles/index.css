@@ -2855,6 +2855,40 @@ h2 {
   gap: 14px;
 }
 
+.settings-model-control {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-model-control .deep-listbox {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.settings-model-control .secondary-action {
+  min-width: 92px;
+  height: 40px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.settings-model-control .secondary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.settings-model-status {
+  color: var(--tl-text-dim);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.settings-model-status.is-error {
+  color: var(--tl-danger);
+}
+
 .secret-field {
   position: relative;
 }
@@ -3318,6 +3352,15 @@ h2 {
 
   .settings-row {
     align-items: flex-start;
+  }
+
+  .settings-model-control {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-model-control .secondary-action {
+    width: 100%;
   }
 
   .settings-actions {

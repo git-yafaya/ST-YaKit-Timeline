@@ -17,9 +17,9 @@ export const DEFAULT_SETTINGS: SettingsSnapshot = {
     apiUrl: '',
     apiKey: '',
     model: '',
-    temperature: 0.2,
-    maxOutputTokens: 4096,
-    timeoutSeconds: 60,
+    temperature: 0.9,
+    maxOutputTokens: 23333,
+    timeoutSeconds: 180,
   },
   automation: { largeJumpNoticeDays: 5 },
 };
