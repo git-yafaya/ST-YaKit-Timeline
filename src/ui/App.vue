@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import AppShell from '@/ui/components/AppShell.vue';
 import { getPageLabel } from '@/ui/navigation';
 import AnalysisPage from '@/ui/pages/AnalysisPage.vue';
@@ -11,7 +11,9 @@ import type { RuntimeLogSummary, SystemLogSummary, TimelineLogEntry } from '@/ui
 import OverviewPage from '@/ui/pages/OverviewPage.vue';
 import type { OverviewGroupSummary } from '@/ui/pages/overview';
 import SettingsPage from '@/ui/pages/SettingsPage.vue';
-import type { SettingsSnapshot } from '@/ui/pages/settings';
+import type { GeneralSettings, SettingsSnapshot } from '@/ui/pages/settings';
+import { loadGeneralSettings, saveGeneralSettings } from '@/ui/settings-store';
+import { detectSillyTavernTheme, resolveTheme, type ResolvedTheme, watchSillyTavernTheme } from '@/ui/theme';
 import TimelinePageView from '@/ui/pages/TimelinePage.vue';
 import type { TimelineGroupDetail } from '@/ui/pages/timeline';
 import { closeTimeline, type TimelinePage, uiState } from '@/ui/state';
@@ -27,8 +29,9 @@ const runtimeLogs: readonly TimelineLogEntry[] = [];
 const systemLogs: readonly TimelineLogEntry[] = [];
 const runtimeLogSummary: RuntimeLogSummary | null = null;
 const systemLogSummary: SystemLogSummary | null = null;
-const settings: SettingsSnapshot = {
-  general: { theme: 'follow', showSwitchNotifications: true },
+const defaultGeneralSettings: GeneralSettings = { theme: 'follow', showSwitchNotifications: true };
+const settings = reactive<SettingsSnapshot>({
+  general: loadGeneralSettings(defaultGeneralSettings),
   ai: {
     provider: 'sillytavern',
     apiUrl: '',
@@ -39,7 +42,18 @@ const settings: SettingsSnapshot = {
     timeoutSeconds: 60,
   },
   automation: { largeJumpNoticeDays: 365 },
-};
+});
+const hostTheme = ref<ResolvedTheme>(detectSillyTavernTheme());
+const resolvedTheme = computed(() => resolveTheme(settings.general.theme, hostTheme.value));
+let stopWatchingHostTheme: (() => void) | undefined;
+
+onMounted(() => {
+  stopWatchingHostTheme = watchSillyTavernTheme(theme => {
+    hostTheme.value = theme;
+  });
+});
+
+onBeforeUnmount(() => stopWatchingHostTheme?.());
 
 function selectPage(page: TimelinePage): void {
   uiState.activePage = page;
@@ -52,10 +66,15 @@ function openAnalysis(): void {
 function inspectTimeline(): void {
   selectPage('timeline');
 }
+
+function saveGeneral(nextSettings: GeneralSettings): void {
+  settings.general = { ...nextSettings };
+  saveGeneralSettings(nextSettings);
+}
 </script>
 
 <template>
-  <div class="timeline-root">
+  <div class="timeline-root" :data-theme="resolvedTheme">
     <Transition name="timeline-fade">
       <AppShell
         v-if="uiState.open"
@@ -102,7 +121,12 @@ function inspectTimeline(): void {
             :system-summary="systemLogSummary"
           />
 
-          <SettingsPage v-else-if="uiState.activePage === 'settings'" key="settings" :settings="settings" />
+          <SettingsPage
+            v-else-if="uiState.activePage === 'settings'"
+            key="settings"
+            :settings="settings"
+            @save-general="saveGeneral"
+          />
 
           <div v-else key="fallback" class="empty-state">
             <span class="empty-icon" aria-hidden="true">◇</span>
