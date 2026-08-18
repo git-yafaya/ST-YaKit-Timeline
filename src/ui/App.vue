@@ -6,6 +6,8 @@ import AnalysisPage from '@/ui/pages/AnalysisPage.vue';
 import type { AnalysisDraft, AnalysisProgress } from '@/ui/pages/analysis';
 import GroupPage from '@/ui/pages/GroupPage.vue';
 import type { GroupManagementSummary } from '@/ui/pages/groups';
+import LogsPage from '@/ui/pages/LogsPage.vue';
+import type { RuntimeLogSummary, SystemLogSummary, TimelineLogEntry } from '@/ui/pages/logs';
 import OverviewPage from '@/ui/pages/OverviewPage.vue';
 import type { OverviewGroupSummary } from '@/ui/pages/overview';
 import TimelinePageView from '@/ui/pages/TimelinePage.vue';
@@ -19,6 +21,10 @@ const timelineGroups: readonly TimelineGroupDetail[] = [];
 const managementGroups: readonly GroupManagementSummary[] = [];
 const analysisDraft: AnalysisDraft | null = null;
 const analysisProgress: AnalysisProgress | null = null;
+const runtimeLogs: readonly TimelineLogEntry[] = [];
+const systemLogs: readonly TimelineLogEntry[] = [];
+const runtimeLogSummary: RuntimeLogSummary | null = null;
+const systemLogSummary: SystemLogSummary | null = null;
 
 function selectPage(page: TimelinePage): void {
   uiState.activePage = page;
@@ -65,6 +71,14 @@ function inspectTimeline(): void {
           v-else-if="uiState.activePage === 'analysis'"
           :draft="analysisDraft"
           :progress="analysisProgress"
+        />
+
+        <LogsPage
+          v-else-if="uiState.activePage === 'logs'"
+          :runtime-logs="runtimeLogs"
+          :runtime-summary="runtimeLogSummary"
+          :system-logs="systemLogs"
+          :system-summary="systemLogSummary"
         />
 
         <template v-else>
