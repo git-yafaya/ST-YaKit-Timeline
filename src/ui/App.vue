@@ -3,6 +3,13 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { AnalysisValidationError, runTimelineScan } from '@/analysis/scanner';
 import { generateTimelineAnalysis } from '@/st/ai-adapter';
 import {
+  buildWorldbookTimelineConfig,
+  getDraftApplicationIssue,
+  loadWorldbookTimelineConfig,
+  saveWorldbookTimelineConfig,
+  type WorldbookTimelineConfig,
+} from '@/storage/worldbook-config';
+import {
   readCurrentHostScope,
   watchCurrentHostScope,
   type HostScopeSnapshot,
@@ -22,7 +29,6 @@ import type { GroupManagementSummary } from '@/ui/pages/groups';
 import LogsPage from '@/ui/pages/LogsPage.vue';
 import type { RuntimeLogSummary, SystemLogSummary, TimelineLogEntry } from '@/ui/pages/logs';
 import OverviewPage from '@/ui/pages/OverviewPage.vue';
-import type { OverviewGroupSummary } from '@/ui/pages/overview';
 import SettingsPage from '@/ui/pages/SettingsPage.vue';
 import { fetchAvailableModels } from '@/ui/model-provider';
 import type {
@@ -44,17 +50,16 @@ import {
 } from '@/ui/settings-store';
 import { detectSillyTavernTheme, resolveTheme, type ResolvedTheme, watchSillyTavernTheme } from '@/ui/theme';
 import TimelinePageView from '@/ui/pages/TimelinePage.vue';
-import type { TimelineGroupDetail } from '@/ui/pages/timeline';
 import { closeTimeline, type TimelinePage, uiState } from '@/ui/state';
+import { buildOverviewGroupSummaries, buildTimelineGroupDetails } from '@/ui/worldbook-view';
 
 const pageTitle = computed(() => getPageLabel(uiState.activePage));
-// 时间线业务配置接入前保持为空，避免把 HTML 原型样例当成真实数据。
-const overviewGroups: readonly OverviewGroupSummary[] = [];
-const timelineGroups: readonly TimelineGroupDetail[] = [];
 const managementGroups: readonly GroupManagementSummary[] = [];
 const analysisDraft = ref<AnalysisDraft | null>(null);
 const analysisProgress = ref<AnalysisProgress | null>(null);
 const analysisError = ref<AnalysisErrorState | null>(null);
+const analysisNotice = ref('');
+const analysisApplying = ref(false);
 const runtimeLogs: readonly TimelineLogEntry[] = [];
 const systemLogs: readonly TimelineLogEntry[] = [];
 const runtimeLogSummary: RuntimeLogSummary | null = null;
@@ -80,6 +85,9 @@ const hostScope = ref<HostScopeSnapshot>({
   status: 'unavailable',
   worldbook: null,
 });
+const worldbookConfig = ref<WorldbookTimelineConfig | null>(null);
+const overviewGroups = computed(() => buildOverviewGroupSummaries(worldbookConfig.value, hostScope.value.worldbook));
+const timelineGroups = computed(() => buildTimelineGroupDetails(worldbookConfig.value, hostScope.value.worldbook));
 const characterName = computed(() => {
   if (hostScope.value.character) return hostScope.value.character.name;
   return hostScope.value.status === 'no_character' ? '未选择角色' : '正在读取';
@@ -98,6 +106,13 @@ const analysisSourceMessage = computed(() => {
   if (hostScope.value.status === 'ready') return '当前角色绑定的世界书没有可分析条目。';
   return hostScope.value.message || '当前角色世界书尚不可读取。';
 });
+const draftApplicationIssue = computed(() => {
+  if (worldbookConfig.value) return '当前世界书已有正式配置，重新分析结果需经过差异合并，不能直接覆盖。';
+  return getDraftApplicationIssue(analysisDraft.value, hostScope.value.worldbook);
+});
+const canApplyAnalysisDraft = computed(() => (
+  Boolean(analysisDraft.value) && !analysisApplying.value && draftApplicationIssue.value === null
+));
 const hostTheme = ref<ResolvedTheme>(detectSillyTavernTheme());
 const resolvedTheme = computed(() => resolveTheme(settings.general.theme, hostTheme.value));
 let hostScopeVersion = 0;
@@ -133,6 +148,9 @@ async function refreshHostScope(): Promise<void> {
     analysisDraftScopeKey = '';
   }
   hostScope.value = snapshot;
+  worldbookConfig.value = snapshot.worldbook
+    ? loadWorldbookTimelineConfig(snapshot.worldbook.key)
+    : null;
 }
 
 onMounted(() => {
@@ -173,6 +191,7 @@ async function startAnalysis(mode: AnalysisScanMode): Promise<void> {
   const scopeKey = hostScopeKey(snapshot);
   activeAnalysisScopeKey = scopeKey;
   analysisError.value = null;
+  analysisNotice.value = '';
   const aiSettings = { ...settings.ai };
 
   try {
@@ -217,6 +236,7 @@ function cancelAnalysis(): void {
   activeAnalysisScopeKey = '';
   analysisProgress.value = null;
   analysisError.value = null;
+  analysisNotice.value = '';
 }
 
 function discardAnalysisDraft(): void {
@@ -224,6 +244,7 @@ function discardAnalysisDraft(): void {
   analysisDraft.value = null;
   analysisDraftScopeKey = '';
   analysisError.value = null;
+  analysisNotice.value = '';
 }
 
 function toggleAnalysisEntry(groupId: string, entryId: string | number, selected: boolean): void {
@@ -232,7 +253,11 @@ function toggleAnalysisEntry(groupId: string, entryId: string | number, selected
     ...analysisDraft.value,
     groups: analysisDraft.value.groups.map(group => group.id !== groupId ? group : {
       ...group,
-      entries: group.entries.map(entry => entry.entryId !== entryId ? entry : { ...entry, selected }),
+      entries: group.entries.map(entry => entry.entryId !== entryId ? entry : {
+        ...entry,
+        selected,
+        manuallyLocked: selected && entry.confidence === 'low' ? true : entry.manuallyLocked,
+      }),
     }),
   };
 }
@@ -263,6 +288,42 @@ function createAnalysisGroup(name: string): void {
       { id: `manual-group-${Date.now()}`, name, entries: [] },
     ],
   };
+}
+
+async function applyAnalysisDraft(): Promise<void> {
+  const draft = analysisDraft.value;
+  const worldbook = hostScope.value.worldbook;
+  const issue = draftApplicationIssue.value;
+  if (!draft || !worldbook || issue || analysisApplying.value) {
+    analysisError.value = { message: issue || '当前草稿无法应用。' };
+    return;
+  }
+
+  const scopeKey = hostScopeKey(hostScope.value);
+  analysisApplying.value = true;
+  analysisError.value = null;
+  analysisNotice.value = '';
+  try {
+    const config = await buildWorldbookTimelineConfig(draft, worldbook);
+    if (scopeKey !== hostScopeKey(hostScope.value)) {
+      analysisError.value = { message: '角色、聊天或绑定世界书已变化，正式配置未保存。' };
+      return;
+    }
+    if (!saveWorldbookTimelineConfig(config)) {
+      analysisError.value = { message: '保存失败：无法写入 SillyTavern 扩展设置。' };
+      return;
+    }
+
+    worldbookConfig.value = config;
+    analysisDraft.value = null;
+    analysisDraftScopeKey = '';
+    analysisNotice.value = '时间线配置已保存；当前聊天尚无有效时间时，不会修改世界书条目开关。';
+    selectPage('overview');
+  } catch (error) {
+    analysisError.value = { message: error instanceof Error ? error.message : '正式配置生成失败。' };
+  } finally {
+    analysisApplying.value = false;
+  }
 }
 
 function inspectTimeline(): void {
@@ -395,11 +456,16 @@ function changeTheme(theme: ThemeMode): void {
             v-else-if="uiState.activePage === 'analysis'"
             key="analysis"
             :draft="analysisDraft"
+            :allow-apply="canApplyAnalysisDraft"
+            :apply-blocked-message="draftApplicationIssue ?? ''"
+            :applying="analysisApplying"
             :can-start="canStartAnalysis"
             :error="analysisError"
+            :notice="analysisNotice"
             :progress="analysisProgress"
             :source-message="analysisSourceMessage"
             @cancel-analysis="cancelAnalysis"
+            @apply-draft="applyAnalysisDraft"
             @create-group="createAnalysisGroup"
             @discard-draft="discardAnalysisDraft"
             @start-analysis="startAnalysis"

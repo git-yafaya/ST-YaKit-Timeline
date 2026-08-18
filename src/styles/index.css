@@ -1831,6 +1831,15 @@ h2 {
   gap: 8px;
 }
 
+.analysis-apply-hint {
+  display: block;
+  max-width: 620px;
+  margin-top: 4px;
+  color: var(--tl-warning);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .analysis-apply {
   min-height: 38px;
   padding: 8px 16px;
@@ -1925,6 +1934,28 @@ h2 {
   font: 11px/1.5 "JetBrains Mono", monospace;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.analysis-success {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--tl-success-border-medium);
+  border-radius: var(--tl-radius);
+  color: var(--tl-success);
+  background: var(--tl-success-surface);
+}
+
+.analysis-success > span {
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--tl-success-border-medium);
+  border-radius: 999px;
 }
 
 .analysis-scan-actions {

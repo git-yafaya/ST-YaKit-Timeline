@@ -15,17 +15,23 @@ import type {
 const props = withDefaults(
   defineProps<{
     allowApply?: boolean;
+    applyBlockedMessage?: string;
+    applying?: boolean;
     canStart?: boolean;
     draft?: AnalysisDraft | null;
     error?: AnalysisErrorState | null;
+    notice?: string;
     progress?: AnalysisProgress | null;
     sourceMessage?: string;
   }>(),
   {
     allowApply: false,
+    applyBlockedMessage: '',
+    applying: false,
     canStart: false,
     draft: null,
     error: null,
+    notice: '',
     progress: null,
     sourceMessage: '',
   },
@@ -58,7 +64,9 @@ const pendingCount = computed(() => {
   return (
     props.draft?.groups.reduce(
       (total, group) =>
-        total + group.entries.filter(entry => entry.confidence === 'medium' || (entry.warnings?.length ?? 0) > 0).length,
+        total + group.entries.filter(
+          entry => entry.selected && (entry.confidence === 'medium' || (entry.warnings?.length ?? 0) > 0),
+        ).length,
       0,
     ) ?? 0
   );
@@ -153,17 +161,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <p>{{ draft ? '分析完成，请确认时间线草稿。' : '识别世界书中的时间线候选并生成配置草稿。' }}</p>
       </div>
       <div v-if="draft" class="analysis-heading-actions">
-        <button class="secondary-action" type="button" :disabled="Boolean(progress) || !canStart" @click="$emit('startAnalysis', 'quick')">
+        <button class="secondary-action" type="button" :disabled="Boolean(progress) || applying || !canStart" @click="$emit('startAnalysis', 'quick')">
           重新分析
         </button>
         <button
           class="analysis-apply"
           type="button"
-          :disabled="pendingCount > 0 || !allowApply"
-          :title="allowApply ? '' : '正式配置持久化尚未接入'"
+          :disabled="pendingCount > 0 || !allowApply || applying"
+          :title="allowApply ? '' : applyBlockedMessage"
           @click="$emit('applyDraft')"
         >
-          确认并应用
+          {{ applying ? '正在保存…' : '确认并应用' }}
         </button>
       </div>
     </div>
@@ -180,17 +188,22 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
       </div>
     </section>
 
+    <section v-if="notice" class="analysis-success" role="status">
+      <span aria-hidden="true">✓</span>
+      <p>{{ notice }}</p>
+    </section>
+
     <section v-if="!draft" class="analysis-empty" aria-labelledby="analysis-empty-title">
       <span class="analysis-empty-icon" aria-hidden="true">✦</span>
       <h2 id="analysis-empty-title">尚未生成时间线分析草稿</h2>
       <p>{{ canStart ? '快速扫描会先在本地筛选候选；深度扫描会分析全部条目。两种方式都不会直接修改世界书。' : sourceMessage }}</p>
       <div class="analysis-scan-actions">
-        <button class="analysis-scan-card" type="button" :disabled="Boolean(progress) || !canStart" @click="$emit('startAnalysis', 'quick')">
+        <button class="analysis-scan-card" type="button" :disabled="Boolean(progress) || applying || !canStart" @click="$emit('startAnalysis', 'quick')">
           <span aria-hidden="true">⌁</span>
           <strong>快速扫描</strong>
           <small>先筛选明显候选，减少发送内容</small>
         </button>
-        <button class="analysis-scan-card" type="button" :disabled="Boolean(progress) || !canStart" @click="$emit('startAnalysis', 'deep')">
+        <button class="analysis-scan-card" type="button" :disabled="Boolean(progress) || applying || !canStart" @click="$emit('startAnalysis', 'deep')">
           <span aria-hidden="true">◎</span>
           <strong>深度扫描全部条目</strong>
           <small>适合格式特殊或可能被漏检的世界书</small>
@@ -285,16 +298,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
       </section>
 
       <div class="analysis-bottom-actions">
-        <span>{{ selectedCount }} 个条目将被纳入时间线配置</span>
+        <span>
+          {{ selectedCount }} 个条目将被纳入时间线配置
+          <small v-if="!allowApply && applyBlockedMessage" class="analysis-apply-hint">{{ applyBlockedMessage }}</small>
+        </span>
         <div>
-          <button class="secondary-action" type="button" @click="$emit('discardDraft')">放弃草稿</button>
+          <button class="secondary-action" type="button" :disabled="applying" @click="$emit('discardDraft')">放弃草稿</button>
           <button
             class="analysis-apply"
             type="button"
-            :disabled="pendingCount > 0 || !allowApply"
-            :title="allowApply ? '' : '正式配置持久化尚未接入'"
+            :disabled="pendingCount > 0 || !allowApply || applying"
+            :title="allowApply ? '' : applyBlockedMessage"
             @click="$emit('applyDraft')"
-          >确认并应用</button>
+          >{{ applying ? '正在保存…' : '确认并应用' }}</button>
         </div>
       </div>
     </template>
