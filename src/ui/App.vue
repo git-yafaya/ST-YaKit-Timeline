@@ -10,6 +10,8 @@ import LogsPage from '@/ui/pages/LogsPage.vue';
 import type { RuntimeLogSummary, SystemLogSummary, TimelineLogEntry } from '@/ui/pages/logs';
 import OverviewPage from '@/ui/pages/OverviewPage.vue';
 import type { OverviewGroupSummary } from '@/ui/pages/overview';
+import SettingsPage from '@/ui/pages/SettingsPage.vue';
+import type { SettingsSnapshot } from '@/ui/pages/settings';
 import TimelinePageView from '@/ui/pages/TimelinePage.vue';
 import type { TimelineGroupDetail } from '@/ui/pages/timeline';
 import { closeTimeline, type TimelinePage, uiState } from '@/ui/state';
@@ -25,6 +27,19 @@ const runtimeLogs: readonly TimelineLogEntry[] = [];
 const systemLogs: readonly TimelineLogEntry[] = [];
 const runtimeLogSummary: RuntimeLogSummary | null = null;
 const systemLogSummary: SystemLogSummary | null = null;
+const settings: SettingsSnapshot = {
+  general: { theme: 'follow', showSwitchNotifications: true },
+  ai: {
+    provider: 'sillytavern',
+    apiUrl: '',
+    apiKey: '',
+    model: '',
+    temperature: 0.2,
+    maxOutputTokens: 4096,
+    timeoutSeconds: 60,
+  },
+  automation: { largeJumpNoticeDays: 365 },
+};
 
 function selectPage(page: TimelinePage): void {
   uiState.activePage = page;
@@ -80,6 +95,8 @@ function inspectTimeline(): void {
           :system-logs="systemLogs"
           :system-summary="systemLogSummary"
         />
+
+        <SettingsPage v-else-if="uiState.activePage === 'settings'" :settings="settings" />
 
         <template v-else>
           <div class="empty-state">
