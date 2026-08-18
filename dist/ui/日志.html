@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>时间线管理 - 总览</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary": "#5c5f61",
+                    "on-primary-fixed-variant": "#004395",
+                    "secondary-fixed": "#e0e3e5",
+                    "background": "#f8f9ff",
+                    "on-secondary": "#ffffff",
+                    "inverse-on-surface": "#eaf1ff",
+                    "on-error-container": "#93000a",
+                    "surface": "#f8f9ff",
+                    "on-tertiary-container": "#f5fff6",
+                    "outline": "#727785",
+                    "on-primary-fixed": "#001a42",
+                    "outline-variant": "#c2c6d6",
+                    "on-primary-container": "#fefcff",
+                    "surface-tint": "#005ac2",
+                    "primary": "#0058be",
+                    "surface-variant": "#d3e4fe",
+                    "inverse-surface": "#213145",
+                    "on-tertiary-fixed": "#002113",
+                    "surface-container-low": "#eff4ff",
+                    "on-surface": "#0b1c30",
+                    "tertiary-container": "#00855b",
+                    "primary-container": "#2170e4",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed-dim": "#adc6ff",
+                    "surface-dim": "#cbdbf5",
+                    "on-background": "#0b1c30",
+                    "on-primary": "#ffffff",
+                    "on-secondary-fixed-variant": "#444749",
+                    "on-surface-variant": "#424754",
+                    "error": "#ba1a1a",
+                    "surface-container-lowest": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#d3e4fe",
+                    "surface-container-high": "#dce9ff",
+                    "surface-container": "#e5eeff",
+                    "secondary-container": "#e0e3e5",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "on-secondary-container": "#626567",
+                    "tertiary-fixed": "#6ffbbe",
+                    "secondary-fixed-dim": "#c4c7c9",
+                    "primary-fixed": "#d8e2ff",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "surface-bright": "#f8f9ff",
+                    "on-secondary-fixed": "#191c1e",
+                    "inverse-primary": "#adc6ff",
+                    "on-error": "#ffffff",
+                    "tertiary": "#006947"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "card-gap": "20px",
+                    "timeline-inset": "64px",
+                    "gutter": "16px",
+                    "container-padding": "24px",
+                    "unit": "8px"
+            },
+            "fontFamily": {
+                    "label-caps": [
+                            "JetBrains Mono"
+                    ],
+                    "body-sm": [
+                            "Manrope"
+                    ],
+                    "headline-md": [
+                            "Manrope"
+                    ],
+                    "headline-lg": [
+                            "Manrope"
+                    ],
+                    "body-base": [
+                            "Manrope"
+                    ]
+            },
+            "fontSize": {
+                    "label-caps": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg": [
+                            "28px",
+                            {
+                                    "lineHeight": "36px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-base": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+        },
+        },
+      }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(114, 119, 133, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(114, 119, 133, 0.5);
+        }
+        
+        .ambient-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .glass-panel {
+            background: rgba(33, 49, 69, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(194, 198, 214, 0.1);
+        }
+        
+        .card-subtle {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(194, 198, 214, 0.15);
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .card-subtle:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(173, 198, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+    </style>
+</head>
+<body class="bg-[#0f172a] text-on-surface-variant dark:text-on-secondary-container min-h-screen flex items-center justify-center p-4 md:p-8 font-body-base antialiased selection:bg-primary-container selection:text-on-primary-container relative overflow-hidden">
+<!-- Ambient background glow -->
+<div class="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[120px] pointer-events-none"></div>
+<div class="fixed bottom-[-20%] right-[-10%] w-[40%] h-[40%] rounded-full bg-tertiary-container/10 blur-[100px] pointer-events-none"></div>
+<!-- Main Modal/Window Container -->
+<main class="w-full max-w-[1200px] max-h-[80vh] glass-panel rounded-xl flex flex-col overflow-hidden ambient-shadow relative z-10 animate-[fadeIn_0.3s_ease-out]">
+<!-- TopNavBar Component (from JSON) -->
+<nav class="docked full-width top-0 sticky z-50 bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-md border-b border-outline-variant/10">
+<div class="flex justify-between items-center w-full px-container-padding py-4 max-w-full mx-auto">
+<!-- Brand / Logo -->
+<div class="flex items-center gap-2 font-headline-md text-headline-md font-bold text-on-surface dark:text-on-secondary">
+<i class="fa-solid fa-timeline text-primary-fixed-dim"></i>
+<span class="">时间线管理</span>
+</div>
+<!-- Navigation Links (Desktop) -->
+<div class="hidden md:flex items-center gap-1 font-body-base text-body-base font-body-sm">
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="overview-review.html">总览</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="时间线.html">时间线</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="分组.html">分组</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="AI分析.html">AI分析</a>
+<a class="px-3 py-2 text-primary-fixed-dim border-b-2 border-primary-fixed-dim pb-1 font-semibold hover:bg-inverse-surface/50 rounded-t-lg transition-all" href="日志.html">日志</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="设置s.html">设置</a>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-4">
+<button class="hidden lg:flex items-center gap-2 px-4 py-1.5 border border-outline-variant/50 hover:bg-surface-container-lowest/10 text-on-secondary rounded-lg font-label-caps text-label-caps transition-colors shadow-sm js-get-current-time">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+                        获取当前时间
+                    </button>
+<button id="closeWindowButton" aria-label="Close" class="p-2 flex items-center justify-center border border-outline-variant/50 hover:bg-surface-container-lowest/10 text-on-secondary rounded-lg transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button></div>
+</div>
+<!-- Mobile Tab Navigation -->
+<div class="md:hidden border-t border-outline-variant/10">
+<div class="flex items-center gap-1 overflow-x-auto px-container-padding py-2 font-body-sm text-body-sm whitespace-nowrap">
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="overview-review.html">总览</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="时间线.html">时间线</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="分组.html">分组</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="AI分析.html">AI分析</a>
+<a class="shrink-0 px-3 py-2 text-primary-fixed-dim border-b-2 border-primary-fixed-dim pb-1 font-semibold hover:bg-inverse-surface/50 rounded-t-lg transition-all" href="日志.html">日志</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="设置s.html">设置</a>
+</div>
+</div>
+</nav>
+<!-- Sub-header Details Area -->
+<header class="px-container-padding py-3 border-b border-outline-variant/10 bg-inverse-surface/10">
+<div class="flex flex-wrap gap-6 items-center">
+<!-- Info Item 1 -->
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">person</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps uppercase text-on-secondary-container font-semibold">当前角色:</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-secondary">Rudeus Greyrat</span>
+</div>
+</div>
+<!-- Info Item 2 -->
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-tertiary/10 flex items-center justify-center text-tertiary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">public</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps uppercase text-on-secondary-container font-semibold">当前世界书:</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-secondary">Mushoku Tensei</span>
+</div>
+</div>
+<!-- Info Item 3 -->
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-tint/10 flex items-center justify-center text-primary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">history_toggle_off</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps uppercase text-on-secondary-container font-semibold">当前故事时间:</span>
+<span class="font-label-caps text-body-sm font-semibold text-on-secondary">424年5月14日 17:15</span>
+</div>
+</div>
+</div>
+<!-- Mobile Action Button (Visible only on small screens) -->
+<button class="mt-4 w-full flex lg:hidden items-center justify-center gap-2 px-4 py-2 border border-outline-variant/50 hover:bg-surface-container-lowest/10 text-on-secondary rounded-lg font-label-caps text-label-caps transition-colors shadow-sm js-get-current-time">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">schedule</span>
+                获取当前时间
+            </button>
+</header>
+<!-- Main Content Area -->
+<div class="flex-1 overflow-y-auto p-container-padding">
+<div class="flex flex-col gap-5">
+<!-- Page Header -->
+<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+<div>
+<h2 class="font-headline-md text-headline-md font-semibold text-on-secondary">
+                日志
+            </h2>
+<p class="font-body-sm text-body-sm text-on-secondary-container mt-1">
+                查看当前聊天的时间线运行记录与插件系统状态
+            </p>
+</div>
+<button class="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/40 text-on-secondary font-body-sm text-body-sm hover:bg-white/[0.06]">
+<span class="material-symbols-outlined text-[18px]">
+                delete_sweep
+            </span>
+            清空当前日志
+        </button>
+</div>
+<!-- Log Type Switch -->
+<div class="flex items-center gap-1 p-1 rounded-lg bg-white/[0.03] border border-outline-variant/15 w-fit">
+<button id="runtimeLogsTab" class="px-4 py-2 rounded-md bg-primary/10 text-primary-fixed-dim font-body-sm text-body-sm font-semibold">
+            运行日志
+        </button>
+<button id="systemLogsTab" class="px-4 py-2 rounded-md text-on-secondary-container hover:text-on-secondary hover:bg-white/[0.04] font-body-sm text-body-sm">
+            系统日志
+        </button>
+</div>
+<!-- Runtime Log Summary -->
+<div id="logSummary" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+<div class="rounded-lg border border-outline-variant/15 bg-white/[0.03] px-4 py-3">
+<div class="font-label-caps text-label-caps text-on-secondary-container">
+                当前聊天
+            </div>
+<div class="font-body-sm text-body-sm font-semibold text-on-secondary mt-1">
+                12 条记录
+            </div>
+</div>
+<div class="rounded-lg border border-outline-variant/15 bg-white/[0.03] px-4 py-3">
+<div class="font-label-caps text-label-caps text-on-secondary-container">
+                最近切换
+            </div>
+<div class="font-body-sm text-body-sm font-semibold text-on-secondary mt-1">
+                西部港篇
+            </div>
+</div>
+<div class="rounded-lg border border-outline-variant/15 bg-white/[0.03] px-4 py-3">
+<div class="font-label-caps text-label-caps text-on-secondary-container">
+                当前状态
+            </div>
+<div class="flex items-center gap-2 mt-1">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></span>
+<span class="font-body-sm text-body-sm font-semibold text-on-secondary">
+                    正常运行
+                </span>
+</div>
+</div>
+</div>
+<!-- Runtime Log List -->
+<section id="logListSection" class="rounded-xl border border-outline-variant/15 bg-white/[0.03] overflow-hidden">
+<!-- List Header -->
+<div class="px-5 py-4 border-b border-outline-variant/10 flex items-center justify-between gap-4">
+<div>
+<div class="font-body-sm text-body-sm font-semibold text-on-secondary">
+                    当前聊天运行日志
+                </div>
+<div class="font-body-sm text-body-sm text-on-secondary-container mt-1">
+                    最多保留最近 100 条记录
+                </div>
+</div>
+<span class="font-label-caps text-label-caps text-on-secondary-container">
+                12 / 100
+            </span>
+</div>
+<!-- Log Items with icons for SWITCH, TIME, WARNING, and CHECK stages as requested -->
+<div class="px-5 py-4 border-b border-outline-variant/10 flex items-start gap-4">
+<div class="w-8 h-8 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary-fixed-dim shrink-0">
+<span class="material-symbols-outlined text-[18px]">swap_horiz</span>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-body-sm text-body-sm font-semibold text-on-secondary">时间线切换成功</span>
+<span class="px-2 py-0.5 rounded-full border border-tertiary-fixed-dim/20 bg-tertiary/10 text-tertiary-fixed-dim font-label-caps text-label-caps">SWITCH</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-secondary-container mt-1">主线剧情：米里希昂篇 → 西部港篇</div>
+</div>
+<span class="font-label-caps text-label-caps text-on-secondary-container shrink-0">17:15</span>
+</div>
+<div class="px-5 py-4 border-b border-outline-variant/10 flex items-start gap-4">
+<div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary-fixed-dim shrink-0">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-body-sm text-body-sm font-semibold text-on-secondary">检测到故事时间</span>
+<span class="px-2 py-0.5 rounded-full border border-primary-fixed-dim/20 bg-primary/10 text-primary-fixed-dim font-label-caps text-label-caps">TIME</span>
+</div>
+<div class="font-label-caps text-label-caps text-on-secondary-container mt-1">424年5月14日 17:15</div>
+</div>
+<span class="font-label-caps text-label-caps text-on-secondary-container shrink-0">17:15</span>
+</div>
+<div class="px-5 py-4 border-b border-outline-variant/10 flex items-start gap-4">
+<div class="w-8 h-8 rounded-lg bg-[#ffb370]/10 flex items-center justify-center text-[#ffb370] shrink-0">
+<span class="material-symbols-outlined text-[18px]">warning</span>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-body-sm text-body-sm font-semibold text-on-secondary">未检测到有效时间</span>
+<span class="px-2 py-0.5 rounded-full border border-[#ffb370]/25 bg-[#ffb370]/10 text-[#ffb370] font-label-caps text-label-caps">WARNING</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-secondary-container mt-1">本轮未切换时间线，继续沿用上次有效时间。</div>
+</div>
+<span class="font-label-caps text-label-caps text-on-secondary-container shrink-0">16:42</span>
+</div>
+<div class="px-5 py-4 flex items-start gap-4">
+<div class="w-8 h-8 rounded-lg bg-white/[0.05] flex items-center justify-center text-on-secondary-container shrink-0">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-body-sm text-body-sm font-semibold text-on-secondary">自动模式校验完成</span>
+<span class="px-2 py-0.5 rounded-full border border-outline-variant/20 text-on-secondary-container font-label-caps text-label-caps">CHECK</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-secondary-container mt-1">3 个时间线组状态一致，无需写入世界书。</div>
+</div>
+<span class="font-label-caps text-label-caps text-on-secondary-container shrink-0">16:28</span>
+</div>
+</section>
+</div>
+</div>
+<div id="logToast" class="hidden fixed left-1/2 bottom-8 -translate-x-1/2 z-[120] px-4 py-2 rounded-lg border border-outline-variant/20 bg-inverse-surface/95 text-on-secondary font-body-sm text-body-sm ambient-shadow"></div>
+</main>
+<script>
+        // Simple subtle interaction script to add a tiny bit of life without heavy animations
+        document.addEventListener('DOMContentLoaded', () => {
+            const cards = document.querySelectorAll('.card-subtle');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    card.style.transform = 'translateY(-2px)';
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = 'translateY(0)';
+                });
+            });
+        });
+    </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Prototype close behavior.
+    const closeButton = document.getElementById('closeWindowButton');
+    closeButton?.addEventListener('click', () => {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            document.body.innerHTML = `
+                <div class="min-h-screen flex items-center justify-center bg-[#0f172a] text-white font-body-base p-6">
+                    <div class="text-center">
+                        <div class="text-xl font-semibold mb-2">时间线管理已关闭</div>
+                        <div class="text-sm opacity-70">这是静态原型中的关闭效果。</div>
+                    </div>
+                </div>`;
+        }
+    });
+
+    // Prototype "get current time": updates the story-time display in-page only.
+    document.querySelectorAll('.js-get-current-time').forEach(button => {
+        button.addEventListener('click', () => {
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const value = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            document.querySelectorAll('.js-story-time').forEach(el => el.textContent = value);
+
+            const old = button.innerHTML;
+            button.innerHTML = `<span class="material-symbols-outlined text-[18px]">check</span> 已更新`;
+            button.disabled = true;
+            setTimeout(() => {
+                button.innerHTML = old;
+                button.disabled = false;
+            }, 1200);
+        });
+    });
+});
+</script>
+
+<!-- COMPLETE PROTOTYPE SCRIPT: 日志.html -->
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const runtimeTab = document.getElementById('runtimeLogsTab');
+  const systemTab = document.getElementById('systemLogsTab');
+  const summary = document.getElementById('logSummary');
+  const list = document.getElementById('logListSection');
+  const clear = document.getElementById('clearLogsButton');
+  const toast = document.getElementById('logToast');
+  let mode = 'runtime';
+
+  const showToast = msg => {
+    toast.textContent = msg; toast.classList.remove('hidden');
+    clearTimeout(showToast.t); showToast.t = setTimeout(() => toast.classList.add('hidden'), 1500);
+  };
+
+  const setActive = () => {
+    const runtime = mode === 'runtime';
+    runtimeTab.className = runtime
+      ? 'px-4 py-2 rounded-md bg-primary/10 text-primary-fixed-dim font-body-sm text-body-sm font-semibold'
+      : 'px-4 py-2 rounded-md text-on-secondary-container hover:text-on-secondary hover:bg-white/[0.04] font-body-sm text-body-sm';
+    systemTab.className = !runtime
+      ? 'px-4 py-2 rounded-md bg-primary/10 text-primary-fixed-dim font-body-sm text-body-sm font-semibold'
+      : 'px-4 py-2 rounded-md text-on-secondary-container hover:text-on-secondary hover:bg-white/[0.04] font-body-sm text-body-sm';
+
+    clear.lastChild.textContent = runtime ? ' 清空当前日志' : ' 清空系统日志';
+
+    if (runtime) {
+      summary.innerHTML = `
+        <div class="rounded-lg border border-outline-variant/15 bg-white/[0.03] px-4 py-3"><div class="font-label-caps text-label-caps text-on-secondary-container">当前聊天</div><div class="font-body-sm text-body-sm font-semibold text-on-secondary mt-1">12 条记录</div></div>
+        <div class="rounded-lg border border-outline-variant/15 bg-white/[0.03] px-4 py-3"><div class="font-label-caps text-label-caps text-on-secondary-container">最近切换</div><div class="font-body-sm text-body-sm font-semibold text-on-secondary mt-1">西部港篇</div></div>
+        <div class="rounded-lg border border-outline-variant/15 bg-white/[0.03] px-4 py-3"><div class="font-label-caps text-label-caps text-on-secondary-container">当前状态</div><div class="font-body-sm text-body-sm font-semibold text-on-secondary mt-1">正常运行</div></div>`;
+      list.innerHTML = runtimeHTML;
+    } else {
+      summary.innerHTML = `
+        <div class="rounded-lg border border-outline-variant/15 bg-white/[0.03] px-4 py-3"><div class="font-label-caps text-label-caps text-on-secondary-container">插件状态</div><div class="font-body-sm text-body-sm font-semibold text-on-secondary mt-1">正常</div></div>
+        <div class="rounded-lg border border-outline-variant/15 bg-white/[0.03] px-4 py-3"><div class="font-label-caps text-label-caps text-on-secondary-container">控制权</div><div class="font-body-sm text-body-sm font-semibold text-on-secondary mt-1">当前聊天</div></div>
+        <div class="rounded-lg border border-outline-variant/15 bg-white/[0.03] px-4 py-3"><div class="font-label-caps text-label-caps text-on-secondary-container">最近异常</div><div class="font-body-sm text-body-sm font-semibold text-on-secondary mt-1">无</div></div>`;
+      list.innerHTML = `
+        <div class="px-5 py-4 border-b border-outline-variant/10"><div class="font-body-sm text-body-sm font-semibold text-on-secondary">系统日志</div><div class="font-body-sm text-body-sm text-on-secondary-container mt-1">仅记录必要的插件运行事件</div></div>
+        ${[
+          ['CONTROL','控制权状态已确认','插件当前接管此聊天的时间线状态。','text-primary-fixed-dim','bg-primary/10'],
+          ['CONFIG','已加载聊天配置','从当前 chat 配置恢复时间线设置。','text-on-secondary-container','bg-white/[0.05]'],
+          ['WRITE','状态无需写入','当前条目未发生变化，跳过世界书写入。','text-tertiary-fixed-dim','bg-tertiary/10']
+        ].map(([tag,title,desc,color,bg]) => `
+          <div class="px-5 py-4 border-b border-outline-variant/10 flex items-start gap-4">
+            <div class="w-8 h-8 rounded-lg ${bg} flex items-center justify-center ${color}"><span class="material-symbols-outlined text-[18px]">settings</span></div>
+            <div class="flex-1"><div class="flex items-center gap-2"><span class="font-body-sm text-body-sm font-semibold text-on-secondary">${title}</span><span class="px-2 py-0.5 rounded-full border border-outline-variant/20 font-label-caps text-label-caps text-on-secondary-container">${tag}</span></div><div class="font-body-sm text-body-sm text-on-secondary-container mt-1">${desc}</div></div>
+            <span class="font-label-caps text-label-caps text-on-secondary-container">16:20</span>
+          </div>`).join('')}`;
+    }
+  };
+
+  const runtimeHTML = list.innerHTML;
+  runtimeTab?.addEventListener('click', () => { mode='runtime'; setActive(); });
+  systemTab?.addEventListener('click', () => { mode='system'; setActive(); });
+  clear?.addEventListener('click', () => {
+    list.innerHTML = `<div class="px-5 py-10 text-center font-body-sm text-body-sm text-on-secondary-container">${mode === 'runtime' ? '当前聊天运行日志已清空' : '系统日志已清空'}</div>`;
+    showToast('日志已清空（原型）');
+  });
+});
+</script>
+
+</body></html>

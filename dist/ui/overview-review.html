@@ -1,0 +1,434 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>时间线管理 - 总览</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary": "#5c5f61",
+                    "on-primary-fixed-variant": "#004395",
+                    "secondary-fixed": "#e0e3e5",
+                    "background": "#f8f9ff",
+                    "on-secondary": "#ffffff",
+                    "inverse-on-surface": "#eaf1ff",
+                    "on-error-container": "#93000a",
+                    "surface": "#f8f9ff",
+                    "on-tertiary-container": "#f5fff6",
+                    "outline": "#727785",
+                    "on-primary-fixed": "#001a42",
+                    "outline-variant": "#c2c6d6",
+                    "on-primary-container": "#fefcff",
+                    "surface-tint": "#005ac2",
+                    "primary": "#0058be",
+                    "surface-variant": "#d3e4fe",
+                    "inverse-surface": "#213145",
+                    "on-tertiary-fixed": "#002113",
+                    "surface-container-low": "#eff4ff",
+                    "on-surface": "#0b1c30",
+                    "tertiary-container": "#00855b",
+                    "primary-container": "#2170e4",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed-dim": "#adc6ff",
+                    "surface-dim": "#cbdbf5",
+                    "on-background": "#0b1c30",
+                    "on-primary": "#ffffff",
+                    "on-secondary-fixed-variant": "#444749",
+                    "on-surface-variant": "#424754",
+                    "error": "#ba1a1a",
+                    "surface-container-lowest": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#d3e4fe",
+                    "surface-container-high": "#dce9ff",
+                    "surface-container": "#e5eeff",
+                    "secondary-container": "#e0e3e5",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "on-secondary-container": "#626567",
+                    "tertiary-fixed": "#6ffbbe",
+                    "secondary-fixed-dim": "#c4c7c9",
+                    "primary-fixed": "#d8e2ff",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "surface-bright": "#f8f9ff",
+                    "on-secondary-fixed": "#191c1e",
+                    "inverse-primary": "#adc6ff",
+                    "on-error": "#ffffff",
+                    "tertiary": "#006947"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "card-gap": "20px",
+                    "timeline-inset": "64px",
+                    "gutter": "16px",
+                    "container-padding": "24px",
+                    "unit": "8px"
+            },
+            "fontFamily": {
+                    "label-caps": [
+                            "JetBrains Mono"
+                    ],
+                    "body-sm": [
+                            "Manrope"
+                    ],
+                    "headline-md": [
+                            "Manrope"
+                    ],
+                    "headline-lg": [
+                            "Manrope"
+                    ],
+                    "body-base": [
+                            "Manrope"
+                    ]
+            },
+            "fontSize": {
+                    "label-caps": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg": [
+                            "28px",
+                            {
+                                    "lineHeight": "36px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-base": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+        },
+        },
+      }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(114, 119, 133, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(114, 119, 133, 0.5);
+        }
+        
+        .ambient-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .glass-panel {
+            background: rgba(33, 49, 69, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(194, 198, 214, 0.1);
+        }
+        
+        .card-subtle {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(194, 198, 214, 0.15);
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .card-subtle:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(173, 198, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+    </style>
+</head>
+<body class="bg-[#0f172a] text-on-surface-variant dark:text-on-secondary-container min-h-screen flex items-center justify-center p-4 md:p-8 font-body-base antialiased selection:bg-primary-container selection:text-on-primary-container relative overflow-hidden">
+<!-- Ambient background glow -->
+<div class="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[120px] pointer-events-none"></div>
+<div class="fixed bottom-[-20%] right-[-10%] w-[40%] h-[40%] rounded-full bg-tertiary-container/10 blur-[100px] pointer-events-none"></div>
+<!-- Main Modal/Window Container -->
+<main class="w-full max-w-[1200px] max-h-[80vh] glass-panel rounded-xl flex flex-col overflow-hidden ambient-shadow relative z-10 animate-[fadeIn_0.3s_ease-out]">
+<!-- TopNavBar Component (from JSON) -->
+<nav class="docked full-width top-0 sticky z-50 bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-md border-b border-outline-variant/10">
+<div class="flex justify-between items-center w-full px-container-padding py-4 max-w-full mx-auto">
+<!-- Brand / Logo -->
+<div class="flex items-center gap-2 font-headline-md text-headline-md font-bold text-on-surface dark:text-on-secondary">
+<i class="fa-solid fa-timeline text-primary-fixed-dim"></i>
+<span class="">时间线管理</span>
+</div>
+<!-- Navigation Links (Desktop) -->
+<div class="hidden md:flex items-center gap-1 font-body-base text-body-base font-body-sm">
+<a class="px-3 py-2 text-primary-fixed-dim border-b-2 border-primary-fixed-dim pb-1 font-semibold hover:bg-inverse-surface/50 rounded-t-lg transition-all" href="overview-review.html">总览</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="时间线.html">时间线</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="分组.html">分组</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="AI分析.html">AI分析</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="日志.html">日志</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="设置s.html">设置</a>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-4">
+<button class="hidden lg:flex items-center gap-2 px-4 py-1.5 border border-outline-variant/50 hover:bg-surface-container-lowest/10 text-on-secondary rounded-lg font-label-caps text-label-caps transition-colors shadow-sm js-get-current-time">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+                        获取当前时间
+                    </button>
+<button id="closeWindowButton" class="p-2 flex items-center justify-center border border-outline-variant/50 hover:bg-surface-container-lowest/10 text-on-secondary rounded-lg transition-colors" aria-label="Close">
+    <span class="material-symbols-outlined">close</span>
+</button></div>
+</div>
+<!-- Mobile Tab Navigation -->
+<div class="md:hidden border-t border-outline-variant/10">
+<div class="flex items-center gap-1 overflow-x-auto px-container-padding py-2 font-body-sm text-body-sm whitespace-nowrap">
+<a class="shrink-0 px-3 py-2 text-primary-fixed-dim border-b-2 border-primary-fixed-dim pb-1 font-semibold hover:bg-inverse-surface/50 rounded-t-lg transition-all" href="overview-review.html">总览</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="时间线.html">时间线</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="分组.html">分组</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="AI分析.html">AI分析</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="日志.html">日志</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="设置s.html">设置</a>
+</div>
+</div>
+</nav>
+<!-- Sub-header Details Area -->
+<header class="px-container-padding py-3 border-b border-outline-variant/10 bg-inverse-surface/10">
+<div class="flex flex-wrap gap-6 items-center">
+<!-- Info Item 1 -->
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">person</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps uppercase text-on-secondary-container font-semibold">当前角色:</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-secondary">Rudeus Greyrat</span>
+</div>
+</div>
+<!-- Info Item 2 -->
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-tertiary/10 flex items-center justify-center text-tertiary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">public</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps uppercase text-on-secondary-container font-semibold">当前世界书:</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-secondary">Mushoku Tensei</span>
+</div>
+</div>
+<!-- Info Item 3 -->
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-tint/10 flex items-center justify-center text-primary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">history_toggle_off</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps uppercase text-on-secondary-container font-semibold">当前故事时间:</span>
+<span class="font-label-caps text-body-sm font-semibold text-on-secondary">424年5月14日 17:15</span>
+</div>
+</div>
+</div>
+<!-- Mobile Action Button (Visible only on small screens) -->
+<button class="mt-4 w-full flex lg:hidden items-center justify-center gap-2 px-4 py-2 border border-outline-variant/50 hover:bg-surface-container-lowest/10 text-on-secondary rounded-lg font-label-caps text-label-caps transition-colors shadow-sm js-get-current-time">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">schedule</span>
+                获取当前时间
+            </button>
+</header>
+<!-- Main Content Area -->
+<div class="flex-1 overflow-y-auto p-container-padding">
+<div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+<div>
+<h2 class="font-headline-md text-headline-md font-semibold text-on-secondary mb-1">时间线分组</h2>
+<p class="font-body-sm text-body-sm text-on-secondary-container">查看各分组当前运行状态与生效条目。</p>
+</div>
+<button id="overviewReanalyze" class="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-outline-variant/50 text-on-secondary font-label-caps text-label-caps hover:bg-surface-container-lowest/10 transition-colors">
+<span class="material-symbols-outlined text-[18px] text-primary-fixed-dim">auto_awesome</span>
+重新分析
+</button>
+</div>
+<!-- Bento Grid for Cards -->
+<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+<!-- Card 1: 主线剧情 (Success) -->
+<div class="card-subtle rounded-xl p-5 flex flex-col h-full relative overflow-hidden group" style="transform: translateY(0px);">
+<!-- Subtle accent gradient -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-tertiary-fixed-dim/5 rounded-full blur-[40px] group-hover:bg-tertiary-fixed-dim/10 transition-colors"></div>
+<div class="flex justify-between items-start mb-4 relative z-10">
+<h3 class="font-headline-md text-headline-md text-on-secondary flex items-center gap-2">
+<span class="material-symbols-outlined text-outline-variant/50">route</span>
+                            主线剧情
+                        </h3>
+<!-- Success Badge -->
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1b3d2f] border border-tertiary-fixed-dim/30 text-tertiary-fixed-dim font-label-caps text-label-caps">
+<i class="fa-solid fa-check-circle text-[10px]"></i>
+<span class="">自动</span>
+</div>
+</div>
+<div class="mt-auto relative z-10">
+<div class="font-label-caps text-label-caps text-on-surface-variant/70 uppercase tracking-wider mb-2 border-t border-outline-variant/10 pt-4">当前生效</div>
+<div class="flex items-start gap-3">
+<div class="w-1 h-8 bg-tertiary-fixed-dim rounded-full mt-1"></div>
+<div>
+<p class="font-body-base text-body-base text-on-secondary font-medium">环球探索篇</p>
+<p class="font-label-caps text-label-caps text-on-secondary-container/70 mt-0.5">424/05/10 ～ ∞</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 2: 洛琪希个人线 (Success) -->
+<div class="card-subtle rounded-xl p-5 flex flex-col h-full relative overflow-hidden group" style="transform: translateY(0px);">
+<div class="absolute top-0 right-0 w-32 h-32 bg-tertiary-fixed-dim/5 rounded-full blur-[40px] group-hover:bg-tertiary-fixed-dim/10 transition-colors"></div>
+<div class="flex justify-between items-start mb-4 relative z-10">
+<h3 class="font-headline-md text-headline-md text-on-secondary flex items-center gap-2">
+<span class="material-symbols-outlined text-outline-variant/50">face_3</span>
+                            洛琪希个人线
+                        </h3>
+<!-- Success Badge -->
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1b3d2f] border border-tertiary-fixed-dim/30 text-tertiary-fixed-dim font-label-caps text-label-caps">
+<i class="fa-solid fa-check-circle text-[10px]"></i>
+<span class="">自动</span>
+</div>
+</div>
+<div class="mt-auto relative z-10">
+<div class="font-label-caps text-label-caps text-on-surface-variant/70 uppercase tracking-wider mb-2 border-t border-outline-variant/10 pt-4">当前生效</div>
+<div class="flex items-start gap-3">
+<div class="w-1 h-8 bg-tertiary-fixed-dim rounded-full mt-1"></div>
+<div>
+<p class="font-body-base text-body-base text-on-secondary font-medium">中央大陆旅行篇</p>
+<p class="font-label-caps text-label-caps text-on-secondary-container/70 mt-0.5">424/05/10 ～ ∞</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 3: 世界局势 (Warning) -->
+<div class="card-subtle rounded-xl p-5 flex flex-col h-full relative overflow-hidden group lg:col-span-2 xl:col-span-1 border-error-container/20">
+<div class="absolute top-0 right-0 w-32 h-32 bg-error-container/5 rounded-full blur-[40px] group-hover:bg-error-container/10 transition-colors"></div>
+<div class="flex justify-between items-start mb-4 relative z-10">
+<h3 class="font-headline-md text-headline-md text-on-secondary flex items-center gap-2">
+<span class="material-symbols-outlined text-outline-variant/50">public</span>
+                            世界局势
+                        </h3>
+<div class="flex items-center gap-2">
+<!-- Mode Badge -->
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1b3d2f] border border-tertiary-fixed-dim/30 text-tertiary-fixed-dim font-label-caps text-label-caps">
+<i class="fa-solid fa-check-circle text-[10px]"></i>
+<span>自动</span>
+</div>
+<!-- Warning Badge -->
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#4a2e15] border border-[#ffb370]/30 text-[#ffb370] font-label-caps text-label-caps">
+<i class="fa-solid fa-exclamation-triangle text-[10px]"></i>
+<span>异常</span>
+</div>
+</div>
+</div>
+<div class="mt-auto relative z-10">
+<div class="flex items-center gap-3 mb-4 pt-4 border-t border-outline-variant/10">
+<span class="material-symbols-outlined text-[#ffb370]">error</span>
+<p class="font-body-sm text-body-sm text-on-secondary-container">当前日期未匹配到有效时间线</p>
+</div>
+<button id="overviewInspect" class="w-full py-2 px-4 rounded-lg border border-outline-variant/60 text-on-secondary font-label-caps text-label-caps hover:bg-surface-container-lowest/10 transition-colors">
+                            前往检查
+                        </button>
+</div>
+</div>
+</div>
+<!-- Bottom decorative spacing -->
+<div class="h-8"></div>
+</div>
+</main>
+<script>
+        // Simple subtle interaction script to add a tiny bit of life without heavy animations
+        document.addEventListener('DOMContentLoaded', () => {
+            const cards = document.querySelectorAll('.card-subtle');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    card.style.transform = 'translateY(-2px)';
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = 'translateY(0)';
+                });
+            });
+        });
+    </script>
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Prototype close behavior.
+    const closeButton = document.getElementById('closeWindowButton');
+    closeButton?.addEventListener('click', () => {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            document.body.innerHTML = `
+                <div class="min-h-screen flex items-center justify-center bg-[#0f172a] text-white font-body-base p-6">
+                    <div class="text-center">
+                        <div class="text-xl font-semibold mb-2">时间线管理已关闭</div>
+                        <div class="text-sm opacity-70">这是静态原型中的关闭效果。</div>
+                    </div>
+                </div>`;
+        }
+    });
+
+    // Prototype "get current time": updates the story-time display in-page only.
+    document.querySelectorAll('.js-get-current-time').forEach(button => {
+        button.addEventListener('click', () => {
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const value = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            document.querySelectorAll('.js-story-time').forEach(el => el.textContent = value);
+
+            const old = button.innerHTML;
+            button.innerHTML = `<span class="material-symbols-outlined text-[18px]">check</span> 已更新`;
+            button.disabled = true;
+            setTimeout(() => {
+                button.innerHTML = old;
+                button.disabled = false;
+            }, 1200);
+        });
+    });
+});
+</script>
+
+<!-- COMPLETE PROTOTYPE SCRIPT: overview-review.html -->
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('overviewReanalyze')?.addEventListener('click', () => {
+    window.location.href = 'AI分析.html';
+  });
+  document.getElementById('overviewInspect')?.addEventListener('click', () => {
+    window.location.href = '时间线.html';
+  });
+});
+</script>
+
+</body></html>

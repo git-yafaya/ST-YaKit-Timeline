@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+*.pem
+*.key
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Tool caches and incremental state
+.vite/
+.cache/
+.parcel-cache/
+.turbo/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+
+# Tests and coverage
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+
+# Local preview output; keep preview scripts and seed files trackable
+.preview/screenshots/
+.preview/*.png
+.preview/*.jpg
+.preview/*.jpeg
+.preview/*.webp
+
+# Temporary and backup files
+tmp/
+temp/
+.tmp/
+*.bak
+*.swp
+*.swo
+*~
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Local agent instructions
+/AGENT.md
+
+# Operating systems
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# dist/ is intentionally tracked: SillyTavern loads the built extension files.

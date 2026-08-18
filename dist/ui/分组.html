@@ -1,0 +1,1026 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>时间线管理 - 总览</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary": "#5c5f61",
+                    "on-primary-fixed-variant": "#004395",
+                    "secondary-fixed": "#e0e3e5",
+                    "background": "#f8f9ff",
+                    "on-secondary": "#ffffff",
+                    "inverse-on-surface": "#eaf1ff",
+                    "on-error-container": "#93000a",
+                    "surface": "#f8f9ff",
+                    "on-tertiary-container": "#f5fff6",
+                    "outline": "#727785",
+                    "on-primary-fixed": "#001a42",
+                    "outline-variant": "#c2c6d6",
+                    "on-primary-container": "#fefcff",
+                    "surface-tint": "#005ac2",
+                    "primary": "#0058be",
+                    "surface-variant": "#d3e4fe",
+                    "inverse-surface": "#213145",
+                    "on-tertiary-fixed": "#002113",
+                    "surface-container-low": "#eff4ff",
+                    "on-surface": "#0b1c30",
+                    "tertiary-container": "#00855b",
+                    "primary-container": "#2170e4",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed-dim": "#adc6ff",
+                    "surface-dim": "#cbdbf5",
+                    "on-background": "#0b1c30",
+                    "on-primary": "#ffffff",
+                    "on-secondary-fixed-variant": "#444749",
+                    "on-surface-variant": "#424754",
+                    "error": "#ba1a1a",
+                    "surface-container-lowest": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#d3e4fe",
+                    "surface-container-high": "#dce9ff",
+                    "surface-container": "#e5eeff",
+                    "secondary-container": "#e0e3e5",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "on-secondary-container": "#626567",
+                    "tertiary-fixed": "#6ffbbe",
+                    "secondary-fixed-dim": "#c4c7c9",
+                    "primary-fixed": "#d8e2ff",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "surface-bright": "#f8f9ff",
+                    "on-secondary-fixed": "#191c1e",
+                    "inverse-primary": "#adc6ff",
+                    "on-error": "#ffffff",
+                    "tertiary": "#006947"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "card-gap": "20px",
+                    "timeline-inset": "64px",
+                    "gutter": "16px",
+                    "container-padding": "24px",
+                    "unit": "8px"
+            },
+            "fontFamily": {
+                    "label-caps": [
+                            "JetBrains Mono"
+                    ],
+                    "body-sm": [
+                            "Manrope"
+                    ],
+                    "headline-md": [
+                            "Manrope"
+                    ],
+                    "headline-lg": [
+                            "Manrope"
+                    ],
+                    "body-base": [
+                            "Manrope"
+                    ]
+            },
+            "fontSize": {
+                    "label-caps": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg": [
+                            "28px",
+                            {
+                                    "lineHeight": "36px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-base": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+        },
+        },
+      }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(114, 119, 133, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(114, 119, 133, 0.5);
+        }
+        
+        .ambient-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .glass-panel {
+            background: rgba(33, 49, 69, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(194, 198, 214, 0.1);
+        }
+        
+        .card-subtle {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(194, 198, 214, 0.15);
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .card-subtle:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(173, 198, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+    </style>
+</head>
+<body class="bg-[#0f172a] text-on-surface-variant dark:text-on-secondary-container min-h-screen flex items-center justify-center p-4 md:p-8 font-body-base antialiased selection:bg-primary-container selection:text-on-primary-container relative overflow-hidden">
+<!-- Ambient background glow -->
+<div class="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[120px] pointer-events-none"></div>
+<div class="fixed bottom-[-20%] right-[-10%] w-[40%] h-[40%] rounded-full bg-tertiary-container/10 blur-[100px] pointer-events-none"></div>
+<!-- Main Modal/Window Container -->
+<main class="w-full max-w-[1200px] max-h-[80vh] glass-panel rounded-xl flex flex-col overflow-hidden ambient-shadow relative z-10 animate-[fadeIn_0.3s_ease-out]">
+<!-- TopNavBar Component (from JSON) -->
+<nav class="docked full-width top-0 sticky z-50 bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-md border-b border-outline-variant/10">
+<div class="flex justify-between items-center w-full px-container-padding py-4 max-w-full mx-auto">
+<!-- Brand / Logo -->
+<div class="flex items-center gap-2 font-headline-md text-headline-md font-bold text-on-surface dark:text-on-secondary">
+<i class="fa-solid fa-timeline text-primary-fixed-dim"></i>
+<span class="">时间线管理</span>
+</div>
+<!-- Navigation Links (Desktop) -->
+<div class="hidden md:flex items-center gap-1 font-body-base text-body-base font-body-sm">
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="overview-review.html">总览</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="时间线.html">时间线</a>
+<a class="px-3 py-2 text-primary-fixed-dim border-b-2 border-primary-fixed-dim pb-1 font-semibold hover:bg-inverse-surface/50 rounded-t-lg transition-all" href="分组.html">分组</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="AI分析.html">AI分析</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="日志.html">日志</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="设置s.html">设置</a>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-4">
+<button class="hidden lg:flex items-center gap-2 px-4 py-1.5 border border-outline-variant/50 hover:bg-surface-container-lowest/10 text-on-secondary rounded-lg font-label-caps text-label-caps transition-colors shadow-sm js-get-current-time">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+                        获取当前时间
+                    </button>
+<button id="closeWindowButton" aria-label="Close" class="p-2 flex items-center justify-center border border-outline-variant/50 hover:bg-surface-container-lowest/10 text-on-secondary rounded-lg transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button></div>
+</div>
+<!-- Mobile Tab Navigation -->
+<div class="md:hidden border-t border-outline-variant/10">
+<div class="flex items-center gap-1 overflow-x-auto px-container-padding py-2 font-body-sm text-body-sm whitespace-nowrap">
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="overview-review.html">总览</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="时间线.html">时间线</a>
+<a class="shrink-0 px-3 py-2 text-primary-fixed-dim border-b-2 border-primary-fixed-dim pb-1 font-semibold hover:bg-inverse-surface/50 rounded-t-lg transition-all" href="分组.html">分组</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="AI分析.html">AI分析</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="日志.html">日志</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="设置s.html">设置</a>
+</div>
+</div>
+</nav>
+<!-- Sub-header Details Area -->
+<header class="px-container-padding py-3 border-b border-outline-variant/10 bg-inverse-surface/10">
+<div class="flex flex-wrap gap-6 items-center">
+<!-- Info Item 1 -->
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">person</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps uppercase text-on-secondary-container font-semibold">当前角色:</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-secondary">Rudeus Greyrat</span>
+</div>
+</div>
+<!-- Info Item 2 -->
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-tertiary/10 flex items-center justify-center text-tertiary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">public</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps uppercase text-on-secondary-container font-semibold">当前世界书:</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-secondary">Mushoku Tensei</span>
+</div>
+</div>
+<!-- Info Item 3 -->
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-tint/10 flex items-center justify-center text-primary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">history_toggle_off</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps uppercase text-on-secondary-container font-semibold">当前故事时间:</span>
+<span class="font-label-caps text-body-sm font-semibold text-on-secondary">424年5月14日 17:15</span>
+</div>
+</div>
+</div>
+<!-- Mobile Action Button (Visible only on small screens) -->
+<button class="mt-4 w-full flex lg:hidden items-center justify-center gap-2 px-4 py-2 border border-outline-variant/50 hover:bg-surface-container-lowest/10 text-on-secondary rounded-lg font-label-caps text-label-caps transition-colors shadow-sm js-get-current-time">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">schedule</span>
+                获取当前时间
+            </button>
+</header>
+<!-- Main Content Area -->
+<div class="flex-1 overflow-y-auto p-container-padding"><div class="flex flex-col gap-5">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+            <h2 class="font-headline-md text-headline-md font-semibold text-on-secondary">
+                分组管理
+            </h2>
+            <p class="font-body-sm text-body-sm text-on-secondary-container mt-1">
+                整理时间线条目的归属与顺序
+            </p>
+        </div>
+        <button id="createGroupTrigger" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-outline-variant/50 text-on-secondary hover:bg-surface-container-lowest/10 transition-colors font-body-sm text-body-sm">
+            <span class="material-symbols-outlined text-[18px]">add</span>
+            新建分组
+        </button>
+    </div>
+    <!-- Group Workspace -->
+    <div class="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-5 min-h-[420px]">
+        <!-- Left Group List -->
+        <section class="rounded-xl p-3 bg-white/[0.03] border border-outline-variant/15">
+            <div class="px-2 py-2 border-b border-outline-variant/10">
+                <div class="font-body-sm text-body-sm font-semibold text-on-secondary">
+                    时间线组
+                </div>
+                <div class="font-label-caps text-label-caps text-on-secondary-container mt-1">
+                    3 个分组
+                </div>
+            </div>
+            <div class="flex flex-col gap-2 mt-3">
+                <button data-group-id="main" draggable="true" class="group-item w-full text-left px-3 py-3 rounded-lg border border-primary-fixed-dim/30 bg-primary/10"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-secondary-container/60 shrink-0 cursor-grab">drag_indicator</span><span class="font-body-sm text-body-sm font-semibold text-on-secondary flex-1 min-w-0">主线剧情</span><span class="font-label-caps text-label-caps text-on-secondary-container shrink-0">12</span></div></button>
+                <button data-group-id="roxy" draggable="true" class="group-item w-full text-left px-3 py-3 rounded-lg border border-transparent hover:bg-surface-container-lowest/5"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-secondary-container/60 shrink-0 cursor-grab">drag_indicator</span><span class="font-body-sm text-body-sm text-on-secondary flex-1 min-w-0">洛琪希个人线</span><span class="font-label-caps text-label-caps text-on-secondary-container shrink-0">8</span></div></button>
+                <button data-group-id="world" draggable="true" class="group-item w-full text-left px-3 py-3 rounded-lg border border-transparent hover:bg-surface-container-lowest/5"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-on-secondary-container/60 shrink-0 cursor-grab">drag_indicator</span><span class="font-body-sm text-body-sm text-on-secondary flex-1 min-w-0">世界局势</span><span class="font-label-caps text-label-caps text-on-secondary-container shrink-0">34</span></div></button>
+                <button data-group-id="ungrouped" class="group-item w-full text-left px-3 py-3 rounded-lg border border-dashed border-outline-variant/30 hover:bg-surface-container-lowest/5">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="font-body-sm text-body-sm text-on-secondary-container">
+                            未分组
+                        </span>
+                        <span class="font-label-caps text-label-caps text-on-secondary-container">
+                            3
+                        </span>
+                    </div>
+                </button>
+            </div>
+        </section>
+        <!-- Right Group Detail -->
+        <section class="rounded-xl p-5 bg-white/[0.03] border border-outline-variant/15">
+            <div class="flex items-center justify-between gap-4 pb-4 border-b border-outline-variant/10">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 id="groupTitle" class="font-headline-md text-headline-md font-semibold text-on-secondary">
+                            主线剧情
+                        </h3>
+                        <span class="font-label-caps text-label-caps text-on-secondary-container">
+                            12 条目
+                        </span>
+                    </div>
+                    <p class="font-body-sm text-body-sm text-on-secondary-container mt-1">
+                        当前分组中的时间线条目
+                    </p>
+                </div>
+                <div class="flex items-center gap-2">
+    <button id="renameGroupTrigger" class="px-3 py-2 rounded-lg border border-outline-variant/40 text-on-secondary font-body-sm text-body-sm hover:bg-surface-container-lowest/10">
+        重命名
+    </button>
+    <div class="relative">
+        <button id="groupMoreTrigger" class="w-9 h-9 flex items-center justify-center rounded-lg border border-outline-variant/40 text-on-secondary-container hover:text-on-secondary hover:bg-surface-container-lowest/10" aria-label="更多分组操作" aria-expanded="false">
+            <span class="material-symbols-outlined text-[18px]">
+                more_horiz
+            </span>
+        </button>
+        <div id="groupMoreMenu" class="hidden absolute right-0 top-11 z-40 w-44 rounded-lg border border-outline-variant/20 bg-inverse-surface/95 backdrop-blur-md p-1 ambient-shadow">
+            <button id="mergeGroupAction" class="w-full text-left px-3 py-2 rounded-md font-body-sm text-body-sm text-on-secondary hover:bg-white/[0.06]">合并到其他组</button>
+            <button id="splitGroupAction" class="w-full text-left px-3 py-2 rounded-md font-body-sm text-body-sm text-on-secondary hover:bg-white/[0.06]">拆分分组</button>
+            <button id="deleteGroupAction" class="w-full text-left px-3 py-2 rounded-md font-body-sm text-body-sm text-[#ffb4ab] hover:bg-[#ba1a1a]/10">删除分组</button>
+        </div>
+    </div>
+</div>
+            </div>
+
+            <!-- Rename Editing: hidden by default -->
+            <div id="renameEditor" class="hidden mt-4 rounded-lg border border-primary-fixed-dim/30 bg-primary/5 p-4">
+                <div class="flex flex-col gap-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <label for="renameGroupInput" class="font-label-caps text-label-caps text-on-secondary-container">分组名称</label>
+                        <span class="px-2 py-0.5 rounded-full border border-primary-fixed-dim/20 bg-primary/10 text-primary-fixed-dim font-label-caps text-label-caps">人工</span>
+                    </div>
+                    <input id="renameGroupInput" type="text" value="主线剧情" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant/30 bg-white/[0.04] text-on-secondary font-body-sm text-body-sm focus:outline-none focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/30">
+                    <div class="font-body-sm text-body-sm text-on-secondary-container">修改后的分组名称将作为人工设定保留</div>
+                    <div class="flex items-center justify-end gap-2">
+                        <button id="renameCancel" class="px-4 py-2 rounded-lg border border-outline-variant/40 text-on-secondary font-body-sm text-body-sm hover:bg-white/[0.06]">取消</button>
+                        <button id="renameSave" class="px-4 py-2 rounded-lg bg-primary-container text-on-primary-container font-body-sm text-body-sm font-semibold hover:opacity-90">保存</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Placeholder only -->
+            <div id="groupEntryList" class="mt-4 flex flex-col gap-3">
+    <!-- Entry 1 -->
+    <div data-entry-id="milishion" draggable="true" class="group-entry rounded-lg border border-outline-variant/20 bg-white/[0.03] px-4 py-3 flex items-center gap-3">
+        <button class="shrink-0 w-8 h-10 flex items-center justify-center rounded-lg text-on-secondary-container hover:text-on-secondary hover:bg-white/[0.05] cursor-grab active:cursor-grabbing" aria-label="拖动排序">
+            <span class="material-symbols-outlined text-[20px]">
+                drag_indicator
+            </span>
+        </button>
+        <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+                <span class="font-body-sm text-body-sm font-semibold text-on-secondary">米里希昂篇</span>
+                <span class="px-2 py-0.5 rounded-full border border-outline-variant/20 text-on-secondary-container font-label-caps text-label-caps">
+                    AI识别
+                </span>
+            </div>
+            <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span class="font-label-caps text-label-caps text-on-secondary-container">
+                    419/11/10 ～ 419/12/25
+                </span>
+                <span class="font-label-caps text-label-caps text-on-secondary-container">
+                    原条目：世界线-17
+                </span>
+            </div>
+        </div>
+    </div>
+    <!-- Entry 2 -->
+    <div data-entry-id="westport" draggable="true" class="group-entry rounded-lg border border-outline-variant/20 bg-white/[0.03] px-4 py-3 flex items-center gap-3">
+        <button class="shrink-0 w-8 h-10 flex items-center justify-center rounded-lg text-on-secondary-container hover:text-on-secondary hover:bg-white/[0.05] cursor-grab active:cursor-grabbing" aria-label="拖动排序">
+            <span class="material-symbols-outlined text-[20px]">
+                drag_indicator
+            </span>
+        </button>
+        <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+                <span class="font-body-sm text-body-sm font-semibold text-on-secondary">
+                    西部港篇
+                </span>
+                <span class="px-2 py-0.5 rounded-full border border-primary-fixed-dim/20 bg-primary/10 text-primary-fixed-dim font-label-caps text-label-caps">
+                    人工修改
+                </span>
+            </div>
+            <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span class="font-label-caps text-label-caps text-on-secondary-container">
+                    419/12/26 ～ 420/03/16
+                </span>
+                <span class="font-label-caps text-label-caps text-on-secondary-container">
+                    原条目：世界线-17
+                </span>
+            </div>
+        </div>
+    </div>
+    <!-- Entry 3 : Warning -->
+    <div data-entry-id="dragonking" draggable="true" class="group-entry rounded-lg border border-[#ffb370]/25 bg-[#ffb370]/[0.04] px-4 py-3 flex items-center gap-3">
+        <button class="shrink-0 w-8 h-10 flex items-center justify-center rounded-lg text-on-secondary-container hover:text-on-secondary hover:bg-white/[0.05] cursor-grab active:cursor-grabbing" aria-label="拖动排序">
+            <span class="material-symbols-outlined text-[20px]">
+                drag_indicator
+            </span>
+        </button>
+        <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="font-body-sm text-body-sm font-semibold text-on-secondary">
+                    王龙王国篇
+                </span>
+                <span class="px-2 py-0.5 rounded-full border border-outline-variant/20 text-on-secondary-container font-label-caps text-label-caps">
+                    AI识别
+                </span>
+                <span class="flex items-center gap-1 px-2 py-0.5 rounded-full border border-[#ffb370]/30 bg-[#ffb370]/10 text-[#ffb370] font-label-caps text-label-caps">
+                    <span class="material-symbols-outlined text-[12px]">
+                        warning
+                    </span>
+                    边界待确认
+                </span>
+            </div>
+            <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span class="font-label-caps text-label-caps text-on-secondary-container">
+                    420/03/17 ～ 420/08/01
+                </span>
+                <span class="font-label-caps text-label-caps text-on-secondary-container">
+                    原条目：世界线-18
+                </span>
+            </div>
+        </div>
+    </div>
+    <!-- Entry 4 -->
+    <div data-entry-id="worldtour" draggable="true" class="group-entry rounded-lg border border-outline-variant/20 bg-white/[0.03] px-4 py-3 flex items-center gap-3">
+        <button class="shrink-0 w-8 h-10 flex items-center justify-center rounded-lg text-on-secondary-container hover:text-on-secondary hover:bg-white/[0.05] cursor-grab active:cursor-grabbing" aria-label="拖动排序">
+            <span class="material-symbols-outlined text-[20px]">
+                drag_indicator
+            </span>
+        </button>
+        <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+                <span class="font-body-sm text-body-sm font-semibold text-on-secondary">
+                    环球探索篇
+                </span>
+                <span class="px-2 py-0.5 rounded-full border border-outline-variant/20 text-on-secondary-container font-label-caps text-label-caps">
+                    AI识别
+                </span>
+            </div>
+            <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span class="font-label-caps text-label-caps text-on-secondary-container">
+                    424/05/10 ～ ∞
+                </span>
+                <span class="font-label-caps text-label-caps text-on-secondary-container">
+                    原条目：世界线-18
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+        </section>
+    </div>
+</div></div>
+
+<!-- Group Operation Dialog -->
+<div id="groupOperationDialog" class="hidden absolute inset-0 z-[85] bg-black/45 backdrop-blur-[2px] items-center justify-center p-4">
+    <div class="w-full max-w-[440px] rounded-xl border border-outline-variant/20 bg-inverse-surface ambient-shadow overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
+            <div>
+                <h3 id="operationDialogTitle" class="font-headline-md text-headline-md font-semibold text-on-secondary">分组操作</h3>
+                <p id="operationDialogSubtitle" class="font-body-sm text-body-sm text-on-secondary-container mt-1"></p>
+            </div>
+            <button id="operationDialogClose" class="w-8 h-8 flex items-center justify-center rounded-lg text-on-secondary-container hover:text-on-secondary hover:bg-white/[0.06]" aria-label="关闭">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+        <div id="operationDialogBody" class="px-5 py-5"></div>
+        <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-outline-variant/10">
+            <button id="operationDialogCancel" class="px-4 py-2 rounded-lg border border-outline-variant/40 text-on-secondary font-body-sm text-body-sm hover:bg-white/[0.06]">取消</button>
+            <button id="operationDialogConfirm" class="px-4 py-2 rounded-lg bg-primary-container text-on-primary-container font-body-sm text-body-sm font-semibold hover:opacity-90">确认</button>
+        </div>
+    </div>
+</div>
+
+<!-- Create Group Dialog Overlay -->
+<!-- Create Group Dialog: hidden by default; opened by button -->
+<div id="createGroupDialog" class="hidden absolute inset-0 z-[80] bg-black/45 backdrop-blur-[2px] items-center justify-center p-4">
+    <div class="w-full max-w-[420px] rounded-xl border border-outline-variant/20 bg-inverse-surface shadow-2xl overflow-hidden">
+        <!-- Dialog Header -->
+        <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
+            <div>
+                <h3 class="font-headline-md text-headline-md font-semibold text-on-secondary">
+                    新建时间线组
+                </h3>
+                <p class="font-body-sm text-body-sm text-on-secondary-container mt-1">
+                    创建一个新的时间线分组
+                </p>
+            </div>
+            <button id="createGroupClose" class="w-8 h-8 flex items-center justify-center rounded-lg text-on-secondary-container hover:text-on-secondary hover:bg-white/[0.06]" aria-label="关闭">
+                <span class="material-symbols-outlined text-[20px]">
+                    close
+                </span>
+            </button>
+        </div>
+        <!-- Dialog Body -->
+        <div class="px-5 py-5">
+            <label class="block font-body-sm text-body-sm font-medium text-on-secondary mb-2">
+                分组名称
+            </label>
+            <input id="createGroupName" type="text" placeholder="例如：主线剧情" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant/30 bg-white/[0.04] text-on-secondary placeholder:text-on-secondary-container/50 font-body-sm text-body-sm focus:outline-none focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/30">
+        </div>
+        <!-- Dialog Footer -->
+        <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-outline-variant/10">
+            <button id="createGroupCancel" class="px-4 py-2 rounded-lg border border-outline-variant/40 text-on-secondary font-body-sm text-body-sm hover:bg-white/[0.06]">
+                取消
+            </button>
+            <button id="createGroupSubmit" class="px-4 py-2 rounded-lg bg-primary-container text-on-primary-container font-body-sm text-body-sm font-semibold hover:opacity-90">
+                创建
+            </button>
+        </div>
+    </div>
+</div><div id="prototypeToast" class="hidden fixed left-1/2 bottom-8 -translate-x-1/2 z-[120] px-4 py-2 rounded-lg border border-outline-variant/20 bg-inverse-surface/95 backdrop-blur-md text-on-secondary font-body-sm text-body-sm ambient-shadow"></div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const groupData = {
+        main: {
+            name: '主线剧情',
+            entries: [
+                { id: 'milishion', title: '米里希昂篇', range: '419/11/10 ～ 419/12/25', source: '世界线-17', badge: 'AI识别' },
+                { id: 'westport', title: '西部港篇', range: '419/12/26 ～ 420/03/16', source: '世界线-17', badge: '人工修改' },
+                { id: 'dragonking', title: '王龙王国篇', range: '420/03/17 ～ 420/08/01', source: '世界线-18', badge: 'AI识别', warning: '边界待确认' },
+                { id: 'worldtour', title: '环球探索篇', range: '424/05/10 ～ ∞', source: '世界线-18', badge: 'AI识别' }
+            ],
+            displayCount: 12
+        },
+        roxy: { name: '洛琪希个人线', entries: [], displayCount: 8 },
+        world: { name: '世界局势', entries: [], displayCount: 34 },
+        ungrouped: { name: '未分组', entries: [], displayCount: 3 }
+    };
+
+    let selectedGroupId = 'main';
+    let operationMode = null;
+
+    const groupTitle = document.getElementById('groupTitle');
+    const groupEntryCount = document.getElementById('groupEntryCount');
+    const groupEntryList = document.getElementById('groupEntryList');
+    const groupCountSummary = document.getElementById('groupCountSummary');
+    const toast = document.getElementById('prototypeToast');
+
+    const showToast = (message) => {
+        toast.textContent = message;
+        toast.classList.remove('hidden');
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => toast.classList.add('hidden'), 1600);
+    };
+
+    const getGroupButton = (id) => document.querySelector(`.group-item[data-group-id="${id}"]`);
+
+    const setSelectedVisual = () => {
+        document.querySelectorAll('.group-item').forEach(button => {
+            const selected = button.dataset.groupId === selectedGroupId;
+            button.classList.toggle('border-primary-fixed-dim/30', selected);
+            button.classList.toggle('bg-primary/10', selected);
+            button.classList.toggle('border-transparent', !selected && button.dataset.groupId !== 'ungrouped');
+            button.querySelector('.flex-1')?.classList.toggle('font-semibold', selected);
+        });
+    };
+
+    const entryCardHTML = (entry) => {
+        const badgeClass = entry.badge === '人工修改'
+            ? 'border-primary-fixed-dim/20 bg-primary/10 text-primary-fixed-dim'
+            : 'border-outline-variant/20 text-on-secondary-container';
+        const warning = entry.warning
+            ? `<span class="flex items-center gap-1 px-2 py-0.5 rounded-full border border-[#ffb370]/30 bg-[#ffb370]/10 text-[#ffb370] font-label-caps text-label-caps">
+                    <span class="material-symbols-outlined text-[12px]">warning</span>${entry.warning}
+               </span>`
+            : '';
+        return `
+            <div data-entry-id="${entry.id}" draggable="true" class="group-entry rounded-lg border ${entry.warning ? 'border-[#ffb370]/25 bg-[#ffb370]/[0.04]' : 'border-outline-variant/20 bg-white/[0.03]'} px-4 py-3 flex items-center gap-3">
+                <button class="shrink-0 w-8 h-10 flex items-center justify-center rounded-lg text-on-secondary-container hover:text-on-secondary hover:bg-white/[0.05] cursor-grab active:cursor-grabbing" aria-label="拖动排序">
+                    <span class="material-symbols-outlined text-[20px]">drag_indicator</span>
+                </button>
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="font-body-sm text-body-sm font-semibold text-on-secondary">${entry.title}</span>
+                        <span class="px-2 py-0.5 rounded-full border ${badgeClass} font-label-caps text-label-caps">${entry.badge}</span>
+                        ${warning}
+                    </div>
+                    <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <span class="font-label-caps text-label-caps text-on-secondary-container">${entry.range}</span>
+                        <span class="font-label-caps text-label-caps text-on-secondary-container">原条目：${entry.source}</span>
+                    </div>
+                </div>
+            </div>`;
+    };
+
+    const renderEntries = () => {
+        const group = groupData[selectedGroupId];
+        groupTitle.textContent = group.name;
+        groupEntryCount.textContent = `${group.displayCount} 条目`;
+
+        if (selectedGroupId === 'main' || group.entries.length) {
+            groupEntryList.innerHTML = group.entries.map(entryCardHTML).join('');
+        } else {
+            groupEntryList.innerHTML = `
+                <div class="rounded-lg border border-dashed border-outline-variant/20 bg-white/[0.015] px-5 py-10 text-center">
+                    <div class="font-body-sm text-body-sm text-on-secondary-container">此静态原型未展开该分组的示例条目</div>
+                    <div class="font-label-caps text-label-caps text-on-secondary-container/70 mt-1">点击其他分组可查看状态切换效果</div>
+                </div>`;
+        }
+        wireEntryDrag();
+    };
+
+    const syncGroupButtons = () => {
+        Object.entries(groupData).forEach(([id, group]) => {
+            const button = getGroupButton(id);
+            if (!button) return;
+            const nameEl = button.querySelector('.flex-1') || button.querySelector('.font-body-sm');
+            if (nameEl) nameEl.textContent = group.name;
+            const countEls = button.querySelectorAll('.font-label-caps');
+            if (countEls.length) countEls[countEls.length - 1].textContent = group.displayCount;
+        });
+        const formalCount = Object.keys(groupData).filter(id => id !== 'ungrouped').length;
+        groupCountSummary.textContent = `${formalCount} 个分组`;
+    };
+
+    const selectGroup = (id) => {
+        if (!groupData[id]) return;
+        selectedGroupId = id;
+        setSelectedVisual();
+        renderEntries();
+        document.getElementById('renameEditor')?.classList.add('hidden');
+        document.getElementById('renameGroupTrigger')?.classList.remove('hidden');
+
+        const formalActionsDisabled = id === 'ungrouped';
+        ['renameGroupTrigger', 'groupMoreTrigger'].forEach(targetId => {
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            el.disabled = formalActionsDisabled;
+            el.classList.toggle('opacity-40', formalActionsDisabled);
+            el.classList.toggle('cursor-not-allowed', formalActionsDisabled);
+        });
+    };
+
+    document.querySelectorAll('.group-item').forEach(button => {
+        button.addEventListener('click', () => selectGroup(button.dataset.groupId));
+    });
+
+    // ----- Group drag sorting -----
+    let draggedGroup = null;
+    const groupList = document.querySelector('section.rounded-xl.p-3 .flex.flex-col.gap-2.mt-3');
+
+    const wireGroupDrag = () => {
+        document.querySelectorAll('.group-item[draggable="true"]').forEach(button => {
+            button.addEventListener('dragstart', () => {
+                draggedGroup = button;
+                button.classList.add('opacity-50');
+            });
+            button.addEventListener('dragend', () => {
+                button.classList.remove('opacity-50');
+                draggedGroup = null;
+            });
+            button.addEventListener('dragover', e => {
+                e.preventDefault();
+                if (!draggedGroup || draggedGroup === button) return;
+                const rect = button.getBoundingClientRect();
+                const before = e.clientY < rect.top + rect.height / 2;
+                groupList.insertBefore(draggedGroup, before ? button : button.nextSibling);
+                const ungrouped = getGroupButton('ungrouped');
+                if (ungrouped) groupList.appendChild(ungrouped);
+            });
+        });
+    };
+    wireGroupDrag();
+
+    // ----- Entry drag sorting -----
+    let draggedEntry = null;
+    const wireEntryDrag = () => {
+        document.querySelectorAll('.group-entry[draggable="true"]').forEach(card => {
+            card.addEventListener('dragstart', () => {
+                draggedEntry = card;
+                card.classList.add('opacity-50');
+            });
+            card.addEventListener('dragend', () => {
+                card.classList.remove('opacity-50');
+                if (!draggedEntry) return;
+                const ids = [...groupEntryList.querySelectorAll('.group-entry')].map(el => el.dataset.entryId);
+                const lookup = new Map(groupData[selectedGroupId].entries.map(entry => [entry.id, entry]));
+                groupData[selectedGroupId].entries = ids.map(id => lookup.get(id)).filter(Boolean);
+                draggedEntry = null;
+                showToast('条目顺序已更新');
+            });
+            card.addEventListener('dragover', e => {
+                e.preventDefault();
+                if (!draggedEntry || draggedEntry === card) return;
+                const rect = card.getBoundingClientRect();
+                const before = e.clientY < rect.top + rect.height / 2;
+                groupEntryList.insertBefore(draggedEntry, before ? card : card.nextSibling);
+            });
+        });
+    };
+    wireEntryDrag();
+
+    // ----- Create group dialog (existing behavior, integrated with state) -----
+    const createTrigger = document.getElementById('createGroupTrigger');
+    const createDialog = document.getElementById('createGroupDialog');
+    const createClose = document.getElementById('createGroupClose');
+    const createCancel = document.getElementById('createGroupCancel');
+    const createSubmit = document.getElementById('createGroupSubmit');
+    const createName = document.getElementById('createGroupName');
+
+    const openCreateDialog = () => {
+        createDialog.classList.remove('hidden');
+        createDialog.classList.add('flex');
+        requestAnimationFrame(() => createName.focus());
+    };
+    const closeCreateDialog = () => {
+        createDialog.classList.add('hidden');
+        createDialog.classList.remove('flex');
+        createName.value = '';
+    };
+    createTrigger?.addEventListener('click', openCreateDialog);
+    createClose?.addEventListener('click', closeCreateDialog);
+    createCancel?.addEventListener('click', closeCreateDialog);
+    createDialog?.addEventListener('click', e => { if (e.target === createDialog) closeCreateDialog(); });
+    createName?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') createSubmit.click();
+        if (e.key === 'Escape') closeCreateDialog();
+    });
+    createSubmit?.addEventListener('click', () => {
+        const name = createName.value.trim();
+        if (!name) {
+            createName.focus();
+            return;
+        }
+        const id = `group-${Date.now()}`;
+        groupData[id] = { name, entries: [], displayCount: 0 };
+
+        const button = document.createElement('button');
+        button.dataset.groupId = id;
+        button.draggable = true;
+        button.className = 'group-item w-full text-left px-3 py-3 rounded-lg border border-transparent hover:bg-surface-container-lowest/5';
+        button.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-on-secondary-container/60 shrink-0 cursor-grab">drag_indicator</span>
+                <span class="font-body-sm text-body-sm text-on-secondary flex-1 min-w-0">${name}</span>
+                <span class="font-label-caps text-label-caps text-on-secondary-container shrink-0">0</span>
+            </div>`;
+        button.addEventListener('click', () => selectGroup(id));
+        groupList.insertBefore(button, getGroupButton('ungrouped'));
+        wireGroupDrag();
+        syncGroupButtons();
+        closeCreateDialog();
+        selectGroup(id);
+        showToast('新分组已创建');
+    });
+
+    // ----- Rename -----
+    const renameTrigger = document.getElementById('renameGroupTrigger');
+    const renameEditor = document.getElementById('renameEditor');
+    const renameInput = document.getElementById('renameGroupInput');
+    const renameCancel = document.getElementById('renameCancel');
+    const renameSave = document.getElementById('renameSave');
+
+    const openRename = () => {
+        if (selectedGroupId === 'ungrouped') return;
+        renameInput.value = groupData[selectedGroupId].name;
+        renameEditor.classList.remove('hidden');
+        renameTrigger.classList.add('hidden');
+        requestAnimationFrame(() => { renameInput.focus(); renameInput.select(); });
+    };
+    const closeRename = () => {
+        renameEditor.classList.add('hidden');
+        renameTrigger.classList.remove('hidden');
+    };
+    renameTrigger?.addEventListener('click', openRename);
+    renameCancel?.addEventListener('click', closeRename);
+    renameSave?.addEventListener('click', () => {
+        const value = renameInput.value.trim();
+        if (value) {
+            groupData[selectedGroupId].name = value;
+            syncGroupButtons();
+            renderEntries();
+            showToast('分组名称已更新');
+        }
+        closeRename();
+    });
+    renameInput?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') renameSave.click();
+        if (e.key === 'Escape') closeRename();
+    });
+
+    // ----- More menu -----
+    const moreTrigger = document.getElementById('groupMoreTrigger');
+    const moreMenu = document.getElementById('groupMoreMenu');
+    const closeMoreMenu = () => {
+        moreMenu.classList.add('hidden');
+        moreTrigger.setAttribute('aria-expanded', 'false');
+    };
+    moreTrigger?.addEventListener('click', e => {
+        e.stopPropagation();
+        if (selectedGroupId === 'ungrouped') return;
+        const willOpen = moreMenu.classList.contains('hidden');
+        moreMenu.classList.toggle('hidden');
+        moreTrigger.setAttribute('aria-expanded', String(willOpen));
+    });
+    moreMenu?.addEventListener('click', e => e.stopPropagation());
+    document.addEventListener('click', closeMoreMenu);
+
+    // ----- Operation dialog -----
+    const operationDialog = document.getElementById('groupOperationDialog');
+    const operationTitle = document.getElementById('operationDialogTitle');
+    const operationSubtitle = document.getElementById('operationDialogSubtitle');
+    const operationBody = document.getElementById('operationDialogBody');
+    const operationClose = document.getElementById('operationDialogClose');
+    const operationCancel = document.getElementById('operationDialogCancel');
+    const operationConfirm = document.getElementById('operationDialogConfirm');
+
+    const closeOperation = () => {
+        operationDialog.classList.add('hidden');
+        operationDialog.classList.remove('flex');
+        operationMode = null;
+    };
+
+    const openOperation = (mode) => {
+        if (selectedGroupId === 'ungrouped') return;
+        operationMode = mode;
+        const current = groupData[selectedGroupId];
+        const formalTargets = Object.entries(groupData)
+            .filter(([id]) => id !== selectedGroupId && id !== 'ungrouped');
+
+        if (mode === 'merge') {
+            operationTitle.textContent = '合并分组';
+            operationSubtitle.textContent = `将「${current.name}」合并到其他分组`;
+            operationBody.innerHTML = `
+                <label class="block font-body-sm text-body-sm font-medium text-on-secondary mb-2">目标分组</label>
+                <select id="mergeTarget" class="w-full bg-inverse-surface/50 border border-outline-variant/30 rounded-lg px-4 py-2.5 text-on-secondary font-body-sm focus:outline-none focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/30">
+                    ${formalTargets.map(([id, g]) => `<option value="${id}">${g.name}</option>`).join('')}
+                </select>
+                <p class="font-body-sm text-body-sm text-on-secondary-container mt-3">原分组将移除，其条目并入目标分组。此处仅演示原型状态。</p>`;
+            operationConfirm.textContent = '合并';
+            operationConfirm.className = 'px-4 py-2 rounded-lg bg-primary-container text-on-primary-container font-body-sm text-body-sm font-semibold hover:opacity-90';
+        } else if (mode === 'split') {
+            operationTitle.textContent = '拆分分组';
+            operationSubtitle.textContent = `从「${current.name}」创建新的分组`;
+            operationBody.innerHTML = `
+                <label class="block font-body-sm text-body-sm font-medium text-on-secondary mb-2">新分组名称</label>
+                <input id="splitName" type="text" value="${current.name} - 拆分" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant/30 bg-white/[0.04] text-on-secondary font-body-sm text-body-sm focus:outline-none focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/30">
+                <p class="font-body-sm text-body-sm text-on-secondary-container mt-3">原型中会把当前示例条目的后半部分移动到新分组。</p>`;
+            operationConfirm.textContent = '拆分';
+            operationConfirm.className = 'px-4 py-2 rounded-lg bg-primary-container text-on-primary-container font-body-sm text-body-sm font-semibold hover:opacity-90';
+        } else if (mode === 'delete') {
+            operationTitle.textContent = '删除分组';
+            operationSubtitle.textContent = `确认删除「${current.name}」？`;
+            operationBody.innerHTML = `
+                <div class="rounded-lg border border-[#ffb370]/25 bg-[#ffb370]/[0.04] px-4 py-3">
+                    <div class="font-body-sm text-body-sm text-on-secondary">删除分组不会删除时间线条目。</div>
+                    <div class="font-body-sm text-body-sm text-on-secondary-container mt-1">原型中条目会移动到「未分组」。</div>
+                </div>`;
+            operationConfirm.textContent = '删除';
+            operationConfirm.className = 'px-4 py-2 rounded-lg bg-[#ba1a1a] text-white font-body-sm text-body-sm font-semibold hover:opacity-90';
+        }
+
+        closeMoreMenu();
+        operationDialog.classList.remove('hidden');
+        operationDialog.classList.add('flex');
+    };
+
+    document.getElementById('mergeGroupAction')?.addEventListener('click', () => openOperation('merge'));
+    document.getElementById('splitGroupAction')?.addEventListener('click', () => openOperation('split'));
+    document.getElementById('deleteGroupAction')?.addEventListener('click', () => openOperation('delete'));
+    operationClose?.addEventListener('click', closeOperation);
+    operationCancel?.addEventListener('click', closeOperation);
+    operationDialog?.addEventListener('click', e => { if (e.target === operationDialog) closeOperation(); });
+
+    operationConfirm?.addEventListener('click', () => {
+        const currentId = selectedGroupId;
+        const current = groupData[currentId];
+        if (!current) return;
+
+        if (operationMode === 'merge') {
+            const targetId = document.getElementById('mergeTarget')?.value;
+            if (!targetId || !groupData[targetId]) return;
+            const target = groupData[targetId];
+            target.entries.push(...current.entries);
+            target.displayCount += current.displayCount;
+            getGroupButton(currentId)?.remove();
+            delete groupData[currentId];
+            closeOperation();
+            syncGroupButtons();
+            selectGroup(targetId);
+            showToast(`已合并到「${target.name}」`);
+        } else if (operationMode === 'split') {
+            const newName = document.getElementById('splitName')?.value.trim();
+            if (!newName) return;
+            const newId = `group-${Date.now()}`;
+            const splitIndex = Math.ceil(current.entries.length / 2);
+            const moved = current.entries.splice(splitIndex);
+            const movedCount = Math.floor(current.displayCount / 2);
+            current.displayCount -= movedCount;
+            groupData[newId] = { name: newName, entries: moved, displayCount: movedCount };
+
+            const button = document.createElement('button');
+            button.dataset.groupId = newId;
+            button.draggable = true;
+            button.className = 'group-item w-full text-left px-3 py-3 rounded-lg border border-transparent hover:bg-surface-container-lowest/5';
+            button.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px] text-on-secondary-container/60 shrink-0 cursor-grab">drag_indicator</span>
+                    <span class="font-body-sm text-body-sm text-on-secondary flex-1 min-w-0">${newName}</span>
+                    <span class="font-label-caps text-label-caps text-on-secondary-container shrink-0">${movedCount}</span>
+                </div>`;
+            button.addEventListener('click', () => selectGroup(newId));
+            groupList.insertBefore(button, getGroupButton('ungrouped'));
+            wireGroupDrag();
+            closeOperation();
+            syncGroupButtons();
+            renderEntries();
+            showToast('分组已拆分');
+        } else if (operationMode === 'delete') {
+            const ungrouped = groupData.ungrouped;
+            ungrouped.entries.push(...current.entries);
+            ungrouped.displayCount += current.displayCount;
+            getGroupButton(currentId)?.remove();
+            delete groupData[currentId];
+            closeOperation();
+            syncGroupButtons();
+            selectGroup('ungrouped');
+            showToast('分组已删除，条目已移至未分组');
+        }
+    });
+
+    // ----- Shared global prototype behavior -----
+    const closeButton = document.getElementById('closeWindowButton');
+    closeButton?.addEventListener('click', () => {
+        if (window.history.length > 1) window.history.back();
+        else document.body.innerHTML = `
+            <div class="min-h-screen flex items-center justify-center bg-[#0f172a] text-white font-body-base p-6">
+                <div class="text-center">
+                    <div class="text-xl font-semibold mb-2">时间线管理已关闭</div>
+                    <div class="text-sm opacity-70">这是静态原型中的关闭效果。</div>
+                </div>
+            </div>`;
+    });
+
+    document.querySelectorAll('.js-get-current-time').forEach(button => {
+        button.addEventListener('click', () => {
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const value = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            document.querySelectorAll('.js-story-time').forEach(el => el.textContent = value);
+            showToast('当前时间已更新');
+        });
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape') return;
+        if (!createDialog.classList.contains('hidden')) closeCreateDialog();
+        if (!renameEditor.classList.contains('hidden')) closeRename();
+        if (!operationDialog.classList.contains('hidden')) closeOperation();
+        closeMoreMenu();
+    });
+
+    syncGroupButtons();
+    setSelectedVisual();
+    renderEntries();
+});
+</script>
+
+
+
+
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Prototype close behavior.
+    const closeButton = document.getElementById('closeWindowButton');
+    closeButton?.addEventListener('click', () => {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            document.body.innerHTML = `
+                <div class="min-h-screen flex items-center justify-center bg-[#0f172a] text-white font-body-base p-6">
+                    <div class="text-center">
+                        <div class="text-xl font-semibold mb-2">时间线管理已关闭</div>
+                        <div class="text-sm opacity-70">这是静态原型中的关闭效果。</div>
+                    </div>
+                </div>`;
+        }
+    });
+
+    // Prototype "get current time": updates the story-time display in-page only.
+    document.querySelectorAll('.js-get-current-time').forEach(button => {
+        button.addEventListener('click', () => {
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const value = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            document.querySelectorAll('.js-story-time').forEach(el => el.textContent = value);
+
+            const old = button.innerHTML;
+            button.innerHTML = `<span class="material-symbols-outlined text-[18px]">check</span> 已更新`;
+            button.disabled = true;
+            setTimeout(() => {
+                button.innerHTML = old;
+                button.disabled = false;
+            }, 1200);
+        });
+    });
+});
+</script>
+
+</body></html>

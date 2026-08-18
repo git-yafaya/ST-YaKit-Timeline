@@ -1,0 +1,556 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>时间线管理 - 总览</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary": "#5c5f61",
+                    "on-primary-fixed-variant": "#004395",
+                    "secondary-fixed": "#e0e3e5",
+                    "background": "#f8f9ff",
+                    "on-secondary": "#ffffff",
+                    "inverse-on-surface": "#eaf1ff",
+                    "on-error-container": "#93000a",
+                    "surface": "#f8f9ff",
+                    "on-tertiary-container": "#f5fff6",
+                    "outline": "#727785",
+                    "on-primary-fixed": "#001a42",
+                    "outline-variant": "#c2c6d6",
+                    "on-primary-container": "#fefcff",
+                    "surface-tint": "#005ac2",
+                    "primary": "#0058be",
+                    "surface-variant": "#d3e4fe",
+                    "inverse-surface": "#213145",
+                    "on-tertiary-fixed": "#002113",
+                    "surface-container-low": "#eff4ff",
+                    "on-surface": "#0b1c30",
+                    "tertiary-container": "#00855b",
+                    "primary-container": "#2170e4",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed-dim": "#adc6ff",
+                    "surface-dim": "#cbdbf5",
+                    "on-background": "#0b1c30",
+                    "on-primary": "#ffffff",
+                    "on-secondary-fixed-variant": "#444749",
+                    "on-surface-variant": "#424754",
+                    "error": "#ba1a1a",
+                    "surface-container-lowest": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#d3e4fe",
+                    "surface-container-high": "#dce9ff",
+                    "surface-container": "#e5eeff",
+                    "secondary-container": "#e0e3e5",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "on-secondary-container": "#626567",
+                    "tertiary-fixed": "#6ffbbe",
+                    "secondary-fixed-dim": "#c4c7c9",
+                    "primary-fixed": "#d8e2ff",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "surface-bright": "#f8f9ff",
+                    "on-secondary-fixed": "#191c1e",
+                    "inverse-primary": "#adc6ff",
+                    "on-error": "#ffffff",
+                    "tertiary": "#006947"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "card-gap": "20px",
+                    "timeline-inset": "64px",
+                    "gutter": "16px",
+                    "container-padding": "24px",
+                    "unit": "8px"
+            },
+            "fontFamily": {
+                    "label-caps": [
+                            "JetBrains Mono"
+                    ],
+                    "body-sm": [
+                            "Manrope"
+                    ],
+                    "headline-md": [
+                            "Manrope"
+                    ],
+                    "headline-lg": [
+                            "Manrope"
+                    ],
+                    "body-base": [
+                            "Manrope"
+                    ]
+            },
+            "fontSize": {
+                    "label-caps": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg": [
+                            "28px",
+                            {
+                                    "lineHeight": "36px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-base": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+        },
+        },
+      }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(114, 119, 133, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(114, 119, 133, 0.5);
+        }
+        
+        .ambient-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .glass-panel {
+            background: rgba(33, 49, 69, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(194, 198, 214, 0.1);
+        }
+        
+        .card-subtle {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(194, 198, 214, 0.15);
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .card-subtle:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(173, 198, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+    </style>
+</head>
+<body class="bg-[#0f172a] text-on-surface-variant dark:text-on-secondary-container min-h-screen flex items-center justify-center p-4 md:p-8 font-body-base antialiased selection:bg-primary-container selection:text-on-primary-container relative overflow-hidden">
+<!-- Ambient background glow -->
+<div class="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[120px] pointer-events-none"></div>
+<div class="fixed bottom-[-20%] right-[-10%] w-[40%] h-[40%] rounded-full bg-tertiary-container/10 blur-[100px] pointer-events-none"></div>
+<!-- Main Modal/Window Container -->
+<main class="w-full max-w-[1200px] max-h-[80vh] glass-panel rounded-xl flex flex-col overflow-hidden ambient-shadow relative z-10 animate-[fadeIn_0.3s_ease-out]">
+<!-- TopNavBar Component (from JSON) -->
+<nav class="docked full-width top-0 sticky z-50 bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-md border-b border-outline-variant/10">
+<div class="flex justify-between items-center w-full px-container-padding py-4 max-w-full mx-auto">
+<!-- Brand / Logo -->
+<div class="flex items-center gap-2 font-headline-md text-headline-md font-bold text-on-surface dark:text-on-secondary">
+<i class="fa-solid fa-timeline text-primary-fixed-dim"></i>
+<span class="">时间线管理</span>
+</div>
+<!-- Navigation Links (Desktop) -->
+<div class="hidden md:flex items-center gap-1 font-body-base text-body-base font-body-sm"><a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="overview-review.html">总览</a>
+<a class="px-3 py-2 text-primary-fixed-dim border-b-2 border-primary-fixed-dim pb-1 font-semibold hover:bg-inverse-surface/50 rounded-t-lg transition-all" href="时间线.html">时间线</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="分组.html">分组</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="AI分析.html">AI分析</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="日志.html">日志</a>
+<a class="px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="设置s.html">设置</a></div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-4">
+<button class="hidden lg:flex items-center gap-2 px-4 py-1.5 border border-outline-variant/50 hover:bg-surface-container-lowest/10 text-on-secondary rounded-lg font-label-caps text-label-caps transition-colors shadow-sm js-get-current-time">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+                        获取当前时间
+                    </button>
+<button id="closeWindowButton" aria-label="Close" class="p-2 flex items-center justify-center border border-outline-variant/50 hover:bg-surface-container-lowest/10 text-on-secondary rounded-lg transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button></div>
+</div>
+<!-- Mobile Tab Navigation -->
+<div class="md:hidden border-t border-outline-variant/10">
+<div class="flex items-center gap-1 overflow-x-auto px-container-padding py-2 font-body-sm text-body-sm whitespace-nowrap">
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="overview-review.html">总览</a>
+<a class="shrink-0 px-3 py-2 text-primary-fixed-dim border-b-2 border-primary-fixed-dim pb-1 font-semibold hover:bg-inverse-surface/50 rounded-t-lg transition-all" href="时间线.html">时间线</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="分组.html">分组</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="AI分析.html">AI分析</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="日志.html">日志</a>
+<a class="shrink-0 px-3 py-2 text-on-secondary-container hover:text-primary-fixed-dim hover:bg-inverse-surface/50 rounded-lg transition-all" href="设置s.html">设置</a>
+</div>
+</div>
+</nav>
+<!-- Sub-header Details Area -->
+<header class="px-container-padding py-3 border-b border-outline-variant/10 bg-inverse-surface/10">
+<div class="flex flex-wrap gap-6 items-center">
+<!-- Info Item 1 -->
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">person</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps uppercase text-on-secondary-container font-semibold">当前角色:</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-secondary">Rudeus Greyrat</span>
+</div>
+</div>
+<!-- Info Item 2 -->
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-tertiary/10 flex items-center justify-center text-tertiary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">public</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps uppercase text-on-secondary-container font-semibold">当前世界书:</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-secondary">Mushoku Tensei</span>
+</div>
+</div>
+<!-- Info Item 3 -->
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-tint/10 flex items-center justify-center text-primary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">history_toggle_off</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps uppercase text-on-secondary-container font-semibold">当前故事时间:</span>
+<span class="font-label-caps text-body-sm font-semibold text-on-secondary">424年5月14日 17:15</span>
+</div>
+</div>
+</div>
+<!-- Mobile Action Button (Visible only on small screens) -->
+<button class="mt-4 w-full flex lg:hidden items-center justify-center gap-2 px-4 py-2 border border-outline-variant/50 hover:bg-surface-container-lowest/10 text-on-secondary rounded-lg font-label-caps text-label-caps transition-colors shadow-sm js-get-current-time">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">schedule</span>
+                获取当前时间
+            </button>
+</header>
+<!-- Main Content Area -->
+<div class="flex-1 overflow-y-auto p-container-padding"><!-- Search and Filters -->
+<div class="sticky top-0 z-20 bg-[#213145]/95 backdrop-blur-sm pb-6 pt-2">
+<div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+<div class="relative w-full md:w-96">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant/50">search</span>
+<input class="w-full bg-inverse-surface/50 border border-outline-variant/30 rounded-lg py-2 pl-10 pr-4 text-body-sm text-on-secondary focus:outline-none focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/30 transition-colors" id="timelineSearch" placeholder="搜索AI标题或原条目名称..." type="text">
+</div>
+<div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+<select id="timelineGroupFilter" class="w-full sm:w-auto bg-inverse-surface/50 border border-outline-variant/30 rounded-lg px-3 py-2 text-body-sm text-on-secondary focus:outline-none focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/30">
+<option>时间线分组: 全部</option>
+<option>主线剧情</option>
+</select>
+<select id="timelineStatusFilter" class="w-full sm:w-auto bg-inverse-surface/50 border border-outline-variant/30 rounded-lg px-3 py-2 text-body-sm text-on-secondary focus:outline-none focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/30">
+<option>状态: 全部</option>
+<option>未生效</option>
+<option>异常</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Group Header -->
+<div class="mb-8 flex flex-wrap items-center justify-between gap-4">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-md text-headline-md font-semibold text-on-secondary">主线剧情</h2>
+<span class="px-2 py-0.5 rounded bg-primary/10 text-primary-fixed-dim font-label-caps text-label-caps">12 条目</span>
+<div class="flex items-center gap-2 text-body-sm text-on-secondary-container/70">
+<span class="material-symbols-outlined text-[16px]">near_me</span>
+<span>当前节点: 环球探索篇</span>
+</div>
+</div>
+<div class="flex bg-inverse-surface/50 p-1 rounded-lg border border-outline-variant/20">
+<button id="autoModeButton" class="px-4 py-1 rounded-md bg-primary-fixed-dim text-on-primary-fixed font-label-caps text-label-caps font-bold">自动</button>
+<button id="manualModeButton" class="px-4 py-1 rounded-md text-on-secondary-container hover:text-on-secondary font-label-caps text-label-caps">手动</button>
+</div>
+</div>
+<!-- Timeline Container -->
+<div class="relative pl-8">
+<!-- Vertical Line -->
+<div class="absolute left-[11px] top-0 bottom-0 w-[2px] bg-outline-variant/20"></div>
+<!-- Entry 1 -->
+<div class="relative mb-8 group">
+<div class="absolute -left-[26px] top-6 w-4 h-4 rounded-full bg-inverse-surface border-2 border-outline-variant/40 z-10 transition-colors group-hover:border-primary-fixed-dim group-hover:bg-primary/20"></div>
+<div class="card-subtle rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-1">
+<h4 class="font-body-base text-body-base font-bold text-on-secondary">米里希昂篇</h4>
+<span class="font-label-caps text-label-caps text-on-secondary-container/50">419/11/10 ~ 419/12/25</span>
+</div>
+<div class="flex items-center gap-4 text-body-sm">
+<span class="font-label-caps text-on-secondary-container/70">原条目: <span class="text-on-secondary">世界线-17</span></span>
+<span class="flex items-center gap-1 text-outline-variant/50"><i class="fa-solid fa-circle text-[6px]"></i> 未生效</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="js-view-source text-primary-fixed-dim text-body-sm hover:underline">查看正文</button>
+<div class="w-10 h-5 bg-inverse-surface/50 rounded-full relative border border-outline-variant/30 opacity-50 cursor-not-allowed">
+<div class="absolute left-1 top-1 w-2.5 h-2.5 bg-outline-variant/50 rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Entry 2 -->
+<div class="relative mb-8 group">
+<div class="absolute -left-[26px] top-6 w-4 h-4 rounded-full bg-inverse-surface border-2 border-outline-variant/40 z-10 transition-colors group-hover:border-primary-fixed-dim group-hover:bg-primary/20"></div>
+<div class="card-subtle rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-1">
+<h4 class="font-body-base text-body-base font-bold text-on-secondary">西部港篇</h4>
+<span class="font-label-caps text-label-caps text-on-secondary-container/50">419/12/26 ~ 420/03/16</span>
+</div>
+<div class="flex items-center gap-4 text-body-sm">
+<span class="font-label-caps text-on-secondary-container/70">原条目: <span class="text-on-secondary">世界线-17</span></span>
+<span class="flex items-center gap-1 text-outline-variant/50"><i class="fa-solid fa-circle text-[6px]"></i> 未生效</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="js-view-source text-primary-fixed-dim text-body-sm hover:underline">查看正文</button>
+<div class="w-10 h-5 bg-inverse-surface/50 rounded-full relative border border-outline-variant/30 opacity-50 cursor-not-allowed">
+<div class="absolute left-1 top-1 w-2.5 h-2.5 bg-outline-variant/50 rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Entry 3 (Anomaly) -->
+<div class="relative mb-8 group">
+<div class="absolute -left-[26px] top-6 w-4 h-4 rounded-full bg-[#4a2e15] border-2 border-[#ffb370]/50 z-10 transition-shadow group-hover:ring-2 group-hover:ring-primary-fixed-dim/40"></div>
+<div class="bg-[#4a2e15]/20 border border-[#ffb370]/30 rounded-xl p-5 flex flex-col gap-4">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-1">
+<h4 class="font-body-base text-body-base font-bold text-[#ffb370]">王龙王国篇</h4>
+<span class="font-label-caps text-label-caps text-[#ffb370]/70">420/03/17 ~ 420/08/01 (冲突待确认)</span>
+</div>
+<div class="flex items-center gap-2 text-body-sm text-[#ffb370]">
+<span class="material-symbols-outlined text-[16px]">warning</span>
+<span>状态: 异常</span>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-1.5 rounded-lg border border-outline-variant/30 text-on-secondary text-body-sm hover:bg-surface-container-lowest/10 transition-colors" id="deferConflictButton">暂不处理</button>
+<button class="px-4 py-1.5 rounded-lg bg-[#ffb370] text-[#4a2e15] font-bold text-body-sm hover:bg-[#ffb370]/90 transition-colors" id="resolveConflictButton">处理冲突</button>
+</div>
+</div>
+<div class="p-3 bg-black/20 rounded-lg border-l-4 border-[#ffb370]">
+<p class="text-body-sm text-on-secondary-container/90">检测到与「西部港篇」存在时间范围重叠，且缺少明确的原条目来源引用。请人工介入核对时间线逻辑。</p>
+</div>
+</div>
+</div>
+</div></div>
+
+<div id="timelineSourceDialog" class="hidden absolute inset-0 z-[90] bg-black/45 backdrop-blur-[2px] items-center justify-center p-4">
+  <div class="w-full max-w-[680px] max-h-[70vh] rounded-xl border border-outline-variant/20 bg-inverse-surface ambient-shadow overflow-hidden flex flex-col">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
+      <div>
+        <h3 id="sourceDialogTitle" class="font-headline-md text-headline-md font-semibold text-on-secondary">世界书原条目</h3>
+        <p class="font-body-sm text-body-sm text-on-secondary-container mt-1">只读预览</p>
+      </div>
+      <button id="sourceDialogClose" class="w-8 h-8 flex items-center justify-center rounded-lg text-on-secondary-container hover:text-on-secondary hover:bg-white/[0.06]">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="p-5 overflow-y-auto">
+      <div id="sourceDialogMeta" class="font-label-caps text-label-caps text-on-secondary-container mb-3"></div>
+      <div class="rounded-lg border border-outline-variant/15 bg-white/[0.03] p-4">
+        <p id="sourceDialogContent" class="font-body-base text-body-base text-on-secondary leading-6"></p>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="timelineToast" class="hidden fixed left-1/2 bottom-8 -translate-x-1/2 z-[120] px-4 py-2 rounded-lg border border-outline-variant/20 bg-inverse-surface/95 backdrop-blur-md text-on-secondary font-body-sm text-body-sm ambient-shadow"></div>
+
+</main>
+<script>
+        // Simple subtle interaction script to add a tiny bit of life without heavy animations
+        document.addEventListener('DOMContentLoaded', () => {
+            const cards = document.querySelectorAll('.card-subtle');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    card.style.transform = 'translateY(-2px)';
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = 'translateY(0)';
+                });
+            });
+        });
+    </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Prototype close behavior.
+    const closeButton = document.getElementById('closeWindowButton');
+    closeButton?.addEventListener('click', () => {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            document.body.innerHTML = `
+                <div class="min-h-screen flex items-center justify-center bg-[#0f172a] text-white font-body-base p-6">
+                    <div class="text-center">
+                        <div class="text-xl font-semibold mb-2">时间线管理已关闭</div>
+                        <div class="text-sm opacity-70">这是静态原型中的关闭效果。</div>
+                    </div>
+                </div>`;
+        }
+    });
+
+    // Prototype "get current time": updates the story-time display in-page only.
+    document.querySelectorAll('.js-get-current-time').forEach(button => {
+        button.addEventListener('click', () => {
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const value = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            document.querySelectorAll('.js-story-time').forEach(el => el.textContent = value);
+
+            const old = button.innerHTML;
+            button.innerHTML = `<span class="material-symbols-outlined text-[18px]">check</span> 已更新`;
+            button.disabled = true;
+            setTimeout(() => {
+                button.innerHTML = old;
+                button.disabled = false;
+            }, 1200);
+        });
+    });
+});
+</script>
+
+<!-- COMPLETE PROTOTYPE SCRIPT: 时间线.html -->
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const search = document.getElementById('timelineSearch');
+  const groupFilter = document.getElementById('timelineGroupFilter');
+  const statusFilter = document.getElementById('timelineStatusFilter');
+  const autoBtn = document.getElementById('autoModeButton');
+  const manualBtn = document.getElementById('manualModeButton');
+  const toast = document.getElementById('timelineToast');
+  let mode = 'auto';
+
+  const showToast = msg => {
+    toast.textContent = msg;
+    toast.classList.remove('hidden');
+    clearTimeout(showToast.t);
+    showToast.t = setTimeout(() => toast.classList.add('hidden'), 1500);
+  };
+
+  const entries = [...document.querySelectorAll('[data-title][data-status]')];
+  const applyFilters = () => {
+    const q = (search?.value || '').trim().toLowerCase();
+    const status = statusFilter?.value || '状态: 全部';
+    entries.forEach(entry => {
+      const title = entry.dataset.title || '';
+      const sourceText = entry.textContent || '';
+      const matchesQ = !q || (title + sourceText).toLowerCase().includes(q);
+      const matchesStatus = status.includes('全部') || sourceText.includes(status.replace('状态: ', ''));
+      entry.style.display = matchesQ && matchesStatus ? '' : 'none';
+    });
+  };
+  search?.addEventListener('input', applyFilters);
+  statusFilter?.addEventListener('change', applyFilters);
+  groupFilter?.addEventListener('change', () => showToast(`已筛选：${groupFilter.value}`));
+
+  const setMode = next => {
+    mode = next;
+    const auto = next === 'auto';
+    autoBtn.className = auto
+      ? 'px-4 py-1 rounded-md bg-primary-fixed-dim text-on-primary-fixed font-label-caps text-label-caps font-bold'
+      : 'px-4 py-1 rounded-md text-on-secondary-container hover:text-on-secondary font-label-caps text-label-caps';
+    manualBtn.className = !auto
+      ? 'px-4 py-1 rounded-md bg-primary-fixed-dim text-on-primary-fixed font-label-caps text-label-caps font-bold'
+      : 'px-4 py-1 rounded-md text-on-secondary-container hover:text-on-secondary font-label-caps text-label-caps';
+    document.querySelectorAll('.relative.mb-8 .w-10.h-5').forEach(toggle => {
+      toggle.classList.toggle('opacity-50', auto);
+      toggle.classList.toggle('cursor-not-allowed', auto);
+      toggle.classList.toggle('cursor-pointer', !auto);
+    });
+    showToast(auto ? '已切换为自动模式' : '已切换为手动模式');
+  };
+  autoBtn?.addEventListener('click', () => setMode('auto'));
+  manualBtn?.addEventListener('click', () => setMode('manual'));
+
+  document.querySelectorAll('.relative.mb-8 .w-10.h-5').forEach(toggle => {
+    toggle.addEventListener('click', () => {
+      if (mode === 'auto') return;
+      const knob = toggle.firstElementChild;
+      const enabled = toggle.dataset.enabled === 'true';
+      toggle.dataset.enabled = String(!enabled);
+      toggle.classList.toggle('bg-primary/30', !enabled);
+      knob.style.left = !enabled ? '1.35rem' : '';
+      knob.classList.toggle('bg-primary-fixed-dim', !enabled);
+      showToast(!enabled ? '条目已手动启用' : '条目已手动停用');
+    });
+  });
+
+  const dialog = document.getElementById('timelineSourceDialog');
+  const close = document.getElementById('sourceDialogClose');
+  const title = document.getElementById('sourceDialogTitle');
+  const meta = document.getElementById('sourceDialogMeta');
+  const content = document.getElementById('sourceDialogContent');
+
+  document.querySelectorAll('.js-view-source').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const entry = btn.closest('[data-title]');
+      title.textContent = entry?.dataset.title || '世界书原条目';
+      const src = entry?.textContent.match(/世界线-\d+/)?.[0] || '世界线条目';
+      meta.textContent = `原条目：${src}`;
+      content.textContent = '这里是世界书原条目的只读预览。正式插件中会显示对应 lorebook entry 的原始正文，原条目名称与正文都不会被时间线标题修改。';
+      dialog.classList.remove('hidden');
+      dialog.classList.add('flex');
+    });
+  });
+  const closeDialog = () => {
+    dialog.classList.add('hidden');
+    dialog.classList.remove('flex');
+  };
+  close?.addEventListener('click', closeDialog);
+  dialog?.addEventListener('click', e => { if (e.target === dialog) closeDialog(); });
+
+  document.getElementById('deferConflictButton')?.addEventListener('click', () => showToast('已暂不处理，该冲突保持待确认'));
+  document.getElementById('resolveConflictButton')?.addEventListener('click', () => {
+    const anomaly = document.querySelector('[data-status="异常"]');
+    if (anomaly) {
+      anomaly.dataset.status = '已处理';
+      anomaly.querySelectorAll('.text-\\[\\#ffb370\\]').forEach(el => el.classList.remove('text-[#ffb370]'));
+    }
+    showToast('冲突已标记为人工确认');
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !dialog.classList.contains('hidden')) closeDialog();
+  });
+});
+</script>
+
+</body></html>
