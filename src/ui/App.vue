@@ -220,6 +220,9 @@ function changeTheme(theme: ThemeMode): void {
             v-if="uiState.activePage === 'overview'"
             key="overview"
             :groups="overviewGroups"
+            :source-entry-count="hostScope.worldbook?.entries.length ?? 0"
+            :source-message="hostScope.message"
+            :source-status="hostScope.status"
             @inspect="inspectTimeline"
             @reanalyze="openAnalysis"
           />

@@ -1,12 +1,24 @@
 <script setup lang="ts">
-import type { OverviewGroupKind, OverviewGroupSummary } from '@/ui/pages/overview';
+import { computed } from 'vue';
+import type { HostScopeStatus } from '@/st/sillytavern-adapter';
+import {
+  getOverviewSourceState,
+  type OverviewGroupKind,
+  type OverviewGroupSummary,
+} from '@/ui/pages/overview';
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     groups?: readonly OverviewGroupSummary[];
+    sourceEntryCount?: number;
+    sourceMessage?: string;
+    sourceStatus?: HostScopeStatus;
   }>(),
   {
     groups: () => [],
+    sourceEntryCount: 0,
+    sourceMessage: '',
+    sourceStatus: 'unavailable',
   },
 );
 
@@ -20,6 +32,12 @@ const groupIcons: Record<OverviewGroupKind, string> = {
   character: '●',
   world: '◎',
 };
+
+const sourceState = computed(() => getOverviewSourceState(
+  props.sourceStatus,
+  props.sourceEntryCount,
+  props.sourceMessage,
+));
 </script>
 
 <template>
@@ -29,7 +47,7 @@ const groupIcons: Record<OverviewGroupKind, string> = {
         <h1>时间线分组</h1>
         <p>查看各分组当前运行状态与生效条目。</p>
       </div>
-      <button class="page-action" type="button" @click="$emit('reanalyze')">
+      <button class="page-action" type="button" :disabled="!sourceState.canScan" @click="$emit('reanalyze')">
         <span aria-hidden="true">✦</span>
         {{ groups.length > 0 ? '重新分析' : '开始扫描' }}
       </button>
@@ -83,10 +101,10 @@ const groupIcons: Record<OverviewGroupKind, string> = {
     </div>
 
     <section v-else class="overview-empty" aria-labelledby="overview-empty-title">
-      <span class="overview-empty-icon" aria-hidden="true">◇</span>
-      <h2 id="overview-empty-title">当前世界书尚未建立时间线配置</h2>
-      <p>开始扫描后，AI 只会生成配置草稿；确认并应用前不会接管世界书。</p>
-      <button class="primary-action" type="button" @click="$emit('reanalyze')">开始扫描</button>
+      <span class="overview-empty-icon" aria-hidden="true">{{ sourceState.icon }}</span>
+      <h2 id="overview-empty-title">{{ sourceState.title }}</h2>
+      <p>{{ sourceState.description }}</p>
+      <button v-if="sourceState.canScan" class="primary-action" type="button" @click="$emit('reanalyze')">开始扫描</button>
     </section>
   </div>
 </template>
