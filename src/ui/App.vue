@@ -11,7 +11,7 @@ import type { RuntimeLogSummary, SystemLogSummary, TimelineLogEntry } from '@/ui
 import OverviewPage from '@/ui/pages/OverviewPage.vue';
 import type { OverviewGroupSummary } from '@/ui/pages/overview';
 import SettingsPage from '@/ui/pages/SettingsPage.vue';
-import type { GeneralSettings, SettingsSnapshot } from '@/ui/pages/settings';
+import type { GeneralSettings, SettingsSnapshot, ThemeMode } from '@/ui/pages/settings';
 import { loadGeneralSettings, saveGeneralSettings } from '@/ui/settings-store';
 import { detectSillyTavernTheme, resolveTheme, type ResolvedTheme, watchSillyTavernTheme } from '@/ui/theme';
 import TimelinePageView from '@/ui/pages/TimelinePage.vue';
@@ -71,6 +71,12 @@ function saveGeneral(nextSettings: GeneralSettings): void {
   settings.general = { ...nextSettings };
   saveGeneralSettings(nextSettings);
 }
+
+function changeTheme(theme: ThemeMode): void {
+  const nextSettings: GeneralSettings = { ...settings.general, theme };
+  settings.general = nextSettings;
+  saveGeneralSettings(nextSettings);
+}
 </script>
 
 <template>
@@ -126,6 +132,7 @@ function saveGeneral(nextSettings: GeneralSettings): void {
             key="settings"
             :settings="settings"
             @save-general="saveGeneral"
+            @theme-change="changeTheme"
           />
 
           <div v-else key="fallback" class="empty-state">

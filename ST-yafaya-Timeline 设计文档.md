@@ -1992,6 +1992,7 @@ follow | light | dark
 
 `follow` 不是第三套主题。插件运行时读取 SillyTavern 当前主题背景的实际亮度，将其映射为
 `light` 或 `dark`，并监听宿主主题变化实时同步；用户选择浅色或深色后则固定使用对应主题。
+主题 Listbox 的选择必须立即应用并保存，不得要求用户再次点击常规设置保存按钮。
 
 插件最外层只输出 `data-theme="light"` 或 `data-theme="dark"`。组件结构保持不变，所有背景、卡片、
 文字、边框、Primary、Hover、Listbox、滚动条、Modal 和 Toast 的颜色必须通过语义化 CSS Variables

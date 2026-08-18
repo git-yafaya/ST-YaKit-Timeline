@@ -30,6 +30,7 @@ const emit = defineEmits<{
   saveAutomation: [settings: AutomationSettings];
   saveGeneral: [settings: GeneralSettings];
   testConnection: [settings: AiSettings];
+  themeChange: [theme: ThemeMode];
 }>();
 
 const activeCategory = ref<SettingsCategory>('analysis');
@@ -104,7 +105,9 @@ function saveGeneral(): void {
 }
 
 function selectTheme(theme: string): void {
-  if (theme === 'follow' || theme === 'light' || theme === 'dark') themeDraft.value = theme;
+  if (theme !== 'follow' && theme !== 'light' && theme !== 'dark') return;
+  themeDraft.value = theme;
+  emit('themeChange', theme);
 }
 
 function saveAi(): void {
