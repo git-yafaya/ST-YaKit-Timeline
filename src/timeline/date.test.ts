@@ -3,6 +3,7 @@ import {
   compareStoryDates,
   differenceInStoryDays,
   formatStoryDate,
+  formatStoryTime,
   isLeapYear,
   parseStoryDate,
 } from '@/timeline/date';
@@ -32,5 +33,12 @@ describe('story date', () => {
     const right = parseStoryDate('420-01-01')!;
     expect(compareStoryDates(left, right)).toBeLessThan(0);
     expect(differenceInStoryDays(left, right)).toBe(1);
+  });
+
+  it('格式化带时分和不带时分的故事时间', () => {
+    expect(formatStoryTime({ year: 424, month: 5, day: 14, hour: 7, minute: 5, raw: 'raw' }))
+      .toBe('424年5月14日 07:05');
+    expect(formatStoryTime({ year: 424, month: 5, day: 14, raw: 'raw' }))
+      .toBe('424年5月14日');
   });
 });

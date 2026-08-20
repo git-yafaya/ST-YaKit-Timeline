@@ -1,4 +1,4 @@
-import type { StoryDate } from '@/timeline/types';
+import type { StoryDate, StoryTime } from '@/timeline/types';
 
 const DATE_PATTERN = /^(\d{1,6})-(\d{2})-(\d{2})$/;
 
@@ -39,6 +39,12 @@ export function parseStoryDate(value: string): StoryDate | null {
 
 export function formatStoryDate(date: StoryDate): string {
   return `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
+}
+
+export function formatStoryTime(time: StoryTime): string {
+  const date = `${time.year}年${time.month}月${time.day}日`;
+  if (time.hour === undefined || time.minute === undefined) return date;
+  return `${date} ${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}`;
 }
 
 export function compareStoryDates(left: StoryDate, right: StoryDate): number {

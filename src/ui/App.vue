@@ -11,9 +11,25 @@ import {
 } from '@/storage/worldbook-config';
 import {
   readCurrentHostScope,
+  readLastAssistantMessageText,
   watchCurrentHostScope,
+  watchCurrentHostRuntime,
   type HostScopeSnapshot,
 } from '@/st/sillytavern-adapter';
+import { formatStoryTime } from '@/timeline/date';
+import { parseWlogTime } from '@/timeline/wlog';
+import {
+  applyStoryTimeCandidate as applyStoryTimeCandidateToState,
+  confirmStoryTimeRollback,
+  rejectStoryTimeRollback,
+  restoreChatTimelineState,
+} from '@/timeline/runtime';
+import {
+  bindChatTimelineState,
+  loadChatTimelineState,
+  saveChatTimelineState,
+  type ChatTimelineState,
+} from '@/storage/chat-state';
 import AppShell from '@/ui/components/AppShell.vue';
 import { getPageLabel } from '@/ui/navigation';
 import AnalysisPage from '@/ui/pages/AnalysisPage.vue';
@@ -85,6 +101,9 @@ const hostScope = ref<HostScopeSnapshot>({
   status: 'unavailable',
   worldbook: null,
 });
+const chatTimelineState = ref<ChatTimelineState | null>(null);
+const runtimeNotice = ref('');
+const timeActionBusy = ref(false);
 const worldbookConfig = ref<WorldbookTimelineConfig | null>(null);
 const overviewGroups = computed(() => buildOverviewGroupSummaries(worldbookConfig.value, hostScope.value.worldbook));
 const timelineGroups = computed(() => buildTimelineGroupDetails(worldbookConfig.value, hostScope.value.worldbook));
@@ -115,9 +134,22 @@ const canApplyAnalysisDraft = computed(() => (
 ));
 const hostTheme = ref<ResolvedTheme>(detectSillyTavernTheme());
 const resolvedTheme = computed(() => resolveTheme(settings.general.theme, hostTheme.value));
+const storyTimeLabel = computed(() => {
+  const currentTime = chatTimelineState.value?.currentTime;
+  return currentTime ? formatStoryTime(currentTime) : '等待有效 <wlog>';
+});
+const rollbackPrompt = computed(() => {
+  const pendingRollback = chatTimelineState.value?.pendingRollback;
+  if (!pendingRollback) return undefined;
+  return {
+    from: formatStoryTime(pendingRollback.from),
+    to: formatStoryTime(pendingRollback.to),
+  };
+});
 let hostScopeVersion = 0;
 let stopWatchingHostTheme: (() => void) | undefined;
 let stopWatchingHostScope: (() => void) | undefined;
+let stopWatchingHostRuntime: (() => void) | undefined;
 let analysisAbortController: AbortController | undefined;
 let analysisRequestVersion = 0;
 let activeAnalysisScopeKey = '';
@@ -137,6 +169,38 @@ function stopAnalysisForScopeChange(): void {
   analysisError.value = { message: '角色、聊天或绑定世界书已变化，本次分析已安全停止。' };
 }
 
+function persistChatState(state: ChatTimelineState): boolean {
+  chatTimelineState.value = state;
+  if (!hostScope.value.chatId) return true;
+  const saved = saveChatTimelineState(state);
+  if (!saved) runtimeNotice.value = '聊天状态保存失败；当前页面状态仍保留在内存中。';
+  return saved;
+}
+
+function restoreChatState(snapshot: HostScopeSnapshot, config: WorldbookTimelineConfig | null): void {
+  const existing = loadChatTimelineState();
+  const lastMessage = readLastAssistantMessageText();
+  const restored = restoreChatTimelineState({
+    existing,
+    groupIds: config?.groups.map(group => group.id) ?? [],
+    lastAssistantTime: lastMessage ? parseWlogTime(lastMessage) : null,
+    worldbookKey: snapshot.worldbook?.key ?? null,
+  });
+  chatTimelineState.value = restored.state;
+
+  let saved = true;
+  if (restored.shouldPersist && snapshot.chatId) saved = saveChatTimelineState(restored.state);
+  if (!saved) {
+    runtimeNotice.value = '聊天状态保存失败；当前页面状态仍保留在内存中。';
+  } else if (restored.source === 'last_ai') {
+    runtimeNotice.value = '已从当前聊天最后一条 AI 回复恢复故事时间。';
+  } else if (!restored.state.currentTime && !restored.state.pendingRollback) {
+    runtimeNotice.value = '⚠ 当前聊天尚未获得有效故事时间，请让 AI 输出完整 <wlog>。';
+  } else if (!restored.state.pendingRollback) {
+    runtimeNotice.value = '';
+  }
+}
+
 async function refreshHostScope(): Promise<void> {
   const version = ++hostScopeVersion;
   const snapshot = await readCurrentHostScope();
@@ -148,22 +212,26 @@ async function refreshHostScope(): Promise<void> {
     analysisDraftScopeKey = '';
   }
   hostScope.value = snapshot;
-  worldbookConfig.value = snapshot.worldbook
+  const config = snapshot.worldbook
     ? loadWorldbookTimelineConfig(snapshot.worldbook.key)
     : null;
+  worldbookConfig.value = config;
+  restoreChatState(snapshot, config);
 }
 
 onMounted(() => {
   stopWatchingHostTheme = watchSillyTavernTheme(theme => {
     hostTheme.value = theme;
   });
-  stopWatchingHostScope = watchCurrentHostScope(() => void refreshHostScope());
+  stopWatchingHostScope = watchCurrentHostScope(() => refreshHostScope());
+  stopWatchingHostRuntime = watchCurrentHostRuntime(() => processLatestAssistantMessage());
   void refreshHostScope();
 });
 
 onBeforeUnmount(() => {
   stopWatchingHostTheme?.();
   stopWatchingHostScope?.();
+  stopWatchingHostRuntime?.();
   analysisAbortController?.abort();
   if (aiSaveResetTimer !== undefined) globalThis.clearTimeout(aiSaveResetTimer);
 });
@@ -237,6 +305,87 @@ function cancelAnalysis(): void {
   analysisProgress.value = null;
   analysisError.value = null;
   analysisNotice.value = '';
+}
+
+function showMissingTimeNotice(): void {
+  runtimeNotice.value = chatTimelineState.value?.currentTime
+    ? '⚠ 本轮未检测到有效时间，已沿用上次时间。请自行重 Roll 或补充完整 <wlog>。'
+    : '⚠ 当前聊天尚未获得有效故事时间，请让 AI 输出完整 <wlog>。';
+}
+
+function applyStoryTimeCandidate(nextTime: NonNullable<ReturnType<typeof parseWlogTime>>): void {
+  const state = chatTimelineState.value;
+  if (!state) return;
+
+  const result = applyStoryTimeCandidateToState(state, nextTime);
+  if (result.kind === 'blocked_by_pending_rollback') {
+    runtimeNotice.value = '⚠ 请先处理待确认的时间倒退，新的时间不会覆盖当前状态。';
+    return;
+  }
+
+  const saved = persistChatState(result.state);
+  if (!saved) return;
+  if (result.kind === 'pending_rollback') {
+    runtimeNotice.value = '';
+    return;
+  }
+  if (result.kind === 'unchanged') {
+    runtimeNotice.value = '';
+    return;
+  }
+  if (result.kind === 'forward' && result.jumpDays > settings.automation.largeJumpNoticeDays) {
+    runtimeNotice.value = `ℹ 检测到较大时间跳跃（${result.jumpDays} 天），已按新日期记录故事时间。`;
+    return;
+  }
+  if (result.kind === 'same_date') {
+    runtimeNotice.value = '故事时间已更新；日期未变化，未操作世界书。';
+    return;
+  }
+  runtimeNotice.value = '故事时间已更新；当前阶段尚未执行世界书条目开关切换。';
+}
+
+async function processLatestAssistantMessage(): Promise<void> {
+  if (!chatTimelineState.value) await refreshHostScope();
+  const latestMessage = readLastAssistantMessageText();
+  const nextTime = latestMessage ? parseWlogTime(latestMessage) : null;
+  if (!nextTime) {
+    showMissingTimeNotice();
+    return;
+  }
+  applyStoryTimeCandidate(nextTime);
+}
+
+async function getCurrentTime(): Promise<void> {
+  if (timeActionBusy.value) return;
+  timeActionBusy.value = true;
+  try {
+    if (!chatTimelineState.value) await refreshHostScope();
+    const latestMessage = readLastAssistantMessageText();
+    const nextTime = latestMessage ? parseWlogTime(latestMessage) : null;
+    if (!nextTime) {
+      showMissingTimeNotice();
+      return;
+    }
+    applyStoryTimeCandidate(nextTime);
+  } finally {
+    timeActionBusy.value = false;
+  }
+}
+
+function confirmRollback(): void {
+  const state = chatTimelineState.value;
+  if (!state?.pendingRollback) return;
+  if (persistChatState(confirmStoryTimeRollback(state))) {
+    runtimeNotice.value = '已确认应用时间倒退；当前阶段尚未执行世界书条目开关切换。';
+  }
+}
+
+function rejectRollback(): void {
+  const state = chatTimelineState.value;
+  if (!state?.pendingRollback) return;
+  if (persistChatState(rejectStoryTimeRollback(state))) {
+    runtimeNotice.value = '已拒绝时间倒退，继续沿用原故事时间。';
+  }
 }
 
 function discardAnalysisDraft(): void {
@@ -315,6 +464,13 @@ async function applyAnalysisDraft(): Promise<void> {
     }
 
     worldbookConfig.value = config;
+    if (chatTimelineState.value) {
+      persistChatState(bindChatTimelineState(
+        chatTimelineState.value,
+        worldbook.key,
+        config.groups.map(group => group.id),
+      ));
+    }
     analysisDraft.value = null;
     analysisDraftScopeKey = '';
     analysisNotice.value = '时间线配置已保存；当前聊天尚无有效时间时，不会修改世界书条目开关。';
@@ -422,8 +578,15 @@ function changeTheme(theme: ThemeMode): void {
         v-if="uiState.open"
         :active-page="uiState.activePage"
         :character-name="characterName"
+        :runtime-notice="runtimeNotice"
+        :rollback-prompt="rollbackPrompt"
+        :story-time="storyTimeLabel"
+        :time-action-busy="timeActionBusy"
         :worldbook-name="worldbookName"
         @close="closeTimeline"
+        @confirm-rollback="confirmRollback"
+        @get-current-time="getCurrentTime"
+        @reject-rollback="rejectRollback"
         @select-page="selectPage"
       >
         <Transition name="timeline-page" mode="out-in">

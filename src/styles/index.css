@@ -336,6 +336,81 @@ button {
   margin-top: 12px;
 }
 
+.context-notice,
+.context-rollback {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--tl-warning-border);
+  border-radius: 8px;
+  color: var(--tl-warning);
+  background: var(--tl-warning-surface-faint);
+}
+
+.context-notice > span {
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.context-notice p {
+  min-width: 0;
+  line-height: 18px;
+}
+
+.context-rollback {
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.context-rollback strong {
+  display: block;
+  font-size: 12px;
+}
+
+.context-rollback p {
+  margin-top: 2px;
+  color: var(--tl-text-muted);
+  font-size: 12px;
+}
+
+.context-rollback-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.context-rollback-actions button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--tl-border);
+  border-radius: 7px;
+  color: var(--tl-text);
+  background: transparent;
+  cursor: pointer;
+}
+
+.context-rollback-actions button:hover {
+  background: var(--tl-surface-hover);
+}
+
+.context-rollback-actions button.is-confirm {
+  border-color: var(--tl-warning);
+  color: var(--tl-on-warning);
+  background: var(--tl-warning);
+  font-weight: 700;
+}
+
 .timeline-content {
   min-height: 0;
   flex: 1 1 0;
@@ -3252,6 +3327,15 @@ h2 {
 
   .timeline-context {
     padding: 12px 14px;
+  }
+
+  .context-rollback {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .context-rollback-actions {
+    justify-content: flex-end;
   }
 
   .context-items {

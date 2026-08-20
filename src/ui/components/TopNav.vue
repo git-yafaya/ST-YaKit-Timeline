@@ -4,6 +4,7 @@ import type { TimelinePage } from '@/ui/state';
 
 defineProps<{
   activePage: TimelinePage;
+  timeActionBusy?: boolean;
 }>();
 
 defineEmits<{
@@ -34,7 +35,12 @@ defineEmits<{
       </div>
 
       <div class="timeline-actions">
-        <button class="button button-secondary get-time" type="button" disabled @click="$emit('getCurrentTime')">
+        <button
+          class="button button-secondary get-time"
+          type="button"
+          :disabled="timeActionBusy"
+          @click="$emit('getCurrentTime')"
+        >
           <span class="action-icon" aria-hidden="true">◷</span>
           获取当前时间
         </button>

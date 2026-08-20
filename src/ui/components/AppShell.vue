@@ -7,13 +7,21 @@ import type { TimelinePage } from '@/ui/state';
 defineProps<{
   activePage: TimelinePage;
   characterName?: string;
+  runtimeNotice?: string;
+  rollbackPrompt?: {
+    from: string;
+    to: string;
+  };
   storyTime?: string;
+  timeActionBusy?: boolean;
   worldbookName?: string;
 }>();
 
 const emit = defineEmits<{
   close: [];
+  confirmRollback: [];
   getCurrentTime: [];
+  rejectRollback: [];
   selectPage: [page: TimelinePage];
 }>();
 
@@ -33,15 +41,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     <section class="timeline-window" role="dialog" aria-modal="true" aria-label="时间线管理">
       <TopNav
         :active-page="activePage"
+        :time-action-busy="timeActionBusy"
         @close="$emit('close')"
         @get-current-time="$emit('getCurrentTime')"
         @select-page="$emit('selectPage', $event)"
       />
       <ContextBar
         :character-name="characterName"
+        :runtime-notice="runtimeNotice"
+        :rollback-prompt="rollbackPrompt"
         :story-time="storyTime"
+        :time-action-busy="timeActionBusy"
         :worldbook-name="worldbookName"
+        @confirm-rollback="$emit('confirmRollback')"
         @get-current-time="$emit('getCurrentTime')"
+        @reject-rollback="$emit('rejectRollback')"
       />
 
       <main class="timeline-content">

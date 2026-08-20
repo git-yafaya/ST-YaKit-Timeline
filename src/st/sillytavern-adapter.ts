@@ -33,13 +33,14 @@ export interface HostScopeSnapshot {
 }
 
 interface HostEventSource {
-  on?: (event: string, listener: (...args: unknown[]) => void) => void;
-  removeListener?: (event: string, listener: (...args: unknown[]) => void) => void;
+  on?: (event: string, listener: (...args: unknown[]) => unknown) => void;
+  removeListener?: (event: string, listener: (...args: unknown[]) => unknown) => void;
 }
 
 interface SillyTavernHostContext {
   characterId?: unknown;
   characters?: unknown;
+  chat?: unknown;
   chatId?: unknown;
   eventSource?: HostEventSource;
   eventTypes?: Record<string, unknown>;
@@ -56,6 +57,8 @@ const WATCHED_EVENT_KEYS = [
   'CHARACTER_EDITED',
   'WORLDINFO_UPDATED',
 ] as const;
+
+const RUNTIME_EVENT_KEYS = ['MESSAGE_RECEIVED'] as const;
 
 function getContext(): SillyTavernHostContext | null {
   try {
@@ -208,7 +211,17 @@ export async function readCurrentHostScope(): Promise<HostScopeSnapshot> {
   }
 }
 
-export function watchCurrentHostScope(listener: () => void): () => void {
+/** 只读取当前聊天最后一条 AI 消息；不会回溯更早历史。 */
+export function readLastAssistantMessageText(): string | null {
+  const context = getContext();
+  if (!Array.isArray(context?.chat) || context.chat.length === 0) return null;
+
+  const message = recordValue(context.chat.at(-1));
+  if (!message || message.is_user !== false || message.is_system === true) return null;
+  return typeof message.mes === 'string' ? message.mes : null;
+}
+
+export function watchCurrentHostScope(listener: () => void | Promise<void>): () => void {
   const context = getContext();
   const eventSource = context?.eventSource;
   const eventTypes = context?.eventTypes;
@@ -223,5 +236,24 @@ export function watchCurrentHostScope(listener: () => void): () => void {
   return () => {
     if (!eventSource.removeListener) return;
     for (const event of events) eventSource.removeListener(event, onChange);
+  };
+}
+
+/** 监听已完成的 AI 消息；流式 token 不会触发该事件。 */
+export function watchCurrentHostRuntime(listener: () => void | Promise<void>): () => void {
+  const context = getContext();
+  const eventSource = context?.eventSource;
+  const eventTypes = context?.eventTypes;
+  if (!eventSource?.on || !eventTypes) return () => undefined;
+
+  const events = RUNTIME_EVENT_KEYS
+    .map(key => eventTypes[key])
+    .filter((event): event is string => typeof event === 'string' && event.length > 0);
+  const onMessageReceived = () => listener();
+  for (const event of events) eventSource.on(event, onMessageReceived);
+
+  return () => {
+    if (!eventSource.removeListener) return;
+    for (const event of events) eventSource.removeListener(event, onMessageReceived);
   };
 }

@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   parseWorldInfoEntries,
   readCurrentHostScope,
+  readLastAssistantMessageText,
+  watchCurrentHostRuntime,
   watchCurrentHostScope,
 } from '@/st/sillytavern-adapter';
 
@@ -140,5 +142,42 @@ describe('read-only SillyTavern adapter', () => {
 
     stop();
     expect(removeListener.mock.calls.map(call => call[0])).toEqual(['ready', 'chat', 'character', 'worldbook']);
+  });
+
+  it('只读取当前聊天最后一条 AI 消息', () => {
+    installContext({
+      chat: [
+        { is_user: false, is_system: false, mes: '旧 AI 消息' },
+        { is_user: true, is_system: false, mes: '用户消息' },
+      ],
+    });
+    expect(readLastAssistantMessageText()).toBeNull();
+
+    installContext({
+      chat: [
+        { is_user: false, is_system: false, mes: '旧 AI 消息' },
+        { is_user: false, is_system: false, mes: '最新 AI 消息' },
+      ],
+    });
+    expect(readLastAssistantMessageText()).toBe('最新 AI 消息');
+  });
+
+  it('监听完成的 AI 消息事件并移除同一监听器', () => {
+    const on = vi.fn();
+    const removeListener = vi.fn();
+    installContext({
+      eventSource: { on, removeListener },
+      eventTypes: { MESSAGE_RECEIVED: 'message_received' },
+    });
+    const listener = vi.fn();
+
+    const stop = watchCurrentHostRuntime(listener);
+    expect(on).toHaveBeenCalledWith('message_received', expect.any(Function));
+    const registered = on.mock.calls[0][1] as () => void;
+    registered();
+    expect(listener).toHaveBeenCalledOnce();
+
+    stop();
+    expect(removeListener).toHaveBeenCalledWith('message_received', registered);
   });
 });
