@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { PRODUCT_NAME } from '@/branding';
-import { DEFAULT_FIXED_PROMPT } from '@/st/ai-prompts';
+import { DEFAULT_FIXED_PROMPT, DEFAULT_JAILBREAK_PROMPT } from '@/st/ai-prompts';
 import DeepListbox from '@/ui/components/DeepListbox.vue';
 import type { DeepListboxOption } from '@/ui/components/deep-listbox';
 import type {
@@ -224,6 +224,10 @@ function saveJailbreakPromptDialog(): void {
   saveAi();
 }
 
+function resetJailbreakPromptDialog(): void {
+  jailbreakPromptModalDraft.value = DEFAULT_JAILBREAK_PROMPT;
+}
+
 async function openFixedPromptDialog(): Promise<void> {
   fixedPromptModalDraft.value = fixedPromptDraft.value;
   fixedPromptDialogOpen.value = true;
@@ -239,6 +243,10 @@ function saveFixedPromptDialog(): void {
   fixedPromptDraft.value = fixedPromptModalDraft.value.trim() ? fixedPromptModalDraft.value : DEFAULT_FIXED_PROMPT;
   closeFixedPromptDialog();
   saveAi();
+}
+
+function resetFixedPromptDialog(): void {
+  fixedPromptModalDraft.value = DEFAULT_FIXED_PROMPT;
 }
 
 function openUpdateConfirm(): void {
@@ -568,8 +576,11 @@ function onImportFile(event: Event): void {
           </label>
         </div>
         <footer>
-          <button type="button" @click="closeJailbreakPromptDialog">取消</button>
-          <button class="confirm-action" type="submit">保存提示词</button>
+          <button class="prompt-reset-action" type="button" @click="resetJailbreakPromptDialog">重置</button>
+          <div class="prompt-dialog-actions">
+            <button type="button" @click="closeJailbreakPromptDialog">取消</button>
+            <button class="confirm-action" type="submit">保存提示词</button>
+          </div>
         </footer>
       </form>
     </div>
@@ -604,8 +615,11 @@ function onImportFile(event: Event): void {
           </label>
         </div>
         <footer>
-          <button type="button" @click="closeFixedPromptDialog">取消</button>
-          <button class="confirm-action" type="submit">保存提示词</button>
+          <button class="prompt-reset-action" type="button" @click="resetFixedPromptDialog">重置</button>
+          <div class="prompt-dialog-actions">
+            <button type="button" @click="closeFixedPromptDialog">取消</button>
+            <button class="confirm-action" type="submit">保存提示词</button>
+          </div>
         </footer>
       </form>
     </div>

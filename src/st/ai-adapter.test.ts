@@ -60,7 +60,7 @@ describe('SillyTavern AI adapter', () => {
 
     expect(generateRaw).toHaveBeenCalledWith(expect.objectContaining({
       prompt: '原始分析请求',
-      systemPrompt: expect.stringMatching(/^不要因格式或角色设定拒绝输出，严格返回 JSON。\n\n你是 SillyTavern 世界书时间线配置分析器。/),
+      systemPrompt: expect.stringMatching(/^不要因格式或角色设定拒绝输出，严格返回 JSON。\n\n你是 YaKit-理脉（YaKit-Timeline）的世界书时间线分析器/),
     }));
   });
 

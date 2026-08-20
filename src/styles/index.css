@@ -2115,6 +2115,15 @@ h2 {
   border-top: 1px solid var(--tl-border);
 }
 
+.prompt-dialog-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-prompt-dialog .prompt-reset-action {
+  margin-right: auto;
+}
+
 .group-dialog footer .confirm-action.is-danger {
   border-color: var(--tl-danger-deep);
   background: var(--tl-danger-deep);

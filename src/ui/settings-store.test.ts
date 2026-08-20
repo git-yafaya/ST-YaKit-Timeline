@@ -24,7 +24,8 @@ afterEach(() => {
 describe('settings persistence', () => {
   it('uses the configured AI defaults for new installations', () => {
     expect(DEFAULT_SETTINGS.ai).toMatchObject({
-      fixedPrompt: expect.stringContaining('世界书时间线配置分析器'),
+      jailbreakPrompt: expect.stringContaining('明确授权'),
+      fixedPrompt: expect.stringContaining('YaKit-理脉'),
       temperature: 0.9,
       maxOutputTokens: 23333,
       timeoutSeconds: 180,

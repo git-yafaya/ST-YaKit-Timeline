@@ -7,7 +7,7 @@ import type {
   ThemeMode,
 } from '@/ui/pages/settings';
 import { SETTINGS_NAMESPACE } from '@/branding';
-import { DEFAULT_FIXED_PROMPT } from '@/st/ai-prompts';
+import { DEFAULT_FIXED_PROMPT, DEFAULT_JAILBREAK_PROMPT } from '@/st/ai-prompts';
 const ALLOWED_JUMP_NOTICE_DAYS = new Set([5, 10, 15, 20, 25, 30]);
 
 export const DEFAULT_SETTINGS: SettingsSnapshot = {
@@ -17,7 +17,7 @@ export const DEFAULT_SETTINGS: SettingsSnapshot = {
     apiUrl: '',
     apiKey: '',
     fixedPrompt: DEFAULT_FIXED_PROMPT,
-    jailbreakPrompt: '',
+    jailbreakPrompt: DEFAULT_JAILBREAK_PROMPT,
     model: '',
     temperature: 0.9,
     maxOutputTokens: 23333,
