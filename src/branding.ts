@@ -4,9 +4,7 @@ export const TECHNICAL_NAME = 'YaKit-Timeline';
 export const TECHNICAL_SLUG = 'yakit-timeline';
 
 export const SETTINGS_NAMESPACE = 'yakit_timeline';
-export const LEGACY_SETTINGS_NAMESPACE = 'st_yafaya_timeline';
 export const CHAT_METADATA_KEY = 'yakit_timeline';
-export const LEGACY_CHAT_METADATA_KEY = 'st_yafaya_timeline';
 
 export const HOST_ID = `${TECHNICAL_SLUG}-host`;
 export const MENU_ITEM_ID = `${TECHNICAL_SLUG}-menu-item`;

@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { LEGACY_SETTINGS_NAMESPACE, SETTINGS_NAMESPACE } from '@/branding';
 import type { SettingsSnapshot } from '@/ui/pages/settings';
 import {
   DEFAULT_SETTINGS,
@@ -135,23 +134,6 @@ describe('settings persistence', () => {
       },
     });
     expect(saveSettingsDebounced).toHaveBeenCalledOnce();
-  });
-
-  it('兼容读取旧设置命名空间，并在保存时迁移', () => {
-    const { extensionSettings } = installSillyTavern({
-      [LEGACY_SETTINGS_NAMESPACE]: {
-        globalSettings: { theme: 'dark', largeJumpDays: 15 },
-        unknown: true,
-      },
-    });
-
-    expect(loadSettings(DEFAULT_SETTINGS).general.theme).toBe('dark');
-    expect(saveGeneralSettings({ theme: 'light', showSwitchNotifications: true })).toBe(true);
-    expect(extensionSettings[SETTINGS_NAMESPACE]).toMatchObject({
-      globalSettings: { theme: 'light', largeJumpDays: 15, switchToastEnabled: true },
-      unknown: true,
-    });
-    expect(extensionSettings[LEGACY_SETTINGS_NAMESPACE]).toBeUndefined();
   });
 
   it('saves AI settings while retaining automation, worldbooks, and unknown AI fields', () => {

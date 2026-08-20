@@ -1,5 +1,5 @@
 import { compareStoryDates, daysInMonth, formatStoryDate, parseStoryDate } from '@/timeline/date';
-import { LEGACY_SETTINGS_NAMESPACE, SETTINGS_NAMESPACE } from '@/branding';
+import { SETTINGS_NAMESPACE } from '@/branding';
 import type { EntryId } from '@/timeline/types';
 import type { WorldbookSnapshot } from '@/st/sillytavern-adapter';
 import type { AnalysisConfidence, AnalysisDraft, AnalysisDraftEntry } from '@/ui/pages/analysis';
@@ -64,9 +64,7 @@ function getContext(): StorageContext | null {
 }
 
 function getStoredNamespace(context: StorageContext | null): Record<string, unknown> | null {
-  const current = recordValue(context?.extensionSettings[SETTINGS_NAMESPACE]);
-  if (current) return current;
-  return recordValue(context?.extensionSettings[LEGACY_SETTINGS_NAMESPACE]);
+  return recordValue(context?.extensionSettings[SETTINGS_NAMESPACE]);
 }
 
 function previousDate(value: string): string {
@@ -275,7 +273,6 @@ export function saveWorldbookTimelineConfig(config: WorldbookTimelineConfig): bo
   const context = getContext();
   if (!context) return false;
   const previousNamespace = context.extensionSettings[SETTINGS_NAMESPACE];
-  const previousLegacyNamespace = context.extensionSettings[LEGACY_SETTINGS_NAMESPACE];
   try {
     const namespace = getStoredNamespace(context) ?? {};
     const worldbooks = recordValue(namespace.worldbooks) ?? {};
@@ -283,14 +280,11 @@ export function saveWorldbookTimelineConfig(config: WorldbookTimelineConfig): bo
       ...namespace,
       worldbooks: { ...worldbooks, [config.worldbookKey]: config },
     };
-    delete context.extensionSettings[LEGACY_SETTINGS_NAMESPACE];
     context.saveSettingsDebounced();
     return true;
   } catch {
     if (previousNamespace === undefined) delete context.extensionSettings[SETTINGS_NAMESPACE];
     else context.extensionSettings[SETTINGS_NAMESPACE] = previousNamespace;
-    if (previousLegacyNamespace === undefined) delete context.extensionSettings[LEGACY_SETTINGS_NAMESPACE];
-    else context.extensionSettings[LEGACY_SETTINGS_NAMESPACE] = previousLegacyNamespace;
     return false;
   }
 }

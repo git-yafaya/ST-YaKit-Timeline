@@ -1,6 +1,6 @@
 import type { EntryId, StoryTime } from '@/timeline/types';
 import { isValidStoryDate } from '@/timeline/date';
-import { CHAT_METADATA_KEY, LEGACY_CHAT_METADATA_KEY } from '@/branding';
+import { CHAT_METADATA_KEY } from '@/branding';
 
 export const CHAT_TIMELINE_METADATA_KEY = CHAT_METADATA_KEY;
 export const MAX_RUNTIME_LOGS = 100;
@@ -215,9 +215,7 @@ export function loadChatTimelineState(): ChatTimelineState | null {
   const context = getContext();
   const metadata = recordValue(context?.chatMetadata);
   const current = metadata?.[CHAT_TIMELINE_METADATA_KEY];
-  if (isChatTimelineState(current)) return cloneChatState(current);
-  const legacy = metadata?.[LEGACY_CHAT_METADATA_KEY];
-  return isChatTimelineState(legacy) ? cloneChatState(legacy) : null;
+  return isChatTimelineState(current) ? cloneChatState(current) : null;
 }
 
 export function saveChatTimelineState(state: ChatTimelineState): boolean {
@@ -228,14 +226,11 @@ export function saveChatTimelineState(state: ChatTimelineState): boolean {
   const next = cloneChatState(state);
   try {
     if (typeof context.updateChatMetadata === 'function') {
-      const updates: Record<string, unknown> = { [CHAT_TIMELINE_METADATA_KEY]: next };
-      updates[LEGACY_CHAT_METADATA_KEY] = undefined;
-      context.updateChatMetadata(updates);
+      context.updateChatMetadata({ [CHAT_TIMELINE_METADATA_KEY]: next });
     } else {
       const metadata = recordValue(context.chatMetadata);
       if (!metadata) return false;
       metadata[CHAT_TIMELINE_METADATA_KEY] = next;
-      delete metadata[LEGACY_CHAT_METADATA_KEY];
     }
 
     if (typeof context.saveMetadataDebounced === 'function') {

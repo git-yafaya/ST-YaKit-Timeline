@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { LEGACY_SETTINGS_NAMESPACE, SETTINGS_NAMESPACE } from '@/branding';
 import {
   buildWorldbookTimelineConfig,
   detectWorldbookConfigStale,
@@ -136,24 +135,6 @@ describe('worldbook timeline config', () => {
     });
     expect(saveSettingsDebounced).toHaveBeenCalledOnce();
     expect(loadWorldbookTimelineConfig('当前世界书')).toEqual(config);
-  });
-
-  it('兼容读取旧世界书配置，并在保存时迁移命名空间', async () => {
-    const config = await buildWorldbookTimelineConfig(draft, worldbook, 12345);
-    const { extensionSettings } = installStorage({
-      [LEGACY_SETTINGS_NAMESPACE]: {
-        globalSettings: { theme: 'dark' },
-        worldbooks: { [worldbook.key]: config },
-      },
-    });
-
-    expect(loadWorldbookTimelineConfig(worldbook.key)).toEqual(config);
-    expect(saveWorldbookTimelineConfig(config)).toBe(true);
-    expect(extensionSettings[SETTINGS_NAMESPACE]).toMatchObject({
-      globalSettings: { theme: 'dark' },
-      worldbooks: { [worldbook.key]: config },
-    });
-    expect(extensionSettings[LEGACY_SETTINGS_NAMESPACE]).toBeUndefined();
   });
 
   it('restores the previous namespace when scheduling persistence fails', async () => {
