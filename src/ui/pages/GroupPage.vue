@@ -170,11 +170,13 @@ function reorder<T>(values: readonly T[], source: T, target: T): T[] {
 }
 
 function dropGroup(targetGroupId: string): void {
-  if (draggedEntryId.value !== null && currentGroup.value && currentGroup.value.id !== targetGroupId) {
-    const sourceGroupId = currentGroup.value.id;
-    const entryId = draggedEntryId.value;
-    draggedEntryId.value = null;
-    emit('moveEntries', sourceGroupId, targetGroupId, [entryId]);
+  const sourceEntryId = draggedEntryId.value;
+  draggedEntryId.value = null;
+  if (sourceEntryId !== null) {
+    const sourceGroupId = currentGroup.value?.id;
+    if (sourceGroupId && sourceGroupId !== targetGroupId) {
+      emit('moveEntries', sourceGroupId, targetGroupId, [sourceEntryId]);
+    }
     return;
   }
   const sourceGroupId = draggedGroupId.value;
@@ -196,6 +198,46 @@ function dropEntry(targetEntryId: EntryId): void {
   emit('reorderEntries', group.id, entryOrder.value);
 }
 
+function beginTouchGroupDrag(event: PointerEvent, groupId: string): void {
+  if (event.pointerType === 'mouse') return;
+  event.preventDefault();
+  draggedGroupId.value = groupId;
+  draggedEntryId.value = null;
+}
+
+function beginTouchEntryDrag(event: PointerEvent, entryId: EntryId): void {
+  if (event.pointerType === 'mouse') return;
+  event.preventDefault();
+  draggedEntryId.value = entryId;
+  draggedGroupId.value = null;
+}
+
+function clearTouchDrag(event?: PointerEvent): void {
+  if (event?.pointerType === 'mouse') return;
+  draggedGroupId.value = null;
+  draggedEntryId.value = null;
+}
+
+function finishTouchGroupDrop(event: PointerEvent, groupId: string): void {
+  if (event.pointerType === 'mouse' || (draggedGroupId.value === null && draggedEntryId.value === null)) return;
+  event.preventDefault();
+  dropGroup(groupId);
+}
+
+function finishTouchEntryDrop(event: PointerEvent, entryId: EntryId): void {
+  if (event.pointerType === 'mouse' || draggedEntryId.value === null) return;
+  event.preventDefault();
+  dropEntry(entryId);
+}
+
+function onPointerUp(event: PointerEvent): void {
+  clearTouchDrag(event);
+}
+
+function onPointerCancel(event: PointerEvent): void {
+  clearTouchDrag(event);
+}
+
 function onKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape') return;
   if (!operationMode.value && !renaming.value && !moreOpen.value) return;
@@ -206,8 +248,16 @@ function onKeydown(event: KeyboardEvent): void {
   moreOpen.value = false;
 }
 
-onMounted(() => window.addEventListener('keydown', onKeydown));
-onUnmounted(() => window.removeEventListener('keydown', onKeydown));
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown);
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerCancel);
+});
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown);
+  window.removeEventListener('pointerup', onPointerUp);
+  window.removeEventListener('pointercancel', onPointerCancel);
+});
 </script>
 
 <template>
@@ -252,8 +302,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             @dragend="draggedGroupId = null"
             @dragover.prevent
             @drop.prevent="dropGroup(group.id)"
+            @pointerup.stop="finishTouchGroupDrop($event, group.id)"
+            @pointercancel.stop="clearTouchDrag"
           >
-            <span class="drag-mark" aria-hidden="true">⠿</span>
+            <span class="drag-mark" aria-hidden="true" @pointerdown.stop="beginTouchGroupDrag($event, group.id)">⠿</span>
             <span class="group-list-name">{{ group.name }}</span>
             <span class="group-list-count">{{ group.entries.length }}</span>
           </button>
@@ -318,8 +370,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             @dragend="draggedEntryId = null"
             @dragover.prevent
             @drop.prevent="dropEntry(entry.entryId)"
+            @pointerup.stop="finishTouchEntryDrop($event, entry.entryId)"
+            @pointercancel.stop="clearTouchDrag"
           >
-            <span class="entry-drag-mark" aria-hidden="true">⠿</span>
+            <span
+              class="entry-drag-mark"
+              aria-hidden="true"
+              @pointerdown.stop="beginTouchEntryDrag($event, entry.entryId)"
+            >⠿</span>
             <div class="group-entry-copy">
               <div class="group-entry-title-row">
                 <h3>{{ entry.title }}</h3>

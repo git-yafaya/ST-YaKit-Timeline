@@ -195,9 +195,42 @@ async function copySource(): Promise<void> {
   }
 }
 
+function beginTouchGroupDrag(event: PointerEvent, groupId: string): void {
+  if (event.pointerType === 'mouse') return;
+  event.preventDefault();
+  draggedGroupId.value = groupId;
+  draggedEntry.value = null;
+}
+
+function beginTouchEntryDrag(event: PointerEvent, entryId: EntryId, groupId: string): void {
+  if (event.pointerType === 'mouse') return;
+  event.preventDefault();
+  draggedEntry.value = { entryId, groupId };
+  draggedGroupId.value = null;
+}
+
+function clearTouchDrag(event?: PointerEvent): void {
+  if (event?.pointerType === 'mouse') return;
+  draggedEntry.value = null;
+  draggedGroupId.value = null;
+}
+
+function cancelTouchDrag(event: PointerEvent): void {
+  clearTouchDrag(event);
+}
+
 function dropAnalysisGroup(targetGroupId: string): void {
   const sourceGroupId = draggedGroupId.value;
   draggedGroupId.value = null;
+  const sourceEntry = draggedEntry.value;
+  draggedEntry.value = null;
+
+  if (sourceEntry) {
+    if (!props.draft || sourceEntry.groupId === targetGroupId) return;
+    emit('moveEntry', sourceEntry.groupId, targetGroupId, sourceEntry.entryId);
+    return;
+  }
+
   if (!sourceGroupId || sourceGroupId === targetGroupId || !props.draft) return;
   const ids = props.draft.groups.map(group => group.id).filter(id => id !== sourceGroupId);
   const targetIndex = ids.indexOf(targetGroupId);
@@ -222,6 +255,30 @@ function dropAnalysisEntry(groupId: string, targetEntryId?: EntryId): void {
   emit('reorderEntries', groupId, next);
 }
 
+function finishTouchGroupDrop(event: PointerEvent, groupId: string): void {
+  if (event.pointerType === 'mouse' || (!draggedGroupId.value && !draggedEntry.value)) return;
+  event.preventDefault();
+  dropAnalysisGroup(groupId);
+}
+
+function finishTouchEntryDrop(event: PointerEvent, groupId: string, entryId?: EntryId): void {
+  if (event.pointerType === 'mouse' || (!draggedEntry.value && !draggedGroupId.value)) return;
+  event.preventDefault();
+  if (draggedGroupId.value) {
+    dropAnalysisGroup(groupId);
+  } else {
+    dropAnalysisEntry(groupId, entryId);
+  }
+}
+
+function onPointerUp(event: PointerEvent): void {
+  clearTouchDrag(event);
+}
+
+function onPointerCancel(event: PointerEvent): void {
+  clearTouchDrag(event);
+}
+
 function onKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape') return;
   if (selectedSource.value) {
@@ -238,8 +295,16 @@ function onKeydown(event: KeyboardEvent): void {
   cancelGroupRename();
 }
 
-onMounted(() => window.addEventListener('keydown', onKeydown));
-onUnmounted(() => window.removeEventListener('keydown', onKeydown));
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown);
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerCancel);
+});
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown);
+  window.removeEventListener('pointerup', onPointerUp);
+  window.removeEventListener('pointercancel', onPointerCancel);
+});
 </script>
 
 <template>
@@ -357,9 +422,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             @dragend.stop="draggedGroupId = null"
             @dragover.prevent
             @drop.prevent.stop="dropAnalysisGroup(group.id)"
+            @pointerup.stop="finishTouchGroupDrop($event, group.id)"
+            @pointercancel.stop="cancelTouchDrag"
           >
             <header>
-              <span class="drag-mark" aria-hidden="true">⠿</span>
+              <span class="drag-mark" aria-hidden="true" @pointerdown.stop="beginTouchGroupDrag($event, group.id)">⠿</span>
               <template v-if="editingGroupNameId === group.id">
                 <form class="analysis-group-rename" @submit.prevent="saveGroupRename">
                   <input v-model="editingGroupNameDraft" type="text" maxlength="80" aria-label="时间线组名称" />
@@ -374,7 +441,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               <span>{{ group.entries.length }} 条目</span>
             </header>
 
-            <div class="analysis-entry-list" @dragover.prevent @drop.prevent.stop="dropAnalysisEntry(group.id)">
+            <div
+              class="analysis-entry-list"
+              @dragover.prevent
+              @drop.prevent.stop="dropAnalysisEntry(group.id)"
+              @pointerup.stop="finishTouchEntryDrop($event, group.id)"
+              @pointercancel.stop="cancelTouchDrag"
+            >
               <article
                 v-for="entry in group.entries"
                 :key="entry.entryId"
@@ -384,9 +457,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 @dragend.stop="draggedEntry = null"
                 @dragover.prevent
                 @drop.prevent.stop="dropAnalysisEntry(group.id, entry.entryId)"
+                @pointerup.stop="finishTouchEntryDrop($event, group.id, entry.entryId)"
+                @pointercancel.stop="cancelTouchDrag"
               >
                 <template v-if="!isEditing(group, entry)">
-                  <span class="drag-mark" aria-hidden="true">⠿</span>
+                  <span
+                    class="drag-mark"
+                    aria-hidden="true"
+                    @pointerdown.stop="beginTouchEntryDrag($event, entry.entryId, group.id)"
+                  >⠿</span>
                   <input
                     type="checkbox"
                     :checked="entry.selected"
