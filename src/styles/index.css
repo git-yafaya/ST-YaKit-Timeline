@@ -2073,23 +2073,6 @@ h2 {
   width: min(680px, 100%);
 }
 
-.settings-update-dialog {
-  width: min(520px, 100%);
-}
-
-.settings-update-confirm-body p {
-  color: var(--tl-text);
-  line-height: 1.6;
-}
-
-.settings-update-confirm-body small {
-  display: block;
-  margin-top: 12px;
-  color: var(--tl-text-muted);
-  font-size: 11px;
-  line-height: 17px;
-}
-
 .dialog-hint {
   margin-top: 12px;
 }
@@ -3217,6 +3200,11 @@ h2 {
 .settings-update-action:focus-visible {
   border-color: var(--tl-primary-border-heavy);
   background: var(--tl-primary-surface-medium);
+}
+
+.settings-update-action:disabled {
+  cursor: progress;
+  opacity: 0.72;
 }
 
 .settings-version-message {
