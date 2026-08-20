@@ -60,6 +60,45 @@ function bindMenuItem(menu: HTMLElement, menuItem: HTMLElement): void {
   menuItem.dataset.yakitTimelineBound = 'true';
 }
 
+function bindMagicWandButton(button: HTMLElement): void {
+  if (button.dataset.yakitTimelineTouchBound === 'true') return;
+
+  let lastTouchActivation = 0;
+  let forwardingClick = false;
+
+  // The host only listens for click. On mobile ST sets body touch-action:none,
+  // so a real tap may never synthesize that click. Forward one touch activation
+  // to the host button, then suppress any duplicate browser-generated click.
+  button.addEventListener('click', event => {
+    if (forwardingClick) {
+      forwardingClick = false;
+      return;
+    }
+    if (Date.now() - lastTouchActivation < 700) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
+
+  const activateTouch = (event: Event): void => {
+    const now = Date.now();
+    if (now - lastTouchActivation < 500) return;
+    lastTouchActivation = now;
+    event.preventDefault();
+    event.stopPropagation();
+    forwardingClick = true;
+    button.click();
+    forwardingClick = false;
+  };
+
+  button.addEventListener('pointerup', event => {
+    if ((event as PointerEvent).pointerType !== 'mouse') activateTouch(event);
+  });
+  button.addEventListener('touchend', event => activateTouch(event), { passive: false });
+  button.style.touchAction = 'manipulation';
+  button.dataset.yakitTimelineTouchBound = 'true';
+}
+
 function injectMenuButton(): boolean {
   const menu = document.getElementById('extensionsMenu');
   if (!menu) return false;
@@ -67,22 +106,25 @@ function injectMenuButton(): boolean {
   const existingMenuItem = document.getElementById(MENU_ITEM_ID);
   if (existingMenuItem) {
     bindMenuItem(menu, existingMenuItem);
-    return true;
+  } else {
+    const container = document.createElement('div');
+    container.className = 'extension_container interactable';
+    container.innerHTML = `
+      <a id="${MENU_ITEM_ID}" class="list-group-item" href="#" title="${PRODUCT_NAME}">
+        <i class="fa-solid fa-timeline"></i>
+        <span>${PRODUCT_NAME}</span>
+      </a>
+    `;
+
+    const menuItem = container.querySelector<HTMLElement>(`#${MENU_ITEM_ID}`);
+    if (!menuItem) return false;
+    bindMenuItem(menu, menuItem);
+    menu.appendChild(container);
   }
 
-  const container = document.createElement('div');
-  container.className = 'extension_container interactable';
-  container.innerHTML = `
-    <a id="${MENU_ITEM_ID}" class="list-group-item" href="#" title="${PRODUCT_NAME}">
-      <i class="fa-solid fa-timeline"></i>
-      <span>${PRODUCT_NAME}</span>
-    </a>
-  `;
-
-  const menuItem = container.querySelector<HTMLElement>(`#${MENU_ITEM_ID}`);
-  if (!menuItem) return false;
-  bindMenuItem(menu, menuItem);
-  menu.appendChild(container);
+  const magicWandButton = document.getElementById('extensionsMenuButton');
+  if (!magicWandButton) return false;
+  bindMagicWandButton(magicWandButton);
   return true;
 }
 
