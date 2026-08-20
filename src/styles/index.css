@@ -250,7 +250,14 @@ button {
 
 .get-time,
 .context-get-time {
+  cursor: pointer;
   transition: transform 120ms ease, color 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.get-time:hover:not(:disabled),
+.context-get-time:hover:not(:disabled) {
+  border-color: var(--tl-primary-border-medium);
+  background: var(--tl-primary-surface-soft);
 }
 
 .get-time:active:not(:disabled),
