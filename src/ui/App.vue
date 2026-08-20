@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { AnalysisValidationError, runTimelineScan } from '@/analysis/scanner';
 import { TECHNICAL_NAME, VERSION } from '@/branding';
-import { generateTimelineAnalysis } from '@/st/ai-adapter';
+import { generateTimelineAnalysis, testAiConnection } from '@/st/ai-adapter';
 import {
   buildWorldbookTimelineConfig,
   createTimelineGroup,
@@ -1137,36 +1137,22 @@ async function requestModels(nextSettings: AiSettings): Promise<void> {
 async function testConnection(nextSettings: AiSettings): Promise<void> {
   const provider = nextSettings.provider;
   const connectionVersion = ++connectionRequestVersions[provider];
-  const modelVersion = ++modelRequestVersions[provider];
   const connection = connectionStates[provider];
-  const catalog = modelCatalogs[provider];
   connection.status = 'testing';
   connection.message = '正在测试连接…';
-  catalog.status = 'loading';
-  catalog.message = '';
 
   try {
-    const models = await fetchAvailableModels(nextSettings);
+    const result = await testAiConnection(nextSettings, new AbortController().signal);
     if (connectionVersion !== connectionRequestVersions[provider]) return;
     connection.status = 'connected';
-    connection.message = `连接成功，可用模型 ${models.length} 个`;
+    connection.message = `连接成功，${result}`;
     appendSystemLog('success', 'API 连接测试成功', connection.message, 'api');
-    if (modelVersion === modelRequestVersions[provider]) {
-      catalog.models = models;
-      catalog.status = 'loaded';
-      catalog.message = `已获取 ${models.length} 个模型`;
-    }
   } catch (error) {
     if (connectionVersion !== connectionRequestVersions[provider]) return;
     const message = error instanceof Error ? error.message : '连接测试失败';
     connection.status = 'error';
     connection.message = message;
     appendSystemLog('error', 'API 连接测试失败', message, 'api');
-    if (modelVersion === modelRequestVersions[provider]) {
-      catalog.models = [];
-      catalog.status = 'error';
-      catalog.message = message;
-    }
   }
 }
 

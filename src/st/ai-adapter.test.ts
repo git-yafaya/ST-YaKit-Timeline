@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { extractAiResponseText, generateTimelineAnalysis } from '@/st/ai-adapter';
+import { extractAiResponseText, generateTimelineAnalysis, testAiConnection } from '@/st/ai-adapter';
 import { DEFAULT_SETTINGS } from '@/ui/settings-store';
 
 function installContext(context: Record<string, unknown>): void {
@@ -133,6 +133,26 @@ describe('SillyTavern AI adapter', () => {
       proxy_password: 'test-key',
       model: 'backup-model',
     });
+  });
+
+  it('测试连接会发送最小真实请求并校验有效 JSON', async () => {
+    const generateRaw = vi.fn().mockResolvedValue('{"groups":[]}');
+    installContext({ mainApi: 'openai', generateRaw });
+
+    await expect(testAiConnection(DEFAULT_SETTINGS.ai, new AbortController().signal))
+      .resolves.toBe('AI 已返回有效 JSON');
+    expect(generateRaw).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: expect.stringContaining('YaKit-理脉 AI 连通性测试'),
+      responseLength: 256,
+    }));
+  });
+
+  it('测试连接拒绝非 JSON 或缺少 groups 的响应', async () => {
+    const generateRaw = vi.fn().mockResolvedValue('我无法处理这个请求');
+    installContext({ mainApi: 'openai', generateRaw });
+
+    await expect(testAiConnection(DEFAULT_SETTINGS.ai, new AbortController().signal))
+      .rejects.toThrow('未返回有效的时间线 JSON');
   });
 
   it('rejects an incomplete independent configuration before sending a request', async () => {

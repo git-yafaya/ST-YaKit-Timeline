@@ -28,6 +28,11 @@ const STRUCTURED_SCHEMA = {
   value: TIMELINE_ANALYSIS_JSON_SCHEMA,
 };
 
+const CONNECTION_TEST_PROMPT = [
+  '这是 YaKit-理脉 AI 连通性测试，不要分析任何世界书内容。',
+  '请只返回最小合法 JSON：{"groups":[]}，不要返回 Markdown、解释或其他文字。',
+].join('\n');
+
 function getContext(): SillyTavernAiContext {
   const api = (globalThis as unknown as { SillyTavern?: SillyTavernAiApi }).SillyTavern;
   const context = api?.getContext();
@@ -235,4 +240,34 @@ export async function generateTimelineAnalysis(
   return settings.provider === 'independent'
     ? generateWithIndependentApi(context, settings, prompt, signal)
     : generateWithMainApi(context, settings, prompt, signal);
+}
+
+function parseConnectionResponse(value: unknown): void {
+  const direct = value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+  if (direct && Array.isArray(direct.groups)) return;
+
+  const text = extractAiResponseText(value).trim();
+  const unfenced = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+  try {
+    const parsed = JSON.parse(unfenced) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Array.isArray((parsed as Record<string, unknown>).groups)) {
+      return;
+    }
+  } catch {
+    // 统一报告为“返回内容无效”，避免把原始响应直接显示到设置页。
+  }
+  throw new Error('AI 已连接，但未返回有效的时间线 JSON 内容');
+}
+
+/** 发送最小真实生成请求，验证鉴权、模型调用和可解析响应，而不是只验证模型列表接口。 */
+export async function testAiConnection(settings: AiSettings, signal: AbortSignal): Promise<string> {
+  const response = await generateTimelineAnalysis(
+    { ...settings, maxOutputTokens: Math.min(256, Math.max(64, settings.maxOutputTokens)) },
+    CONNECTION_TEST_PROMPT,
+    signal,
+  );
+  parseConnectionResponse(response);
+  return 'AI 已返回有效 JSON';
 }
