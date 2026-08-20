@@ -1222,7 +1222,8 @@ async function updateInstalledExtension(): Promise<void> {
       extensionUpdateState.message = '当前已是最新版本。';
     } else {
       extensionUpdateState.status = 'updated';
-      extensionUpdateState.message = `更新完成${result.shortCommitHash ? `（${result.shortCommitHash}）` : ''}，请刷新页面后生效。`;
+      extensionUpdateState.message = `更新完成${result.shortCommitHash ? `（${result.shortCommitHash}）` : ''}，正在刷新页面…`;
+      globalThis.location.reload();
     }
   } catch (error) {
     extensionUpdateState.status = 'error';
