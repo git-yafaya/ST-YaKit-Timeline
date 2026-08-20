@@ -8,6 +8,8 @@ export interface ManagedTimelineEntry {
   boundaryDate?: string;
   confidence: number;
   contentHash: string;
+  /** 不保存正文，只保存用于条目重导匹配的不可逆指纹。 */
+  contentFingerprint?: string;
   contentStartDate?: string;
   displayTitle: string;
   effectiveEndDate: string | null;
@@ -91,6 +93,54 @@ async function contentHash(content: string): Promise<string> {
   const bytes = new TextEncoder().encode(content);
   const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
   return [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
+}
+
+function textTokens(value: string): string[] {
+  const normalized = value.toLocaleLowerCase('zh-CN').normalize('NFKC');
+  return [...normalized.matchAll(/[\p{L}\p{N}]+|[\u3400-\u9fff]/gu)].map(match => match[0]);
+}
+
+function fingerprintHash(value: string): bigint {
+  let hash = 14695981039346656037n;
+  for (const character of value) {
+    hash ^= BigInt(character.codePointAt(0) ?? 0);
+    hash = BigInt.asUintN(64, hash * 1099511628211n);
+  }
+  return hash;
+}
+
+/**
+ * 用正文词组的不可逆 Hash 集合记录粗粒度相似特征，避免把世界书正文写进插件配置。
+ * 该值只用于“疑似继承”候选，不能单独触发旧配置继承。
+ */
+function contentFingerprint(content: string): string {
+  const tokens = textTokens(content);
+  if (tokens.length === 0) return '';
+  const features = tokens.length > 1
+    ? tokens.map((token, index) => `${token} ${tokens[index + 1] ?? ''}`)
+    : tokens;
+  return [...new Set(features.map(feature => fingerprintHash(feature).toString(16).padStart(16, '0')))]
+    .slice(0, 96)
+    .join('.');
+}
+
+function fingerprintSimilarity(left: string | undefined, right: string | undefined): number {
+  if (!left || !right) return 0;
+  const leftTokens = new Set(left.split('.').filter(token => /^[\da-f]{1,16}$/i.test(token)));
+  const rightTokens = new Set(right.split('.').filter(token => /^[\da-f]{1,16}$/i.test(token)));
+  if (leftTokens.size === 0 || rightTokens.size === 0) return 0;
+  let intersection = 0;
+  for (const token of leftTokens) if (rightTokens.has(token)) intersection += 1;
+  return intersection / new Set([...leftTokens, ...rightTokens]).size;
+}
+
+function textSimilarity(left: string, right: string): number {
+  const leftTokens = new Set(textTokens(left));
+  const rightTokens = new Set(textTokens(right));
+  if (leftTokens.size === 0 || rightTokens.size === 0) return 0;
+  let intersection = 0;
+  for (const token of leftTokens) if (rightTokens.has(token)) intersection += 1;
+  return intersection / new Set([...leftTokens, ...rightTokens]).size;
 }
 
 function selectedGroups(draft: AnalysisDraft): Array<{
@@ -184,6 +234,7 @@ export async function buildWorldbookTimelineConfig(
         boundaryDate: draftEntry.boundaryDate,
         confidence: confidenceNumber(draftEntry.confidence),
         contentHash: await contentHash(source.content),
+        contentFingerprint: contentFingerprint(source.content),
         contentStartDate: draftEntry.contentStartDate,
         displayTitle: draftEntry.title.trim(),
         effectiveEndDate: isLast ? null : previousDate(draftEntry.boundaryDate!),
@@ -222,6 +273,7 @@ function isEntry(value: unknown): value is ManagedTimelineEntry {
     (typeof entry.entryId === 'string' || typeof entry.entryId === 'number') &&
     typeof entry.originalComment === 'string' &&
     typeof entry.contentHash === 'string' &&
+    (entry.contentFingerprint === undefined || typeof entry.contentFingerprint === 'string') &&
     typeof entry.displayTitle === 'string' &&
     typeof entry.effectiveStartDate === 'string' &&
     (entry.effectiveEndDate === null || typeof entry.effectiveEndDate === 'string') &&
@@ -549,13 +601,37 @@ function normalizedText(value: string): string {
   return value.trim().toLocaleLowerCase('zh-CN').replace(/\s+/g, ' ');
 }
 
-function matchedOldEntry(
-  entry: ManagedTimelineEntry,
+export interface WorldbookReconciliationSuggestion {
+  currentComment: string;
+  currentEntryId: EntryId;
+  groupName: string;
+  previousComment: string;
+  previousEntryId: EntryId;
+  previousKey: string;
+  score: number;
+}
+
+interface EntryCandidate {
+  groupId: string;
+  item: ManagedTimelineEntry;
+  key: string;
+}
+
+interface SimilarEntryCandidate extends EntryCandidate {
+  contentScore: number;
+  nameScore: number;
+  score: number;
+}
+
+interface MatchedEntry extends EntryCandidate {
+  kind: 'exact' | 'hash' | 'similar';
+}
+
+function oldEntryCandidates(
   previous: WorldbookTimelineConfig,
-  used: Set<string>,
   allowedGroupId?: string,
-): { entry: ManagedTimelineEntry; key: string } | null {
-  const candidates = previous.groups
+): EntryCandidate[] {
+  return previous.groups
     .filter(group => !allowedGroupId || group.id === allowedGroupId)
     .flatMap(group => group.entries
       .filter(item => !item.manualFields.includes('group') || group.id === allowedGroupId)
@@ -564,11 +640,61 @@ function matchedOldEntry(
         item,
         key: `${group.id}:${String(item.entryId)}`,
       })));
+}
+
+function stableOldEntryMatch(
+  entry: ManagedTimelineEntry,
+  previous: WorldbookTimelineConfig,
+  used: Set<string>,
+  allowedGroupId?: string,
+): MatchedEntry | null {
+  const candidates = oldEntryCandidates(previous, allowedGroupId);
   const exact = candidates.find(candidate => !used.has(candidate.key) && String(candidate.item.entryId) === String(entry.entryId));
   const hashed = candidates.find(candidate => !used.has(candidate.key) && candidate.item.contentHash === entry.contentHash);
-  // 名称相同只能作为“疑似继承”提示，不能静默继承旧日期或人工字段。
-  const found = exact ?? hashed;
-  return found ? { entry: found.item, key: found.key } : null;
+  if (exact) return { ...exact, kind: 'exact' };
+  if (hashed) return { ...hashed, kind: 'hash' };
+  return null;
+}
+
+function similarOldEntryMatch(
+  entry: ManagedTimelineEntry,
+  previous: WorldbookTimelineConfig,
+  used: Set<string>,
+  allowedGroupId?: string,
+): SimilarEntryCandidate | null {
+  const candidates = oldEntryCandidates(previous, allowedGroupId)
+    .filter(candidate => !used.has(candidate.key))
+    .map(candidate => {
+      const nameScore = textSimilarity(entry.originalComment, candidate.item.originalComment);
+      const contentScore = fingerprintSimilarity(entry.contentFingerprint, candidate.item.contentFingerprint);
+      return {
+        ...candidate,
+        contentScore,
+        nameScore,
+        score: nameScore * 0.35 + contentScore * 0.65,
+      };
+    })
+    .filter(candidate => candidate.nameScore >= 0.25 && candidate.contentScore >= 0.5 && candidate.score >= 0.58)
+    .sort((left, right) => right.score - left.score);
+
+  const best = candidates[0];
+  const second = candidates[1];
+  if (!best || (second && best.score - second.score < 0.08)) return null;
+  return best;
+}
+
+function matchedOldEntry(
+  entry: ManagedTimelineEntry,
+  previous: WorldbookTimelineConfig,
+  used: Set<string>,
+  allowedGroupId: string | undefined,
+  confirmedReconciliationKeys: ReadonlySet<string>,
+): MatchedEntry | null {
+  const stable = stableOldEntryMatch(entry, previous, used, allowedGroupId);
+  if (stable) return stable;
+  const similar = similarOldEntryMatch(entry, previous, used, allowedGroupId);
+  if (similar && confirmedReconciliationKeys.has(similar.key)) return { ...similar, kind: 'similar' };
+  return null;
 }
 
 function mergeEntry(
@@ -598,6 +724,47 @@ function mergeEntry(
 }
 
 /**
+ * 找出只能通过名称与正文指纹推断的条目继承候选。
+ * ID / Hash 已经足够确定的条目不会出现在结果中。
+ */
+export async function findWorldbookReconciliationSuggestions(
+  previous: WorldbookTimelineConfig,
+  draft: AnalysisDraft,
+  worldbook: WorldbookSnapshot,
+): Promise<WorldbookReconciliationSuggestion[]> {
+  const sanitizedPrevious = sanitizeWorldbookTimelineConfig(previous);
+  const incoming = await buildWorldbookTimelineConfig(draft, worldbook);
+  const used = new Set<string>();
+  const suggestions: WorldbookReconciliationSuggestion[] = [];
+
+  for (const nextGroup of incoming.groups) {
+    const oldGroup = sanitizedPrevious.groups.find(group => group.id === nextGroup.id)
+      ?? sanitizedPrevious.groups.find(group => normalizedText(group.name) === normalizedText(nextGroup.name));
+    for (const entry of nextGroup.entries) {
+      const stable = stableOldEntryMatch(entry, sanitizedPrevious, used, oldGroup?.id);
+      if (stable) {
+        used.add(stable.key);
+        continue;
+      }
+      const similar = similarOldEntryMatch(entry, sanitizedPrevious, used, oldGroup?.id);
+      if (!similar) continue;
+      used.add(similar.key);
+      suggestions.push({
+        currentComment: entry.originalComment,
+        currentEntryId: entry.entryId,
+        groupName: nextGroup.name,
+        previousComment: similar.item.originalComment,
+        previousEntryId: similar.item.entryId,
+        previousKey: similar.key,
+        score: Math.round(similar.score * 100),
+      });
+    }
+  }
+
+  return suggestions;
+}
+
+/**
  * 将新分析结果与旧正式配置合并。旧配置不会因重新分析而直接消失：
  * 无法重新匹配的旧条目会保留为 stale 且 managed=false，等待人工处理。
  */
@@ -606,20 +773,22 @@ export async function mergeWorldbookTimelineConfig(
   draft: AnalysisDraft,
   worldbook: WorldbookSnapshot,
   updatedAt = Date.now(),
+  confirmedReconciliationKeys: readonly string[] = [],
 ): Promise<WorldbookTimelineConfig> {
   const sanitizedPrevious = sanitizeWorldbookTimelineConfig(previous);
   const incoming = await buildWorldbookTimelineConfig(draft, worldbook, updatedAt);
   const used = new Set<string>();
+  const confirmed = new Set(confirmedReconciliationKeys);
   const groups: TimelineGroupConfig[] = [];
 
   for (const nextGroup of incoming.groups) {
     const oldGroup = sanitizedPrevious.groups.find(group => group.id === nextGroup.id)
       ?? sanitizedPrevious.groups.find(group => normalizedText(group.name) === normalizedText(nextGroup.name));
     const mergedEntries = nextGroup.entries.map(entry => {
-      const match = matchedOldEntry(entry, sanitizedPrevious, used, oldGroup?.id);
+      const match = matchedOldEntry(entry, sanitizedPrevious, used, oldGroup?.id, confirmed);
       if (!match) return entry;
       used.add(match.key);
-      return mergeEntry(entry, match.entry);
+      return mergeEntry(entry, match.item);
     });
     const retainedName = oldGroup?.nameLocked ? oldGroup.name : nextGroup.name;
     groups.push({

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildWorldbookTimelineConfig,
   detectWorldbookConfigStale,
+  findWorldbookReconciliationSuggestions,
   getDraftApplicationIssue,
   loadWorldbookTimelineConfig,
   mergeWorldbookTimelineConfig,
@@ -226,5 +227,72 @@ describe('worldbook timeline config', () => {
     expect(result.changed).toBe(true);
     expect(result.config.groups[0].entries[0]).toMatchObject({ managed: true, stale: true });
     expect(result.config.groups[0].entries[0].warnings[0]).toContain('正文');
+  });
+
+  it('为重导后 ID 变化的疑似条目生成候选，但未经确认不会继承旧映射', async () => {
+    const previousBook: WorldbookSnapshot = {
+      ...worldbook,
+      entries: [
+        {
+          id: 17,
+          comment: '世界线-17',
+          content: '米里希昂篇发生在 419年11月10日，主角抵达港口并开始调查。世界线继续推进，记录沿途线索与人物关系。',
+          enabled: true,
+        },
+        {
+          id: 18,
+          comment: '世界线-18',
+          content: '西部港篇发生在 420年2月10日，主角进入港口并继续调查。世界线继续推进，记录沿途线索与人物关系。',
+          enabled: false,
+        },
+      ],
+    };
+    const previous = await buildWorldbookTimelineConfig(draft, previousBook, 12345);
+    const changedBook: WorldbookSnapshot = {
+      ...worldbook,
+      entries: [
+        {
+          id: 117,
+          comment: '世界线-17（重导）',
+          content: '米里希昂篇发生在 419年11月10日，主角抵达港口并开始调查。世界线继续推进，记录沿途线索与人物关系，并补充新的线索。',
+          enabled: true,
+        },
+        {
+          id: 118,
+          comment: '世界线-18（重导）',
+          content: '西部港篇发生在 420年2月10日，主角进入港口并继续调查。世界线继续推进，记录沿途线索与人物关系，并补充新的线索。',
+          enabled: false,
+        },
+      ],
+    };
+    const nextDraft: AnalysisDraft = {
+      ...draft,
+      groups: [{
+        ...draft.groups[0],
+        entries: draft.groups[0].entries.map((entry, index) => ({
+          ...entry,
+          entryId: 117 + index,
+          sourceComment: `世界线-${17 + index}（重导）`,
+        })),
+      }],
+    };
+
+    const suggestions = await findWorldbookReconciliationSuggestions(previous, nextDraft, changedBook);
+    expect(suggestions).toHaveLength(2);
+    expect(suggestions[0]).toMatchObject({ previousEntryId: 17, currentEntryId: 117 });
+
+    const withoutConfirmation = await mergeWorldbookTimelineConfig(previous, nextDraft, changedBook, 99999);
+    expect(withoutConfirmation.groups[0].entries.some(entry => entry.entryId === 17 && entry.managed === false)).toBe(true);
+    expect(withoutConfirmation.groups[0].entries.some(entry => entry.entryId === 117 && entry.managed === true)).toBe(true);
+
+    const confirmed = await mergeWorldbookTimelineConfig(
+      previous,
+      nextDraft,
+      changedBook,
+      99999,
+      suggestions.map(suggestion => suggestion.previousKey),
+    );
+    expect(confirmed.groups[0].entries.some(entry => entry.entryId === 17)).toBe(false);
+    expect(confirmed.groups[0].entries[0]).toMatchObject({ entryId: 117, managed: true, stale: true });
   });
 });

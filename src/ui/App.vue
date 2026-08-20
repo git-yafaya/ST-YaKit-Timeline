@@ -9,6 +9,7 @@ import {
   deleteTimelineGroup,
   getDraftApplicationIssue,
   detectWorldbookConfigStale,
+  findWorldbookReconciliationSuggestions,
   isWorldbookTimelineConfig,
   loadWorldbookTimelineConfig,
   mergeTimelineGroups,
@@ -723,9 +724,36 @@ async function applyAnalysisDraft(): Promise<void> {
   analysisNotice.value = '';
   const hadExistingConfig = worldbookConfig.value !== null;
   try {
+    let confirmedReconciliationKeys: readonly string[] = [];
+    if (hadExistingConfig && worldbookConfig.value) {
+      const suggestions = await findWorldbookReconciliationSuggestions(worldbookConfig.value, draft, worldbook);
+      if (suggestions.length > 0) {
+        const details = suggestions.slice(0, 5).map(suggestion => (
+          `分组「${suggestion.groupName}」：${String(suggestion.previousEntryId)}「${suggestion.previousComment}」→ ${String(suggestion.currentEntryId)}「${suggestion.currentComment}」（相似度 ${suggestion.score}%）`
+        ));
+        const more = suggestions.length > details.length ? `\n另有 ${suggestions.length - details.length} 项候选未展开。` : '';
+        const message = [
+          '检测到疑似由重新导入或重排产生的旧条目映射。',
+          ...details,
+          more,
+          '确认后仅继承旧配置的人工字段；未确认则保留旧映射并停止自动切换。是否继承这些候选？',
+        ].filter(Boolean).join('\n');
+        if (typeof globalThis.confirm !== 'function' || !globalThis.confirm(message)) {
+          analysisNotice.value = '已取消疑似条目继承；旧配置保持不变。';
+          return;
+        }
+        confirmedReconciliationKeys = suggestions.map(suggestion => suggestion.previousKey);
+        appendSystemLog(
+          'warning',
+          '确认疑似条目继承',
+          `已确认 ${suggestions.length} 项世界书条目重匹配候选。`,
+          'config',
+        );
+      }
+    }
     const config = hadExistingConfig
       && worldbookConfig.value
-      ? await mergeWorldbookTimelineConfig(worldbookConfig.value, draft, worldbook)
+      ? await mergeWorldbookTimelineConfig(worldbookConfig.value, draft, worldbook, Date.now(), confirmedReconciliationKeys)
       : await buildWorldbookTimelineConfig(draft, worldbook);
     if (scopeKey !== hostScopeKey(hostScope.value)) {
       analysisError.value = { message: '角色、聊天或绑定世界书已变化，正式配置未保存。' };
