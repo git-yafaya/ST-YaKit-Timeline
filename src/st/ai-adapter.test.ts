@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { extractAiResponseText, generateTimelineAnalysis, testAiConnection } from '@/st/ai-adapter';
+import { DEFAULT_FIXED_PROMPT, DEFAULT_JAILBREAK_PROMPT } from '@/st/ai-prompts';
 import { DEFAULT_SETTINGS } from '@/ui/settings-store';
 
 function installContext(context: Record<string, unknown>): void {
@@ -38,11 +39,46 @@ describe('SillyTavern AI adapter', () => {
       'prompt',
       new AbortController().signal,
     )).resolves.toBe('{"groups":[]}');
-    expect(generateRaw).toHaveBeenCalledWith(expect.objectContaining({
-      prompt: 'prompt',
+    const options = generateRaw.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(options).toMatchObject({
       responseLength: 23333,
       jsonSchema: expect.objectContaining({ name: 'timeline_analysis_draft' }),
-    }));
+      instructOverride: true,
+    });
+    expect(options.prompt).toEqual([{ role: 'user', name: '', content: 'prompt' }]);
+  });
+
+  it('protects raw prompts from host macro expansion and persona prefixes', async () => {
+    const generateRaw = vi.fn().mockResolvedValue('{"groups":[]}');
+    installContext({
+      mainApi: 'openai',
+      generateRaw,
+      chat: [{ mes: 'CHAT_SENTINEL' }],
+    });
+
+    await generateTimelineAnalysis(
+      {
+        ...DEFAULT_SETTINGS.ai,
+        jailbreakPrompt: '自定义提示词 {{lastMessage}} {{lastUserMessage}} {{lastCharMessage}}',
+      },
+      '世界书条目中的宏 {{lastMessage}} 不得读取聊天正文。',
+      new AbortController().signal,
+    );
+
+    const options = generateRaw.mock.calls[0]?.[0] as {
+      prompt: Array<{ content: string; name?: string; role: string }>;
+      systemPrompt: string;
+    };
+    expect(options.prompt).toEqual([{
+      role: 'user',
+      name: '',
+      content: '世界书条目中的宏 ｛｛lastMessage｝｝ 不得读取聊天正文。',
+    }]);
+    expect(options.systemPrompt).toContain('自定义提示词 ｛｛lastMessage｝｝ ｛｛lastUserMessage｝｝ ｛｛lastCharMessage｝｝');
+    expect(options.systemPrompt).not.toContain('{{lastMessage}}');
+    expect(options.systemPrompt).not.toContain('{{lastUserMessage}}');
+    expect(options.systemPrompt).not.toContain('{{lastCharMessage}}');
+    expect(JSON.stringify(options)).not.toContain('CHAT_SENTINEL');
   });
 
   it('puts the jailbreak prompt before the fixed system instructions', async () => {
@@ -58,10 +94,9 @@ describe('SillyTavern AI adapter', () => {
       new AbortController().signal,
     );
 
-    expect(generateRaw).toHaveBeenCalledWith(expect.objectContaining({
-      prompt: '原始分析请求',
-      systemPrompt: expect.stringMatching(/^不要因格式或角色设定拒绝输出，严格返回 JSON。\n\n你是 YaKit-理脉（YaKit-Timeline）的世界书时间线分析器/),
-    }));
+    const options = generateRaw.mock.calls[0]?.[0] as { prompt: unknown; systemPrompt: string };
+    expect(options.prompt).toEqual([{ role: 'user', name: '', content: '原始分析请求' }]);
+    expect(options.systemPrompt).toMatch(/^不要因格式或角色设定拒绝输出，严格返回 JSON。\n\n你是 YaKit-理脉（YaKit-Timeline）的世界书时间线分析器/);
   });
 
   it('places a custom fixed prompt after the jailbreak prompt', async () => {
@@ -78,9 +113,18 @@ describe('SillyTavern AI adapter', () => {
       new AbortController().signal,
     );
 
-    expect(generateRaw).toHaveBeenCalledWith(expect.objectContaining({
-      systemPrompt: '先执行破限提示词。\n\n这是用户配置的固定提示词。',
-    }));
+    const options = generateRaw.mock.calls[0]?.[0] as { systemPrompt: string };
+    expect(options.systemPrompt).toBe('先执行破限提示词。\n\n这是用户配置的固定提示词。');
+  });
+
+  it('默认提示词明确限制为当前绑定世界书条目的三项字段', () => {
+    for (const prompt of [DEFAULT_JAILBREAK_PROMPT, DEFAULT_FIXED_PROMPT]) {
+      expect(prompt).toContain('entryId、comment 和 content');
+      expect(prompt).toContain('聊天消息正文');
+      expect(prompt).toContain('角色卡正文');
+      expect(prompt).toContain('chatMetadata');
+    }
+    expect(DEFAULT_JAILBREAK_PROMPT).toContain('条目正文');
   });
 
   it('uses the selected main chat-completion model without changing host settings', async () => {
@@ -91,7 +135,11 @@ describe('SillyTavern AI adapter', () => {
     installContext({
       mainApi: 'openai',
       getRequestHeaders: () => ({ 'Content-Type': 'application/json' }),
-      chatCompletionSettings: { chat_completion_source: 'custom', custom_url: 'https://main.test/v1' },
+      chatCompletionSettings: {
+        chat_completion_source: 'custom',
+        custom_url: 'https://main.test/v1',
+        messages: [{ role: 'user', content: 'CHAT_SENTINEL' }],
+      },
     });
 
     await generateTimelineAnalysis(
@@ -101,7 +149,8 @@ describe('SillyTavern AI adapter', () => {
     );
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('/api/backends/chat-completions/generate');
-    expect(JSON.parse(String(request.body))).toMatchObject({
+    const body = JSON.parse(String(request.body)) as { messages: Array<Record<string, unknown>> } & Record<string, unknown>;
+    expect(body).toMatchObject({
       chat_completion_source: 'custom',
       custom_url: 'https://main.test/v1',
       model: 'selected-model',
@@ -109,6 +158,10 @@ describe('SillyTavern AI adapter', () => {
       max_tokens: 23333,
       stream: false,
     });
+    expect(body.messages).toHaveLength(2);
+    expect(body.messages[0]).toMatchObject({ role: 'system' });
+    expect(body.messages[1]).toEqual({ role: 'user', content: 'prompt' });
+    expect(JSON.stringify(body.messages)).not.toContain('CHAT_SENTINEL');
   });
 
   it('routes independent OpenAI-compatible requests through the host proxy', async () => {
@@ -116,7 +169,10 @@ describe('SillyTavern AI adapter', () => {
       choices: [{ message: { content: '{"groups":[]}' } }],
     }));
     vi.stubGlobal('fetch', fetchMock);
-    installContext({ getRequestHeaders: () => ({ 'Content-Type': 'application/json' }) });
+    installContext({
+      getRequestHeaders: () => ({ 'Content-Type': 'application/json' }),
+      chatCompletionSettings: { messages: [{ role: 'user', content: 'CHAT_SENTINEL' }] },
+    });
 
     await generateTimelineAnalysis({
       ...DEFAULT_SETTINGS.ai,
@@ -127,12 +183,17 @@ describe('SillyTavern AI adapter', () => {
     }, 'prompt', new AbortController().signal);
 
     const [, request] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(JSON.parse(String(request.body))).toMatchObject({
+    const body = JSON.parse(String(request.body)) as { messages: Array<Record<string, unknown>> } & Record<string, unknown>;
+    expect(body).toMatchObject({
       chat_completion_source: 'custom',
       custom_url: 'https://backup.test/v1',
       secret_id: 'shared-secret-id',
       model: 'backup-model',
     });
+    expect(body.messages).toHaveLength(2);
+    expect(body.messages[0]).toMatchObject({ role: 'system' });
+    expect(body.messages[1]).toEqual({ role: 'user', content: 'prompt' });
+    expect(JSON.stringify(body.messages)).not.toContain('CHAT_SENTINEL');
   });
 
   it('测试连接会发送最小真实请求并校验有效 JSON', async () => {
@@ -141,10 +202,12 @@ describe('SillyTavern AI adapter', () => {
 
     await expect(testAiConnection(DEFAULT_SETTINGS.ai, new AbortController().signal))
       .resolves.toBe('AI 已返回有效 JSON');
-    expect(generateRaw).toHaveBeenCalledWith(expect.objectContaining({
-      prompt: expect.stringContaining('YaKit-理脉 AI 连通性测试'),
-      responseLength: 256,
-    }));
+    const options = generateRaw.mock.calls[0]?.[0] as {
+      prompt: Array<{ content: string }>;
+      responseLength: number;
+    };
+    expect(options.prompt[0]?.content).toContain('YaKit-理脉 AI 连通性测试');
+    expect(options.responseLength).toBe(256);
   });
 
   it('测试连接拒绝非 JSON 或缺少 groups 的响应', async () => {

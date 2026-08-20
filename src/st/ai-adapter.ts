@@ -4,9 +4,10 @@ import type { AiSettings } from '@/ui/pages/settings';
 
 interface GenerateRawOptions {
   jsonSchema?: Record<string, unknown>;
-  prompt: string;
+  prompt: string | Array<{ content: string; name?: string; role: 'assistant' | 'system' | 'user' }>;
   responseLength?: number;
   systemPrompt?: string;
+  instructOverride?: boolean;
 }
 
 interface SillyTavernAiContext {
@@ -32,6 +33,11 @@ const CONNECTION_TEST_PROMPT = [
   '这是 YaKit-理脉 AI 连通性测试，不要分析任何世界书内容。',
   '请只返回最小合法 JSON：{"groups":[]}，不要返回 Markdown、解释或其他文字。',
 ].join('\n');
+
+/** 防止宿主整理 raw prompt 时执行 ST 宏。 */
+function protectRawPromptMacros(value: string): string {
+  return value.replaceAll('{{', '｛｛').replaceAll('}}', '｝｝');
+}
 
 function getContext(): SillyTavernAiContext {
   const api = (globalThis as unknown as { SillyTavern?: SillyTavernAiApi }).SillyTavern;
@@ -192,10 +198,15 @@ async function generateWithMainApi(
   try {
     return await Promise.race([
       context.generateRaw({
-        prompt,
-        systemPrompt: systemPrompt(settings),
+        prompt: [{
+          role: 'user',
+          name: '',
+          content: protectRawPromptMacros(prompt),
+        }],
+        systemPrompt: protectRawPromptMacros(systemPrompt(settings)),
         responseLength: settings.maxOutputTokens,
         jsonSchema: STRUCTURED_SCHEMA,
+        instructOverride: true,
       }),
       interrupted,
     ]);
