@@ -7,6 +7,7 @@ import type {
   ThemeMode,
 } from '@/ui/pages/settings';
 import { SETTINGS_NAMESPACE } from '@/branding';
+import { DEFAULT_FIXED_PROMPT } from '@/st/ai-prompts';
 const ALLOWED_JUMP_NOTICE_DAYS = new Set([5, 10, 15, 20, 25, 30]);
 
 export const DEFAULT_SETTINGS: SettingsSnapshot = {
@@ -15,6 +16,7 @@ export const DEFAULT_SETTINGS: SettingsSnapshot = {
     provider: 'sillytavern',
     apiUrl: '',
     apiKey: '',
+    fixedPrompt: DEFAULT_FIXED_PROMPT,
     jailbreakPrompt: '',
     model: '',
     temperature: 0.9,
@@ -36,6 +38,7 @@ interface TimelineGlobalSettingsRecord extends Record<string, unknown> {
 }
 
 interface TimelineAiSettingsRecord extends Record<string, unknown> {
+  fixedPrompt?: unknown;
   jailbreakPrompt?: unknown;
   mode?: unknown;
   openaiCompatible?: OpenAiCompatibleSettingsRecord;
@@ -160,6 +163,8 @@ export function loadSettings(fallback: SettingsSnapshot): SettingsSnapshot {
       provider: isApiProvider(storedAi?.mode) ? storedAi.mode : fallback.ai.provider,
       apiUrl: storedString(openAiCompatible?.baseUrl, fallback.ai.apiUrl),
       apiKey: storedString(openAiCompatible?.apiKey, fallback.ai.apiKey),
+      fixedPrompt: storedString(storedAi?.fixedPrompt, fallback.ai.fixedPrompt).trim()
+        || fallback.ai.fixedPrompt,
       jailbreakPrompt: storedString(storedAi?.jailbreakPrompt, fallback.ai.jailbreakPrompt),
       model: storedString(openAiCompatible?.model, fallback.ai.model),
       temperature: storedNumber(
@@ -212,6 +217,8 @@ export function saveAiSettings(settings: AiSettings): boolean {
     provider: isApiProvider(settings.provider) ? settings.provider : DEFAULT_SETTINGS.ai.provider,
     apiUrl: storedString(settings.apiUrl, DEFAULT_SETTINGS.ai.apiUrl),
     apiKey: storedString(settings.apiKey, DEFAULT_SETTINGS.ai.apiKey),
+    fixedPrompt: storedString(settings.fixedPrompt, DEFAULT_SETTINGS.ai.fixedPrompt).trim()
+      || DEFAULT_SETTINGS.ai.fixedPrompt,
     jailbreakPrompt: storedString(settings.jailbreakPrompt, DEFAULT_SETTINGS.ai.jailbreakPrompt),
     model: storedString(settings.model, DEFAULT_SETTINGS.ai.model),
     temperature: storedNumber(
@@ -247,6 +254,7 @@ export function saveAiSettings(settings: AiSettings): boolean {
       ai: {
         ...currentAi,
         mode: normalizedSettings.provider,
+        fixedPrompt: normalizedSettings.fixedPrompt,
         jailbreakPrompt: normalizedSettings.jailbreakPrompt,
         openaiCompatible: {
           ...currentOpenAiCompatible,

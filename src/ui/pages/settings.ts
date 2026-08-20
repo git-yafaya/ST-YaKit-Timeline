@@ -8,6 +8,7 @@ export type ModelLoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
 export interface AiSettings {
   apiKey: string;
   apiUrl: string;
+  fixedPrompt: string;
   jailbreakPrompt: string;
   maxOutputTokens: number;
   model: string;

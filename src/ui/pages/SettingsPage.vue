@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 import { PRODUCT_NAME } from '@/branding';
+import { DEFAULT_FIXED_PROMPT } from '@/st/ai-prompts';
 import DeepListbox from '@/ui/components/DeepListbox.vue';
 import type { DeepListboxOption } from '@/ui/components/deep-listbox';
 import type {
@@ -56,8 +57,11 @@ const providerDraft = ref<ApiProvider>('sillytavern');
 const apiUrlDraft = ref('');
 const apiKeyDraft = ref('');
 const jailbreakPromptDraft = ref('');
+const fixedPromptDraft = ref('');
 const jailbreakPromptDialogOpen = ref(false);
 const jailbreakPromptModalDraft = ref('');
+const fixedPromptDialogOpen = ref(false);
+const fixedPromptModalDraft = ref('');
 const modelDraft = ref('');
 const temperatureDraft = ref(0.9);
 const maxTokensDraft = ref(23333);
@@ -66,11 +70,12 @@ const jumpDaysDraft = ref('5');
 const showApiKey = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 const jailbreakPromptDialogInput = ref<HTMLTextAreaElement | null>(null);
+const fixedPromptDialogInput = ref<HTMLTextAreaElement | null>(null);
 
 const categories: ReadonlyArray<{ description: string; id: SettingsCategory; label: string }> = [
   { id: 'general', label: '常规', description: '基础行为与显示偏好' },
   { id: 'analysis', label: 'AI 分析', description: '模型、接口与连接' },
-  { id: 'prompts', label: '自定义提示词', description: '破限指令与后续扩展提示' },
+  { id: 'prompts', label: '自定义提示词', description: '破限、固定与后续扩展提示' },
   { id: 'automation', label: '自动切换', description: '时间变化与提醒' },
   { id: 'data', label: '数据管理', description: '导入、导出与安全' },
 ];
@@ -116,6 +121,10 @@ const jailbreakPromptSummary = computed(() => {
   const length = jailbreakPromptDraft.value.trim().length;
   return length > 0 ? `已填写 ${length} 字` : '未设置，点击编辑';
 });
+const fixedPromptSummary = computed(() => {
+  const length = fixedPromptDraft.value.trim().length;
+  return length > 0 ? `已填写 ${length} 字` : '将使用默认固定提示词';
+});
 
 watch(
   () => props.settings,
@@ -126,6 +135,7 @@ watch(
     apiUrlDraft.value = settings.ai.apiUrl;
     apiKeyDraft.value = settings.ai.apiKey;
     jailbreakPromptDraft.value = settings.ai.jailbreakPrompt;
+    fixedPromptDraft.value = settings.ai.fixedPrompt;
     modelDraft.value = settings.ai.model;
     temperatureDraft.value = settings.ai.temperature;
     maxTokensDraft.value = settings.ai.maxOutputTokens;
@@ -142,6 +152,7 @@ function currentAiSettings(): AiSettings {
     apiUrl: apiUrlDraft.value.trim(),
     apiKey: apiKeyDraft.value,
     jailbreakPrompt: jailbreakPromptDraft.value,
+    fixedPrompt: fixedPromptDraft.value.trim() ? fixedPromptDraft.value : DEFAULT_FIXED_PROMPT,
     model: modelDraft.value.trim(),
     temperature: Math.max(0, Math.min(2, Number(temperatureDraft.value) || 0)),
     maxOutputTokens: Math.max(1, Math.round(Number(maxTokensDraft.value) || 1)),
@@ -199,6 +210,23 @@ function closeJailbreakPromptDialog(): void {
 function saveJailbreakPromptDialog(): void {
   jailbreakPromptDraft.value = jailbreakPromptModalDraft.value;
   closeJailbreakPromptDialog();
+  saveAi();
+}
+
+async function openFixedPromptDialog(): Promise<void> {
+  fixedPromptModalDraft.value = fixedPromptDraft.value;
+  fixedPromptDialogOpen.value = true;
+  await nextTick();
+  fixedPromptDialogInput.value?.focus();
+}
+
+function closeFixedPromptDialog(): void {
+  fixedPromptDialogOpen.value = false;
+}
+
+function saveFixedPromptDialog(): void {
+  fixedPromptDraft.value = fixedPromptModalDraft.value.trim() ? fixedPromptModalDraft.value : DEFAULT_FIXED_PROMPT;
+  closeFixedPromptDialog();
   saveAi();
 }
 
@@ -401,8 +429,23 @@ function onImportFile(event: Event): void {
                     </span>
                     <i aria-hidden="true">›</i>
                   </button>
+                  <button
+                    id="fixed-prompt-trigger"
+                    class="settings-prompt-card"
+                    type="button"
+                    aria-haspopup="dialog"
+                    :aria-expanded="fixedPromptDialogOpen"
+                    aria-controls="fixed-prompt-dialog"
+                    @click="openFixedPromptDialog"
+                  >
+                    <span>
+                      <strong>固定提示词</strong>
+                      <small>{{ fixedPromptSummary }}</small>
+                    </span>
+                    <i aria-hidden="true">›</i>
+                  </button>
                 </div>
-                <p class="settings-help settings-help--section">点击二级容器编辑破限提示词。发送顺序为：破限提示词 → 固定系统提示词 → 当前分析请求；后续提示项继续放在当前一级容器内。</p>
+                <p class="settings-help settings-help--section">点击二级容器编辑提示词。发送顺序为：破限提示词 → 固定提示词 → 当前分析请求；后续提示项继续放在当前一级容器内。</p>
                 <p
                   v-if="aiSaveStatus !== 'idle'"
                   :class="['settings-operation-status', `is-${aiSaveStatus}`]"
@@ -474,11 +517,47 @@ function onImportFile(event: Event): void {
               maxlength="6000"
               placeholder="仅在模型经常拒答或返回空内容时填写。"
             ></textarea>
-            <small>保存后按“破限提示词 → 固定系统提示词 → 当前分析请求”的顺序发送。请只填写你明确理解且愿意承担风险的内容。</small>
+            <small>保存后按“破限提示词 → 固定提示词 → 当前分析请求”的顺序发送。请只填写你明确理解且愿意承担风险的内容。</small>
           </label>
         </div>
         <footer>
           <button type="button" @click="closeJailbreakPromptDialog">取消</button>
+          <button class="confirm-action" type="submit">保存提示词</button>
+        </footer>
+      </form>
+    </div>
+
+    <div v-if="fixedPromptDialogOpen" class="group-dialog-overlay" @click.self="closeFixedPromptDialog">
+      <form
+        id="fixed-prompt-dialog"
+        class="group-dialog settings-prompt-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fixed-prompt-dialog-title"
+        @submit.prevent="saveFixedPromptDialog"
+      >
+        <header>
+          <div>
+            <h2 id="fixed-prompt-dialog-title">固定提示词</h2>
+            <p>自定义提示词 / 固定提示词</p>
+          </div>
+          <button type="button" aria-label="关闭固定提示词弹窗" @click="closeFixedPromptDialog">×</button>
+        </header>
+        <div class="group-dialog-body">
+          <label class="group-dialog-field">
+            <span>提示词内容</span>
+            <textarea
+              ref="fixedPromptDialogInput"
+              v-model="fixedPromptModalDraft"
+              rows="8"
+              maxlength="12000"
+              placeholder="用于约束每次时间线分析的固定要求。"
+            ></textarea>
+            <small>保存后作为固定提示词发送，位于破限提示词之后、当前分析请求之前。</small>
+          </label>
+        </div>
+        <footer>
+          <button type="button" @click="closeFixedPromptDialog">取消</button>
           <button class="confirm-action" type="submit">保存提示词</button>
         </footer>
       </form>

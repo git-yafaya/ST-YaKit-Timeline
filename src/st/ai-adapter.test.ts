@@ -64,6 +64,25 @@ describe('SillyTavern AI adapter', () => {
     }));
   });
 
+  it('places a custom fixed prompt after the jailbreak prompt', async () => {
+    const generateRaw = vi.fn().mockResolvedValue('{"groups":[]}');
+    installContext({ mainApi: 'openai', generateRaw });
+
+    await generateTimelineAnalysis(
+      {
+        ...DEFAULT_SETTINGS.ai,
+        jailbreakPrompt: '先执行破限提示词。',
+        fixedPrompt: '这是用户配置的固定提示词。',
+      },
+      '原始分析请求',
+      new AbortController().signal,
+    );
+
+    expect(generateRaw).toHaveBeenCalledWith(expect.objectContaining({
+      systemPrompt: '先执行破限提示词。\n\n这是用户配置的固定提示词。',
+    }));
+  });
+
   it('uses the selected main chat-completion model without changing host settings', async () => {
     const fetchMock = vi.fn().mockResolvedValue(response({
       choices: [{ message: { content: '{"groups":[]}' } }],

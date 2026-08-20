@@ -24,6 +24,7 @@ afterEach(() => {
 describe('settings persistence', () => {
   it('uses the configured AI defaults for new installations', () => {
     expect(DEFAULT_SETTINGS.ai).toMatchObject({
+      fixedPrompt: expect.stringContaining('世界书时间线配置分析器'),
       temperature: 0.9,
       maxOutputTokens: 23333,
       timeoutSeconds: 180,
@@ -39,6 +40,7 @@ describe('settings persistence', () => {
           largeJumpDays: 20,
           ai: {
             mode: 'independent',
+            fixedPrompt: 'fixed prompt',
             jailbreakPrompt: 'jailbreak prompt',
             openaiCompatible: {
               baseUrl: 'https://api.example.test/v1',
@@ -59,6 +61,7 @@ describe('settings persistence', () => {
         provider: 'independent',
         apiUrl: 'https://api.example.test/v1',
         apiKey: 'secret-key',
+        fixedPrompt: 'fixed prompt',
         jailbreakPrompt: 'jailbreak prompt',
         model: 'example-model',
         temperature: 0.7,
@@ -78,6 +81,7 @@ describe('settings persistence', () => {
           largeJumpDays: 365,
           ai: {
             mode: 'unknown',
+            fixedPrompt: '   ',
             openaiCompatible: {
               baseUrl: 42,
               apiKey: null,
@@ -158,6 +162,7 @@ describe('settings persistence', () => {
       provider: 'independent',
       apiUrl: 'https://api.example.test/v1',
       apiKey: 'secret-key',
+      fixedPrompt: 'fixed prompt',
       jailbreakPrompt: 'jailbreak prompt',
       model: 'example-model',
       temperature: 0.4,
@@ -175,6 +180,7 @@ describe('settings persistence', () => {
           ai: {
             scanStrategy: 'deep',
             mode: 'independent',
+            fixedPrompt: 'fixed prompt',
             jailbreakPrompt: 'jailbreak prompt',
             openaiCompatible: {
               organization: 'example-org',

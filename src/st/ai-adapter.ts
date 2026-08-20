@@ -1,4 +1,5 @@
 import { TIMELINE_ANALYSIS_JSON_SCHEMA } from '@/analysis/scanner';
+import { DEFAULT_FIXED_PROMPT } from '@/st/ai-prompts';
 import type { AiSettings } from '@/ui/pages/settings';
 
 interface GenerateRawOptions {
@@ -18,12 +19,6 @@ interface SillyTavernAiContext {
 interface SillyTavernAiApi {
   getContext: () => SillyTavernAiContext;
 }
-
-const SYSTEM_PROMPT = [
-  '你是 SillyTavern 世界书时间线配置分析器。',
-  '你只负责生成待用户确认的结构化草稿，绝不能声称已经修改世界书或接管条目。',
-  '严格遵守用户消息中给出的 JSON 结构、entryId 范围和日期格式。',
-].join('\n');
 
 const STRUCTURED_SCHEMA = {
   name: 'timeline_analysis_draft',
@@ -138,8 +133,10 @@ async function postChatCompletion(
 }
 
 function systemPrompt(settings: AiSettings): string {
-  const jailbreakPrompt = settings.jailbreakPrompt.trim();
-  return jailbreakPrompt ? `${jailbreakPrompt}\n\n${SYSTEM_PROMPT}` : SYSTEM_PROMPT;
+  return [
+    settings.jailbreakPrompt.trim(),
+    settings.fixedPrompt.trim() || DEFAULT_FIXED_PROMPT,
+  ].filter(Boolean).join('\n\n');
 }
 
 function messages(settings: AiSettings, prompt: string): Array<{ content: string; role: 'system' | 'user' }> {
