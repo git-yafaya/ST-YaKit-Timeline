@@ -120,8 +120,29 @@ button {
   align-items: center;
   gap: 10px;
   flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  color: var(--tl-text);
+  background: transparent;
   font-size: 20px;
   font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: color 160ms ease, opacity 160ms ease;
+}
+
+.timeline-brand:hover,
+.timeline-brand:focus-visible {
+  color: var(--tl-primary);
+}
+
+.timeline-brand:focus-visible {
+  outline: none;
+  border-radius: 6px;
+  box-shadow: var(--tl-focus-ring);
 }
 
 .timeline-brand i {

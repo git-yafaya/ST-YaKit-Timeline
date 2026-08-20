@@ -18,10 +18,15 @@ defineEmits<{
 <template>
   <nav class="timeline-nav" :aria-label="`${PRODUCT_NAME}主导航`">
     <div class="timeline-nav-main">
-      <div class="timeline-brand">
+      <button
+        class="timeline-brand"
+        type="button"
+        aria-label="返回总览"
+        @click="$emit('selectPage', 'overview')"
+      >
         <i class="fa-solid fa-timeline" aria-hidden="true"></i>
         <span>{{ PRODUCT_NAME }}</span>
-      </div>
+      </button>
 
       <div class="timeline-tabs timeline-tabs--desktop">
         <button
