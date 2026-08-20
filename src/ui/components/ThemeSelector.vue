@@ -176,7 +176,6 @@ function onThemeKeydown(event: KeyboardEvent, current: ThemeMode): void {
 
 .theme-selector-card:focus-visible {
   outline: none;
-  border-color: var(--tl-border-soft);
   box-shadow: var(--tl-shadow-card), var(--tl-focus-ring-strong);
 }
 

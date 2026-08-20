@@ -5,6 +5,7 @@ import { DEFAULT_FIXED_PROMPT, DEFAULT_JAILBREAK_PROMPT } from '@/st/ai-prompts'
 import DeepListbox from '@/ui/components/DeepListbox.vue';
 import ThemeSelector from '@/ui/components/ThemeSelector.vue';
 import type { DeepListboxOption } from '@/ui/components/deep-listbox';
+import { getPromptStatus } from '@/ui/prompt-status';
 import type { SharedSecondaryConnection } from '@/ui/shared-secondary-api';
 import type {
   AiSettings,
@@ -139,13 +140,37 @@ const modelStatusLabel = computed(() => {
   if (currentModelCatalog.value.status === 'idle') return '点击“获取模型”加载可用模型列表。';
   return currentModelCatalog.value.message;
 });
+const jailbreakPromptStatus = computed(() => getPromptStatus(
+  jailbreakPromptDraft.value,
+  DEFAULT_JAILBREAK_PROMPT,
+));
+const fixedPromptStatus = computed(() => getPromptStatus(
+  fixedPromptDraft.value,
+  DEFAULT_FIXED_PROMPT,
+));
+const jailbreakPromptModalStatus = computed(() => getPromptStatus(
+  jailbreakPromptModalDraft.value,
+  DEFAULT_JAILBREAK_PROMPT,
+));
+const fixedPromptModalStatus = computed(() => getPromptStatus(
+  fixedPromptModalDraft.value,
+  DEFAULT_FIXED_PROMPT,
+));
+const hasCustomizedPrompts = computed(() => (
+  jailbreakPromptStatus.value.isCustomized || fixedPromptStatus.value.isCustomized
+));
+
+function promptSummary(prompt: string, isCustomized: boolean): string {
+  const length = prompt.trim().length;
+  if (isCustomized) return length > 0 ? `自定义内容 · ${length} 字` : '自定义内容 · 当前为空';
+  return `预设内容 · ${length} 字`;
+}
+
 const jailbreakPromptSummary = computed(() => {
-  const length = jailbreakPromptDraft.value.trim().length;
-  return length > 0 ? `已填写 ${length} 字` : '未设置，点击编辑';
+  return promptSummary(jailbreakPromptDraft.value, jailbreakPromptStatus.value.isCustomized);
 });
 const fixedPromptSummary = computed(() => {
-  const length = fixedPromptDraft.value.trim().length;
-  return length > 0 ? `已填写 ${length} 字` : '将使用默认固定提示词';
+  return promptSummary(fixedPromptDraft.value, fixedPromptStatus.value.isCustomized);
 });
 
 watch(
@@ -388,7 +413,16 @@ function onImportFile(event: Event): void {
             :aria-controls="`settings-panel-${category.id}`"
             @click="toggleCategory(category.id)"
           >
-            <span><strong>{{ category.label }}</strong><small>{{ category.description }}</small></span>
+            <span>
+              <strong>
+                {{ category.label }}
+                <span
+                  v-if="category.id === 'prompts' && hasCustomizedPrompts"
+                  class="settings-category-status"
+                >含已修改项</span>
+              </strong>
+              <small>{{ category.description }}</small>
+            </span>
             <i aria-hidden="true"></i>
           </button>
 
@@ -402,14 +436,18 @@ function onImportFile(event: Event): void {
             >
               <div class="settings-accordion-inner">
               <template v-if="category.id === 'general'">
-                <div class="settings-section">
-                  <div class="settings-field">
-                    <span>主题</span>
+                <div class="settings-section settings-theme-section">
+                  <div class="settings-theme-row">
+                    <div class="settings-theme-copy">
+                      <strong>主题</strong>
+                      <span>选择 {{ PRODUCT_NAME }} 的颜色主题，不会修改 SillyTavern 全局主题。</span>
+                    </div>
                     <ThemeSelector
                       :model-value="themeDraft"
                       @update:model-value="selectTheme"
                     />
                   </div>
+                  <p class="settings-theme-help">跟随模式会根据 SillyTavern 当前主题自动匹配浅色或深色。</p>
                 </div>
                 <div class="settings-row">
                   <div><strong>切换成功通知</strong><p>时间线自动切换成功后显示提示消息。</p></div>
@@ -548,30 +586,36 @@ function onImportFile(event: Event): void {
                   <span class="settings-section-label">提示词内容</span>
                   <button
                     id="jailbreak-prompt-trigger"
-                    class="settings-prompt-card"
+                    :class="['settings-prompt-card', { 'is-customized': jailbreakPromptStatus.isCustomized }]"
                     type="button"
                     aria-haspopup="dialog"
                     :aria-expanded="jailbreakPromptDialogOpen"
                     aria-controls="jailbreak-prompt-dialog"
                     @click="openJailbreakPromptDialog"
                   >
-                    <span>
-                      <strong>破限提示词</strong>
+                    <span class="settings-prompt-card-copy">
+                      <span class="settings-prompt-card-heading">
+                        <strong>破限提示词</strong>
+                        <span :class="['settings-prompt-status', { 'is-customized': jailbreakPromptStatus.isCustomized }]">{{ jailbreakPromptStatus.label }}</span>
+                      </span>
                       <small>{{ jailbreakPromptSummary }}</small>
                     </span>
                     <i aria-hidden="true">›</i>
                   </button>
                   <button
                     id="fixed-prompt-trigger"
-                    class="settings-prompt-card"
+                    :class="['settings-prompt-card', { 'is-customized': fixedPromptStatus.isCustomized }]"
                     type="button"
                     aria-haspopup="dialog"
                     :aria-expanded="fixedPromptDialogOpen"
                     aria-controls="fixed-prompt-dialog"
                     @click="openFixedPromptDialog"
                   >
-                    <span>
-                      <strong>固定提示词</strong>
+                    <span class="settings-prompt-card-copy">
+                      <span class="settings-prompt-card-heading">
+                        <strong>固定提示词</strong>
+                        <span :class="['settings-prompt-status', { 'is-customized': fixedPromptStatus.isCustomized }]">{{ fixedPromptStatus.label }}</span>
+                      </span>
                       <small>{{ fixedPromptSummary }}</small>
                     </span>
                     <i aria-hidden="true">›</i>
@@ -634,7 +678,10 @@ function onImportFile(event: Event): void {
       >
         <header>
           <div>
-            <h2 id="jailbreak-prompt-dialog-title">破限提示词</h2>
+            <div class="settings-prompt-dialog-heading">
+              <h2 id="jailbreak-prompt-dialog-title">破限提示词</h2>
+              <span :class="['settings-prompt-status', { 'is-customized': jailbreakPromptModalStatus.isCustomized }]">{{ jailbreakPromptModalStatus.label }}</span>
+            </div>
             <p>自定义提示词 / 破限提示词</p>
           </div>
           <button type="button" aria-label="关闭破限提示词弹窗" @click="closeJailbreakPromptDialog">×</button>
@@ -673,7 +720,10 @@ function onImportFile(event: Event): void {
       >
         <header>
           <div>
-            <h2 id="fixed-prompt-dialog-title">固定提示词</h2>
+            <div class="settings-prompt-dialog-heading">
+              <h2 id="fixed-prompt-dialog-title">固定提示词</h2>
+              <span :class="['settings-prompt-status', { 'is-customized': fixedPromptModalStatus.isCustomized }]">{{ fixedPromptModalStatus.label }}</span>
+            </div>
             <p>自定义提示词 / 固定提示词</p>
           </div>
           <button type="button" aria-label="关闭固定提示词弹窗" @click="closeFixedPromptDialog">×</button>

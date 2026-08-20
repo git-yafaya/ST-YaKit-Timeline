@@ -8,8 +8,8 @@ export function normalizePromptText(value: string): string {
   return value.replace(/\r\n?/g, '\n').trim();
 }
 
-export function getPromptStatus(current: string, defaultValue: string): PromptStatus {
-  const isCustomized = normalizePromptText(current) !== normalizePromptText(defaultValue);
+export function getPromptStatus(value: string, defaultValue: string): PromptStatus {
+  const isCustomized = normalizePromptText(value) !== normalizePromptText(defaultValue);
 
   return {
     isCustomized,
