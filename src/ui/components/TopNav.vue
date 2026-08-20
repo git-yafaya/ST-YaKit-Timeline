@@ -10,7 +10,7 @@ defineProps<{
 
 defineEmits<{
   close: [];
-  getCurrentTime: [];
+  'get-current-time': [];
   selectPage: [page: TimelinePage];
 }>();
 </script>
@@ -40,10 +40,10 @@ defineEmits<{
           class="button button-secondary get-time"
           type="button"
           :disabled="timeActionBusy"
-          @click="$emit('getCurrentTime')"
+          @click="$emit('get-current-time')"
         >
           <span class="action-icon" aria-hidden="true">◷</span>
-          获取当前时间
+          {{ timeActionBusy ? '读取中…' : '获取当前时间' }}
         </button>
         <button class="icon-button" type="button" aria-label="关闭" @click="$emit('close')">
           <svg viewBox="0 0 24 24" aria-hidden="true">

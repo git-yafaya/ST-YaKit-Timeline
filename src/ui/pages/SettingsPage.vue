@@ -55,7 +55,6 @@ const notificationDraft = ref(true);
 const providerDraft = ref<ApiProvider>('sillytavern');
 const apiUrlDraft = ref('');
 const apiKeyDraft = ref('');
-const customPromptDraft = ref('');
 const jailbreakPromptDraft = ref('');
 const modelDraft = ref('');
 const temperatureDraft = ref(0.9);
@@ -68,7 +67,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const categories: ReadonlyArray<{ description: string; id: SettingsCategory; label: string }> = [
   { id: 'general', label: '常规', description: '基础行为与显示偏好' },
   { id: 'analysis', label: 'AI 分析', description: '模型、接口与连接' },
-  { id: 'prompts', label: '自定义提示词', description: '通用规则、破限指令与扩展提示' },
+  { id: 'prompts', label: '自定义提示词', description: '破限指令与后续扩展提示' },
   { id: 'automation', label: '自动切换', description: '时间变化与提醒' },
   { id: 'data', label: '数据管理', description: '导入、导出与安全' },
 ];
@@ -119,7 +118,6 @@ watch(
     providerDraft.value = settings.ai.provider;
     apiUrlDraft.value = settings.ai.apiUrl;
     apiKeyDraft.value = settings.ai.apiKey;
-    customPromptDraft.value = settings.ai.customPrompt;
     jailbreakPromptDraft.value = settings.ai.jailbreakPrompt;
     modelDraft.value = settings.ai.model;
     temperatureDraft.value = settings.ai.temperature;
@@ -136,7 +134,6 @@ function currentAiSettings(): AiSettings {
     provider: providerDraft.value,
     apiUrl: apiUrlDraft.value.trim(),
     apiKey: apiKeyDraft.value,
-    customPrompt: customPromptDraft.value,
     jailbreakPrompt: jailbreakPromptDraft.value,
     model: modelDraft.value.trim(),
     temperature: Math.max(0, Math.min(2, Number(temperatureDraft.value) || 0)),
@@ -366,16 +363,6 @@ function onImportFile(event: Event): void {
                 <div class="settings-section settings-ai-fields">
                   <span class="settings-section-label">提示词内容</span>
                   <label class="settings-field settings-textarea-field">
-                    <span>通用自定义提示词</span>
-                    <textarea
-                      v-model="customPromptDraft"
-                      rows="5"
-                      maxlength="6000"
-                      placeholder="例如：优先依据条目正文判断剧情阶段，不要臆造日期。"
-                    ></textarea>
-                    <small>会追加到每次时间线分析请求前，用于补充你的世界观规则或输出要求。</small>
-                  </label>
-                  <label class="settings-field settings-textarea-field">
                     <span>破限提示词</span>
                     <textarea
                       v-model="jailbreakPromptDraft"
@@ -383,9 +370,10 @@ function onImportFile(event: Event): void {
                       maxlength="6000"
                       placeholder="仅在模型经常拒答或返回空内容时填写。"
                     ></textarea>
-                    <small>会追加到系统指令后发送给模型。请只填写你明确理解且愿意承担风险的内容。</small>
+                    <small>发送顺序为：破限提示词 → 固定系统提示词 → 当前分析请求。请只填写你明确理解且愿意承担风险的内容。</small>
                   </label>
                 </div>
+                <p class="settings-help settings-help--section">当前一级容器只提供破限提示词；后续提示项会继续放在这里，不再增加二级“自定义提示词”。</p>
                 <div class="settings-actions">
                   <button class="settings-primary" type="button" @click="saveAi">保存 AI 设置</button>
                 </div>

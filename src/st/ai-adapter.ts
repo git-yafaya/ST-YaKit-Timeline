@@ -139,18 +139,13 @@ async function postChatCompletion(
 
 function systemPrompt(settings: AiSettings): string {
   const jailbreakPrompt = settings.jailbreakPrompt.trim();
-  return jailbreakPrompt ? `${SYSTEM_PROMPT}\n\n${jailbreakPrompt}` : SYSTEM_PROMPT;
-}
-
-function userPrompt(settings: AiSettings, prompt: string): string {
-  const customPrompt = settings.customPrompt.trim();
-  return customPrompt ? `${customPrompt}\n\n${prompt}` : prompt;
+  return jailbreakPrompt ? `${jailbreakPrompt}\n\n${SYSTEM_PROMPT}` : SYSTEM_PROMPT;
 }
 
 function messages(settings: AiSettings, prompt: string): Array<{ content: string; role: 'system' | 'user' }> {
   return [
     { role: 'system', content: systemPrompt(settings) },
-    { role: 'user', content: userPrompt(settings, prompt) },
+    { role: 'user', content: prompt },
   ];
 }
 
@@ -195,7 +190,7 @@ async function generateWithMainApi(
   try {
     return await Promise.race([
       context.generateRaw({
-        prompt: userPrompt(settings, prompt),
+        prompt,
         systemPrompt: systemPrompt(settings),
         responseLength: settings.maxOutputTokens,
         jsonSchema: STRUCTURED_SCHEMA,

@@ -145,14 +145,14 @@ describe('read-only SillyTavern adapter', () => {
     expect(removeListener.mock.calls.map(call => call[0])).toEqual(['ready', 'chat', 'character', 'worldbook']);
   });
 
-  it('只读取当前聊天最后一条 AI 消息', () => {
+  it('从末尾向前读取最近一条 AI 消息', () => {
     installContext({
       chat: [
         { is_user: false, is_system: false, mes: '旧 AI 消息' },
         { is_user: true, is_system: false, mes: '用户消息' },
       ],
     });
-    expect(readLastAssistantMessageText()).toBeNull();
+    expect(readLastAssistantMessageText()).toBe('旧 AI 消息');
 
     installContext({
       chat: [

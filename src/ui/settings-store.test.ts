@@ -39,7 +39,6 @@ describe('settings persistence', () => {
           largeJumpDays: 20,
           ai: {
             mode: 'independent',
-            customPrompt: 'custom prompt',
             jailbreakPrompt: 'jailbreak prompt',
             openaiCompatible: {
               baseUrl: 'https://api.example.test/v1',
@@ -60,7 +59,6 @@ describe('settings persistence', () => {
         provider: 'independent',
         apiUrl: 'https://api.example.test/v1',
         apiKey: 'secret-key',
-        customPrompt: 'custom prompt',
         jailbreakPrompt: 'jailbreak prompt',
         model: 'example-model',
         temperature: 0.7,
@@ -149,6 +147,7 @@ describe('settings persistence', () => {
           largeJumpDays: 25,
           ai: {
             scanStrategy: 'deep',
+            customPrompt: '已废弃的二级提示词',
             openaiCompatible: { organization: 'example-org' },
           },
         },
@@ -159,7 +158,6 @@ describe('settings persistence', () => {
       provider: 'independent',
       apiUrl: 'https://api.example.test/v1',
       apiKey: 'secret-key',
-      customPrompt: 'custom prompt',
       jailbreakPrompt: 'jailbreak prompt',
       model: 'example-model',
       temperature: 0.4,
@@ -177,7 +175,6 @@ describe('settings persistence', () => {
           ai: {
             scanStrategy: 'deep',
             mode: 'independent',
-            customPrompt: 'custom prompt',
             jailbreakPrompt: 'jailbreak prompt',
             openaiCompatible: {
               organization: 'example-org',

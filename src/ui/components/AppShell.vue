@@ -23,7 +23,7 @@ defineProps<{
 const emit = defineEmits<{
   close: [];
   confirmRollback: [];
-  getCurrentTime: [];
+  'get-current-time': [];
   rejectRollback: [];
   takeControl: [];
   selectPage: [page: TimelinePage];
@@ -47,7 +47,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         :active-page="activePage"
         :time-action-busy="timeActionBusy"
         @close="$emit('close')"
-        @get-current-time="$emit('getCurrentTime')"
+        @get-current-time="$emit('get-current-time')"
         @select-page="$emit('selectPage', $event)"
       />
       <ContextBar
@@ -59,7 +59,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         :time-action-busy="timeActionBusy"
         :worldbook-name="worldbookName"
         @confirm-rollback="$emit('confirmRollback')"
-        @get-current-time="$emit('getCurrentTime')"
+        @get-current-time="$emit('get-current-time')"
         @reject-rollback="$emit('rejectRollback')"
         @take-control="$emit('takeControl')"
       />

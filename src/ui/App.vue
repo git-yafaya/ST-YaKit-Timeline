@@ -393,7 +393,7 @@ function restoreChatState(snapshot: HostScopeSnapshot, config: WorldbookTimeline
   if (!saved) {
     runtimeNotice.value = '聊天状态保存失败；当前页面状态仍保留在内存中。';
   } else if (restored.source === 'last_ai') {
-    runtimeNotice.value = '已从当前聊天最后一条 AI 回复恢复故事时间。';
+    runtimeNotice.value = '已从当前聊天最近一条 AI 回复恢复故事时间。';
   } else if (!restored.state.currentTime && !restored.state.pendingRollback) {
     runtimeNotice.value = '⚠ 当前聊天尚未获得有效故事时间，请让 AI 输出完整 <wlog>。';
   } else if (!restored.state.pendingRollback) {
@@ -587,7 +587,29 @@ async function getCurrentTime(): Promise<void> {
       showMissingTimeNotice();
       return;
     }
+    const before = chatTimelineState.value?.currentTime;
     await applyStoryTimeCandidate(nextTime);
+    const after = chatTimelineState.value?.currentTime;
+    if (
+      before &&
+      after &&
+      before.year === nextTime.year &&
+      before.month === nextTime.month &&
+      before.day === nextTime.day &&
+      before.hour === nextTime.hour &&
+      before.minute === nextTime.minute &&
+      after.year === nextTime.year &&
+      after.month === nextTime.month &&
+      after.day === nextTime.day &&
+      after.hour === nextTime.hour &&
+      after.minute === nextTime.minute
+    ) {
+      runtimeNotice.value = `已重新读取当前故事时间：${formatStoryTime(nextTime)}。`;
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '读取当前时间失败。';
+    runtimeNotice.value = `获取当前时间失败：${message}`;
+    appendSystemLog('error', '获取当前时间失败', message, 'time');
   } finally {
     timeActionBusy.value = false;
   }

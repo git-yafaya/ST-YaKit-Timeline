@@ -23,8 +23,8 @@ withDefaults(
 
 defineEmits<{
   confirmRollback: [];
-  getCurrentTime: [];
-    rejectRollback: [];
+  'get-current-time': [];
+  rejectRollback: [];
   takeControl: [];
 }>();
 </script>
@@ -55,10 +55,10 @@ defineEmits<{
       class="button context-get-time"
       type="button"
       :disabled="timeActionBusy"
-      @click="$emit('getCurrentTime')"
+      @click="$emit('get-current-time')"
     >
       <span aria-hidden="true">◷</span>
-      获取当前时间
+      {{ timeActionBusy ? '读取中…' : '获取当前时间' }}
     </button>
 
     <div v-if="runtimeNotice" class="context-notice" role="status" aria-live="polite">

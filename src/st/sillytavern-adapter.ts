@@ -339,14 +339,17 @@ export async function readCurrentHostScope(): Promise<HostScopeSnapshot> {
   }
 }
 
-/** 只读取当前聊天最后一条 AI 消息；不会回溯更早历史。 */
+/** 从当前聊天末尾向前读取最近一条 AI 消息，允许用户消息暂时位于末尾。 */
 export function readLastAssistantMessageText(): string | null {
   const context = getContext();
   if (!Array.isArray(context?.chat) || context.chat.length === 0) return null;
 
-  const message = recordValue(context.chat.at(-1));
-  if (!message || message.is_user !== false || message.is_system === true) return null;
-  return typeof message.mes === 'string' ? message.mes : null;
+  for (let index = context.chat.length - 1; index >= 0; index -= 1) {
+    const message = recordValue(context.chat[index]);
+    if (!message || message.is_user !== false || message.is_system === true) continue;
+    if (typeof message.mes === 'string') return message.mes;
+  }
+  return null;
 }
 
 export function watchCurrentHostScope(listener: () => void | Promise<void>): () => void {
