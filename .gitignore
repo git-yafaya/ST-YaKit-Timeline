@@ -57,7 +57,7 @@ temp/
 !.vscode/settings.json
 
 # Local agent instructions
-/AGENT.md
+/AGENTS.md
 /工作日志.md
 /DESIGN.md
 /YaKit-Timeline 设计文档.md
