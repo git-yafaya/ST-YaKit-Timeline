@@ -27,10 +27,48 @@ function mountApp(): void {
   createApp(App).mount(mountPoint);
 }
 
+function bindMenuItem(menu: HTMLElement, menuItem: HTMLElement): void {
+  if (menuItem.dataset.yakitTimelineBound === 'true') return;
+
+  let lastTouchActivation = 0;
+  const activate = (event: Event): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    openTimeline();
+    menu.style.display = 'none';
+  };
+  const activateTouch = (event: Event): void => {
+    const now = Date.now();
+    if (now - lastTouchActivation < 500) return;
+    lastTouchActivation = now;
+    activate(event);
+  };
+
+  menuItem.addEventListener('click', event => {
+    if (Date.now() - lastTouchActivation < 700) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    activate(event);
+  });
+  menuItem.addEventListener('pointerup', event => {
+    if (event.pointerType !== 'mouse') activateTouch(event);
+  });
+  menuItem.addEventListener('touchend', event => activateTouch(event), { passive: false });
+  menuItem.style.touchAction = 'manipulation';
+  menuItem.dataset.yakitTimelineBound = 'true';
+}
+
 function injectMenuButton(): boolean {
   const menu = document.getElementById('extensionsMenu');
   if (!menu) return false;
-  if (document.getElementById(MENU_ITEM_ID)) return true;
+
+  const existingMenuItem = document.getElementById(MENU_ITEM_ID);
+  if (existingMenuItem) {
+    bindMenuItem(menu, existingMenuItem);
+    return true;
+  }
 
   const container = document.createElement('div');
   container.className = 'extension_container interactable';
@@ -41,11 +79,9 @@ function injectMenuButton(): boolean {
     </a>
   `;
 
-  container.addEventListener('click', event => {
-    event.preventDefault();
-    openTimeline();
-    menu.style.display = 'none';
-  });
+  const menuItem = container.querySelector<HTMLElement>(`#${MENU_ITEM_ID}`);
+  if (!menuItem) return false;
+  bindMenuItem(menu, menuItem);
   menu.appendChild(container);
   return true;
 }
