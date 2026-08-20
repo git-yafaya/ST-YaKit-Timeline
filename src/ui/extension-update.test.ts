@@ -39,7 +39,7 @@ describe('extension update service', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('updates only after the caller requests it and returns the host commit', async () => {
+  it('为一次更新操作只发起一次更新请求并返回宿主提交结果', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       isUpToDate: false,
       shortCommitHash: 'abc1234',
@@ -50,9 +50,11 @@ describe('extension update service', () => {
       isUpToDate: false,
       shortCommitHash: 'abc1234',
     });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith('/api/extensions/update', expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({ extensionName: 'ST-YaKit-Timeline', global: false }),
     }));
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/extensions/update');
   });
 });
