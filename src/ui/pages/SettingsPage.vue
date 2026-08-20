@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { PRODUCT_NAME } from '@/branding';
 import DeepListbox from '@/ui/components/DeepListbox.vue';
 import type { DeepListboxOption } from '@/ui/components/deep-listbox';
@@ -56,6 +56,8 @@ const providerDraft = ref<ApiProvider>('sillytavern');
 const apiUrlDraft = ref('');
 const apiKeyDraft = ref('');
 const jailbreakPromptDraft = ref('');
+const jailbreakPromptDialogOpen = ref(false);
+const jailbreakPromptModalDraft = ref('');
 const modelDraft = ref('');
 const temperatureDraft = ref(0.9);
 const maxTokensDraft = ref(23333);
@@ -63,6 +65,7 @@ const timeoutDraft = ref(180);
 const jumpDaysDraft = ref('5');
 const showApiKey = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
+const jailbreakPromptDialogInput = ref<HTMLTextAreaElement | null>(null);
 
 const categories: ReadonlyArray<{ description: string; id: SettingsCategory; label: string }> = [
   { id: 'general', label: '常规', description: '基础行为与显示偏好' },
@@ -108,6 +111,10 @@ const modelStatusLabel = computed(() => {
   if (currentModelCatalog.value.status === 'loading') return '正在获取模型…';
   if (currentModelCatalog.value.status === 'idle') return '点击“获取模型”加载可用模型列表。';
   return currentModelCatalog.value.message;
+});
+const jailbreakPromptSummary = computed(() => {
+  const length = jailbreakPromptDraft.value.trim().length;
+  return length > 0 ? `已填写 ${length} 字` : '未设置，点击编辑';
 });
 
 watch(
@@ -176,6 +183,23 @@ function requestModels(): void {
 
 function saveAi(): void {
   emit('saveAi', currentAiSettings());
+}
+
+async function openJailbreakPromptDialog(): Promise<void> {
+  jailbreakPromptModalDraft.value = jailbreakPromptDraft.value;
+  jailbreakPromptDialogOpen.value = true;
+  await nextTick();
+  jailbreakPromptDialogInput.value?.focus();
+}
+
+function closeJailbreakPromptDialog(): void {
+  jailbreakPromptDialogOpen.value = false;
+}
+
+function saveJailbreakPromptDialog(): void {
+  jailbreakPromptDraft.value = jailbreakPromptModalDraft.value;
+  closeJailbreakPromptDialog();
+  saveAi();
 }
 
 function testConnection(): void {
@@ -362,21 +386,23 @@ function onImportFile(event: Event): void {
               <template v-else-if="category.id === 'prompts'">
                 <div class="settings-section settings-ai-fields">
                   <span class="settings-section-label">提示词内容</span>
-                  <label class="settings-field settings-textarea-field">
-                    <span>破限提示词</span>
-                    <textarea
-                      v-model="jailbreakPromptDraft"
-                      rows="5"
-                      maxlength="6000"
-                      placeholder="仅在模型经常拒答或返回空内容时填写。"
-                    ></textarea>
-                    <small>发送顺序为：破限提示词 → 固定系统提示词 → 当前分析请求。请只填写你明确理解且愿意承担风险的内容。</small>
-                  </label>
+                  <button
+                    id="jailbreak-prompt-trigger"
+                    class="settings-prompt-card"
+                    type="button"
+                    aria-haspopup="dialog"
+                    :aria-expanded="jailbreakPromptDialogOpen"
+                    aria-controls="jailbreak-prompt-dialog"
+                    @click="openJailbreakPromptDialog"
+                  >
+                    <span>
+                      <strong>破限提示词</strong>
+                      <small>{{ jailbreakPromptSummary }}</small>
+                    </span>
+                    <i aria-hidden="true">›</i>
+                  </button>
                 </div>
-                <p class="settings-help settings-help--section">当前一级容器只提供破限提示词；后续提示项会继续放在这里，不再增加二级“自定义提示词”。</p>
-                <div class="settings-actions">
-                  <button class="settings-primary" type="button" @click="saveAi">保存 AI 设置</button>
-                </div>
+                <p class="settings-help settings-help--section">点击二级容器编辑破限提示词。发送顺序为：破限提示词 → 固定系统提示词 → 当前分析请求；后续提示项继续放在当前一级容器内。</p>
                 <p
                   v-if="aiSaveStatus !== 'idle'"
                   :class="['settings-operation-status', `is-${aiSaveStatus}`]"
@@ -420,6 +446,42 @@ function onImportFile(event: Event): void {
             </div>
           </Transition>
         </article>
+    </div>
+
+    <div v-if="jailbreakPromptDialogOpen" class="group-dialog-overlay" @click.self="closeJailbreakPromptDialog">
+      <form
+        id="jailbreak-prompt-dialog"
+        class="group-dialog settings-prompt-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="jailbreak-prompt-dialog-title"
+        @submit.prevent="saveJailbreakPromptDialog"
+      >
+        <header>
+          <div>
+            <h2 id="jailbreak-prompt-dialog-title">破限提示词</h2>
+            <p>自定义提示词 / 破限提示词</p>
+          </div>
+          <button type="button" aria-label="关闭破限提示词弹窗" @click="closeJailbreakPromptDialog">×</button>
+        </header>
+        <div class="group-dialog-body">
+          <label class="group-dialog-field">
+            <span>提示词内容</span>
+            <textarea
+              ref="jailbreakPromptDialogInput"
+              v-model="jailbreakPromptModalDraft"
+              rows="8"
+              maxlength="6000"
+              placeholder="仅在模型经常拒答或返回空内容时填写。"
+            ></textarea>
+            <small>保存后按“破限提示词 → 固定系统提示词 → 当前分析请求”的顺序发送。请只填写你明确理解且愿意承担风险的内容。</small>
+          </label>
+        </div>
+        <footer>
+          <button type="button" @click="closeJailbreakPromptDialog">取消</button>
+          <button class="confirm-action" type="submit">保存提示词</button>
+        </footer>
+      </form>
     </div>
   </div>
 </template>

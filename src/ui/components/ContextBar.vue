@@ -52,9 +52,10 @@ defineEmits<{
     </div>
 
     <button
-      class="button context-get-time"
+      :class="['button', 'context-get-time', { 'is-loading': timeActionBusy }]"
       type="button"
       :disabled="timeActionBusy"
+      :aria-busy="timeActionBusy"
       @click="$emit('get-current-time')"
     >
       <span aria-hidden="true">◷</span>

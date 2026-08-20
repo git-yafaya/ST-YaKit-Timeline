@@ -37,9 +37,10 @@ defineEmits<{
 
       <div class="timeline-actions">
         <button
-          class="button button-secondary get-time"
+          :class="['button', 'button-secondary', 'get-time', { 'is-loading': timeActionBusy }]"
           type="button"
           :disabled="timeActionBusy"
+          :aria-busy="timeActionBusy"
           @click="$emit('get-current-time')"
         >
           <span class="action-icon" aria-hidden="true">◷</span>
