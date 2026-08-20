@@ -106,7 +106,7 @@ import {
   saveAutomationSettings,
   saveGeneralSettings,
 } from '@/ui/settings-store';
-import { detectSillyTavernTheme, resolveTheme, type ResolvedTheme, watchSillyTavernTheme } from '@/ui/theme';
+import { resolveTheme } from '@/ui/theme';
 import TimelinePageView from '@/ui/pages/TimelinePage.vue';
 import { closeTimeline, type TimelinePage, uiState } from '@/ui/state';
 import { buildOverviewGroupSummaries, buildTimelineGroupDetails } from '@/ui/worldbook-view';
@@ -260,8 +260,7 @@ const analysisDiff = computed<readonly AnalysisDiffItem[]>(() => {
   }
   return diff;
 });
-const hostTheme = ref<ResolvedTheme>(detectSillyTavernTheme());
-const resolvedTheme = computed(() => resolveTheme(settings.general.theme, hostTheme.value));
+const resolvedTheme = computed(() => resolveTheme(settings.general.theme));
 const storyTimeLabel = computed(() => {
   const currentTime = chatTimelineState.value?.currentTime;
   return currentTime ? formatStoryTime(currentTime) : '等待有效 <wlog>';
@@ -276,7 +275,6 @@ const rollbackPrompt = computed(() => {
 });
 let hostScopeVersion = 0;
 const worldbookMigrationDecisions = new Set<string>();
-let stopWatchingHostTheme: (() => void) | undefined;
 let stopWatchingHostScope: (() => void) | undefined;
 let stopWatchingHostRuntime: (() => void) | undefined;
 let analysisAbortController: AbortController | undefined;
@@ -522,9 +520,6 @@ async function refreshHostScope(): Promise<void> {
 
 onMounted(() => {
   sharedSettingsInitialization = initializeSharedSecondarySettings();
-  stopWatchingHostTheme = watchSillyTavernTheme(theme => {
-    hostTheme.value = theme;
-  });
   stopWatchingControl = controlLock.onChange((key, status) => {
     if (key === controlWorldbookKey.value) controlStatus.value = status;
     if (status === 'other' && key === controlWorldbookKey.value) {
@@ -538,7 +533,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  stopWatchingHostTheme?.();
   stopWatchingHostScope?.();
   stopWatchingHostRuntime?.();
   stopWatchingControl?.();

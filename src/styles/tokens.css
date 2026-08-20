@@ -177,3 +177,164 @@
   --tl-glow-tertiary: rgba(8, 122, 85, 0.08);
   color-scheme: light;
 }
+
+/* 跟随模式直接继承 SillyTavern 的语义变量，不在 CSS 或 JS 中推断亮度。 */
+.timeline-root[data-theme='follow'] {
+  --tl-bg: var(--SmartThemeBlurTintColor, #0f172a);
+  --tl-overlay: rgba(15, 23, 42, 0.82);
+  --tl-overlay: color-mix(in srgb, var(--SmartThemeBlurTintColor, #0f172a) 82%, transparent);
+  --tl-panel: var(--SmartThemeBlurTintColor, #213145);
+  --tl-panel: color-mix(in srgb, var(--SmartThemeBlurTintColor, #213145) 94%, transparent);
+  --tl-panel-solid: var(--SmartThemeBlurTintColor, #213145);
+  --tl-panel-nav: color-mix(in srgb, var(--SmartThemeBlurTintColor, #213145) 92%, transparent);
+  --tl-panel-sticky: color-mix(in srgb, var(--SmartThemeBlurTintColor, #213145) 96%, transparent);
+  --tl-panel-popover: color-mix(in srgb, var(--SmartThemeBlurTintColor, #213145) 98%, transparent);
+  --tl-control-surface: color-mix(in srgb, var(--SmartThemeBlurTintColor, #213145) 92%, transparent);
+  --tl-control-surface-muted: color-mix(in srgb, var(--SmartThemeBlurTintColor, #213145) 82%, transparent);
+  --tl-control-surface-subtle: color-mix(in srgb, var(--SmartThemeBlurTintColor, #213145) 72%, transparent);
+  --tl-listbox: color-mix(in srgb, var(--SmartThemeBlurTintColor, #213145) 98%, transparent);
+  --tl-listbox-solid: var(--SmartThemeBlurTintColor, #213145);
+  --tl-listbox-hover: color-mix(
+    in srgb,
+    var(--SmartThemeBlurTintColor, #213145) 92%,
+    var(--SmartThemeBodyColor, #f3f6ff) 8%
+  );
+  --tl-modal-backdrop: color-mix(in srgb, var(--SmartThemeShadowColor, rgb(0 0 0 / 45%)) 45%, transparent);
+  --tl-text: var(--SmartThemeBodyColor, #f3f6ff);
+  --tl-text-muted: #b8c1d1;
+  --tl-text-muted: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 68%, transparent);
+  --tl-primary: var(--SmartThemeQuoteColor, #adc6ff);
+  --tl-primary-deep: #2170e4;
+  --tl-primary-deep: color-mix(in srgb, var(--SmartThemeQuoteColor, #2170e4) 82%, #000);
+  --tl-primary-hover: #2d78e7;
+  --tl-primary-hover: color-mix(in srgb, var(--SmartThemeQuoteColor, #adc6ff) 88%, #fff 12%);
+  --tl-primary-text-strong: var(--SmartThemeQuoteColor, #adc6ff);
+  --tl-on-primary: var(--SmartThemeBlurTintColor, #0f172a);
+  --tl-on-primary-strong: var(--SmartThemeBlurTintColor, #0f172a);
+  --tl-on-primary-soft: var(--SmartThemeBlurTintColor, #0f172a);
+
+  /* SillyTavern 没有统一的成功、警告和危险色变量，保留理脉现有语义色。 */
+  --tl-success: #4edea3;
+  --tl-success-surface-solid: #1b3d2f;
+  --tl-warning: #ffb370;
+  --tl-warning-surface-solid: #4a2e15;
+  --tl-on-warning: #4a2e15;
+  --tl-danger: #ffb4ab;
+  --tl-danger-deep: #ba1a1a;
+
+  /* RGB 别名保留稳定 fallback；实际组件语义色在本层直接使用宿主变量。 */
+  --tl-surface-rgb: 255 255 255;
+  --tl-neutral-rgb: 194 198 214;
+  --tl-text-muted-rgb: 184 193 209;
+  --tl-primary-rgb: 173 198 255;
+  --tl-primary-deep-rgb: 0 88 190;
+  --tl-primary-action-rgb: 33 112 228;
+  --tl-success-rgb: 78 222 163;
+  --tl-success-deep-rgb: 0 105 71;
+  --tl-warning-rgb: 255 179 112;
+  --tl-warning-deep-rgb: 74 46 21;
+  --tl-danger-rgb: 255 180 171;
+  --tl-danger-deep-rgb: 186 26 26;
+  --tl-shadow-rgb: 0 0 0;
+  --tl-scrollbar-rgb: 107 126 151;
+  --tl-scrollbar-hover-rgb: 131 151 180;
+
+  --tl-surface: rgb(255 255 255 / 3.5%);
+  --tl-surface: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 3.5%, transparent);
+  --tl-surface-subtle: rgb(255 255 255 / 2%);
+  --tl-surface-subtle: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 2%, transparent);
+  --tl-surface-soft: rgb(255 255 255 / 5%);
+  --tl-surface-soft: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 5%, transparent);
+  --tl-surface-medium: rgb(255 255 255 / 6%);
+  --tl-surface-medium: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 6%, transparent);
+  --tl-surface-hover: rgb(255 255 255 / 6.5%);
+  --tl-surface-hover: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 6.5%, transparent);
+  --tl-context-surface: rgb(0 0 0 / 8%);
+  --tl-context-surface: color-mix(in srgb, var(--SmartThemeShadowColor, rgb(0 0 0 / 30%)) 8%, transparent);
+  --tl-context-surface-strong: rgb(0 0 0 / 20%);
+  --tl-context-surface-strong: color-mix(in srgb, var(--SmartThemeShadowColor, rgb(0 0 0 / 30%)) 20%, transparent);
+
+  --tl-border-subtle: rgb(194 198 214 / 10%);
+  --tl-border-subtle: color-mix(in srgb, var(--SmartThemeBorderColor, rgb(194 198 214 / 22%)) 45%, transparent);
+  --tl-border: rgb(194 198 214 / 16%);
+  --tl-border: color-mix(in srgb, var(--SmartThemeBorderColor, rgb(194 198 214 / 22%)) 72%, transparent);
+  --tl-border-soft: rgb(194 198 214 / 20%);
+  --tl-border-soft: color-mix(in srgb, var(--SmartThemeBorderColor, rgb(194 198 214 / 22%)) 48%, transparent);
+  --tl-border-muted: rgb(194 198 214 / 24%);
+  --tl-border-muted: color-mix(in srgb, var(--SmartThemeBorderColor, rgb(194 198 214 / 22%)) 92%, transparent);
+  --tl-border-dashed: rgb(194 198 214 / 25%);
+  --tl-border-dashed: color-mix(in srgb, var(--SmartThemeBorderColor, rgb(194 198 214 / 22%)) 100%, transparent);
+  --tl-border-medium: rgb(194 198 214 / 30%);
+  --tl-border-medium: color-mix(in srgb, var(--SmartThemeBorderColor, rgb(194 198 214 / 22%)) 100%, transparent);
+  --tl-border-strong-neutral: rgb(194 198 214 / 40%);
+  --tl-border-strong-neutral: color-mix(in srgb, var(--SmartThemeBorderColor, rgb(194 198 214 / 22%)) 100%, var(--SmartThemeBodyColor, #f3f6ff) 24%);
+  --tl-border-heavy: rgb(194 198 214 / 50%);
+  --tl-border-heavy: color-mix(in srgb, var(--SmartThemeBorderColor, rgb(194 198 214 / 22%)) 100%, var(--SmartThemeBodyColor, #f3f6ff) 35%);
+  --tl-border-strong: var(--tl-primary-border-heavy);
+  --tl-neutral-faint: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 52%, transparent);
+  --tl-neutral-medium: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 55%, transparent);
+  --tl-neutral-strong: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 65%, transparent);
+  --tl-text-faint: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 55%, transparent);
+  --tl-text-dim: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 58%, transparent);
+  --tl-text-soft: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 72%, transparent);
+  --tl-text-soft-strong: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 75%, transparent);
+
+  --tl-primary-surface-faint: color-mix(in srgb, var(--tl-primary-deep) 7%, transparent);
+  --tl-primary-surface-subtle: color-mix(in srgb, var(--tl-primary-deep) 8%, transparent);
+  --tl-primary-surface-soft: color-mix(in srgb, var(--tl-primary-deep) 10%, transparent);
+  --tl-primary-surface: color-mix(in srgb, var(--tl-primary-deep) 12%, transparent);
+  --tl-primary-surface-medium: color-mix(in srgb, var(--tl-primary-deep) 14%, transparent);
+  --tl-primary-surface-hover: color-mix(in srgb, var(--tl-primary-deep) 18%, transparent);
+  --tl-primary-surface-selected: color-mix(in srgb, var(--tl-primary) 25%, transparent);
+  --tl-primary-surface-strong: color-mix(in srgb, var(--tl-primary) 34%, transparent);
+  --tl-primary-surface-toggle: color-mix(in srgb, var(--tl-primary-deep) 30%, transparent);
+  --tl-primary-surface-toggle-strong: color-mix(in srgb, var(--tl-primary-deep) 34%, transparent);
+  --tl-primary-border-faint: color-mix(in srgb, var(--tl-primary) 18%, transparent);
+  --tl-primary-border-soft: color-mix(in srgb, var(--tl-primary) 20%, transparent);
+  --tl-primary-border-muted: color-mix(in srgb, var(--tl-primary) 22%, transparent);
+  --tl-primary-border: color-mix(in srgb, var(--tl-primary) 24%, transparent);
+  --tl-primary-border-medium: color-mix(in srgb, var(--tl-primary) 28%, transparent);
+  --tl-primary-border-strong: color-mix(in srgb, var(--tl-primary) 30%, transparent);
+  --tl-primary-border-stronger: color-mix(in srgb, var(--tl-primary) 32%, transparent);
+  --tl-primary-border-selected: color-mix(in srgb, var(--tl-primary) 34%, transparent);
+  --tl-primary-border-focus: color-mix(in srgb, var(--tl-primary) 35%, transparent);
+  --tl-primary-border-toggle: color-mix(in srgb, var(--tl-primary) 36%, transparent);
+  --tl-primary-border-heavy: color-mix(in srgb, var(--tl-primary) 38%, transparent);
+  --tl-primary-border-action: color-mix(in srgb, var(--tl-primary) 75%, transparent);
+  --tl-focus-ring: 0 0 0 2px color-mix(in srgb, var(--tl-primary) 18%, transparent);
+  --tl-focus-ring-strong: 0 0 0 2px color-mix(in srgb, var(--tl-primary) 20%, transparent);
+
+  --tl-success-surface-faint: color-mix(in srgb, var(--tl-success, #4edea3) 6%, transparent);
+  --tl-success-surface: color-mix(in srgb, var(--tl-success, #4edea3) 12%, transparent);
+  --tl-success-surface-strong: color-mix(in srgb, var(--tl-success, #4edea3) 14%, transparent);
+  --tl-success-border: color-mix(in srgb, var(--tl-success, #4edea3) 25%, transparent);
+  --tl-success-border-medium: color-mix(in srgb, var(--tl-success, #4edea3) 28%, transparent);
+  --tl-success-border-strong: color-mix(in srgb, var(--tl-success, #4edea3) 30%, transparent);
+  --tl-warning-surface-faint: color-mix(in srgb, var(--tl-warning, #ffb370) 4%, transparent);
+  --tl-warning-surface: color-mix(in srgb, var(--tl-warning, #ffb370) 8%, transparent);
+  --tl-warning-surface-strong: color-mix(in srgb, var(--tl-warning, #ffb370) 10%, transparent);
+  --tl-warning-surface-deep: color-mix(in srgb, var(--tl-on-warning, #4a2e15) 20%, transparent);
+  --tl-warning-border-soft: color-mix(in srgb, var(--tl-warning, #ffb370) 24%, transparent);
+  --tl-warning-border: color-mix(in srgb, var(--tl-warning, #ffb370) 25%, transparent);
+  --tl-warning-border-medium: color-mix(in srgb, var(--tl-warning, #ffb370) 26%, transparent);
+  --tl-warning-border-strong: color-mix(in srgb, var(--tl-warning, #ffb370) 28%, transparent);
+  --tl-warning-border-heavy: color-mix(in srgb, var(--tl-warning, #ffb370) 30%, transparent);
+  --tl-warning-border-focus: color-mix(in srgb, var(--tl-warning, #ffb370) 35%, transparent);
+  --tl-warning-border-active: color-mix(in srgb, var(--tl-warning, #ffb370) 58%, transparent);
+  --tl-danger-surface: color-mix(in srgb, var(--tl-danger-deep, #ba1a1a) 12%, transparent);
+  --tl-danger-border: color-mix(in srgb, var(--tl-danger, #ffb4ab) 26%, transparent);
+
+  --tl-shadow-card: 0 4px 20px color-mix(in srgb, var(--SmartThemeShadowColor, rgb(0 0 0 / 50%)) 30%, transparent);
+  --tl-shadow-elevated: 0 8px 24px color-mix(in srgb, var(--SmartThemeShadowColor, rgb(0 0 0 / 50%)) 24%, transparent);
+  --tl-shadow-listbox:
+    0 14px 34px color-mix(in srgb, var(--SmartThemeShadowColor, rgb(0 0 0 / 50%)) 68%, transparent),
+    0 2px 8px color-mix(in srgb, var(--SmartThemeShadowColor, rgb(0 0 0 / 50%)) 44%, transparent);
+  --tl-shadow-popover: 0 10px 28px color-mix(in srgb, var(--SmartThemeShadowColor, rgb(0 0 0 / 50%)) 56%, transparent);
+  --tl-shadow-modal: 0 12px 36px color-mix(in srgb, var(--SmartThemeShadowColor, rgb(0 0 0 / 50%)) 60%, transparent);
+  --tl-shadow-settings: 0 4px 18px color-mix(in srgb, var(--SmartThemeShadowColor, rgb(0 0 0 / 50%)) 12%, transparent);
+  --tl-scrollbar-thumb: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 38%, transparent);
+  --tl-scrollbar-thumb-hover: color-mix(in srgb, var(--SmartThemeBodyColor, #f3f6ff) 52%, transparent);
+  --tl-glow-primary: color-mix(in srgb, var(--SmartThemeQuoteColor, #2170e4) 12%, transparent);
+  --tl-glow-tertiary: rgba(0, 133, 91, 0.12);
+  color-scheme: inherit;
+}

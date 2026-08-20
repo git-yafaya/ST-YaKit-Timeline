@@ -447,7 +447,7 @@ function onImportFile(event: Event): void {
                       @update:model-value="selectTheme"
                     />
                   </div>
-                  <p class="settings-theme-help">跟随模式会根据 SillyTavern 当前主题自动匹配浅色或深色。</p>
+                  <p class="settings-theme-help">跟随模式直接继承 SillyTavern 用户设置的主题变量，不额外判断系统主题。</p>
                 </div>
                 <div class="settings-row">
                   <div><strong>切换成功通知</strong><p>时间线自动切换成功后显示提示消息。</p></div>
