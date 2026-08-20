@@ -39,6 +39,8 @@ describe('settings persistence', () => {
           largeJumpDays: 20,
           ai: {
             mode: 'independent',
+            customPrompt: 'custom prompt',
+            jailbreakPrompt: 'jailbreak prompt',
             openaiCompatible: {
               baseUrl: 'https://api.example.test/v1',
               apiKey: 'secret-key',
@@ -58,6 +60,8 @@ describe('settings persistence', () => {
         provider: 'independent',
         apiUrl: 'https://api.example.test/v1',
         apiKey: 'secret-key',
+        customPrompt: 'custom prompt',
+        jailbreakPrompt: 'jailbreak prompt',
         model: 'example-model',
         temperature: 0.7,
         maxOutputTokens: 8192,
@@ -155,6 +159,8 @@ describe('settings persistence', () => {
       provider: 'independent',
       apiUrl: 'https://api.example.test/v1',
       apiKey: 'secret-key',
+      customPrompt: 'custom prompt',
+      jailbreakPrompt: 'jailbreak prompt',
       model: 'example-model',
       temperature: 0.4,
       maxOutputTokens: 6000,
@@ -171,6 +177,8 @@ describe('settings persistence', () => {
           ai: {
             scanStrategy: 'deep',
             mode: 'independent',
+            customPrompt: 'custom prompt',
+            jailbreakPrompt: 'jailbreak prompt',
             openaiCompatible: {
               organization: 'example-org',
               baseUrl: 'https://api.example.test/v1',

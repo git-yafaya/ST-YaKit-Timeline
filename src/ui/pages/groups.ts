@@ -14,6 +14,5 @@ export interface GroupManagementEntry {
 export interface GroupManagementSummary {
   entries: readonly GroupManagementEntry[];
   id: string;
-  isUngrouped?: boolean;
   name: string;
 }

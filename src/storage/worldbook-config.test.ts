@@ -190,14 +190,33 @@ describe('worldbook timeline config', () => {
     expect(merged.groups[0].blocked).toBe(true);
   });
 
-  it('分组编辑不删除世界书条目，删除组会移到未分组并停止纳管', async () => {
+  it('删除分组会删除该组及其映射，但不修改世界书条目', async () => {
     const previous = await buildWorldbookTimelineConfig(draft, worldbook, 12345);
     const withManual = createTimelineGroup(previous, '人工组');
     const deleted = deleteTimelineGroup(withManual, 'ai-group-1');
-    const ungrouped = deleted.groups.find(group => group.id === '__ungrouped__');
-    expect(ungrouped?.entries).toHaveLength(2);
-    expect(ungrouped?.entries.every(entry => entry.managed === false)).toBe(true);
+    expect(deleted.groups.flatMap(group => group.entries)).toHaveLength(0);
     expect(deleted.groups.some(group => group.id === 'ai-group-1')).toBe(false);
+    expect(worldbook.entries).toHaveLength(2);
+  });
+
+  it('读取配置时会丢弃已废弃的未分组兜底', async () => {
+    const config = await buildWorldbookTimelineConfig(draft, worldbook, 12345);
+    const stored = {
+      ...config,
+      groups: [...config.groups, {
+        id: '__ungrouped__',
+        name: '未分组',
+        nameLocked: true,
+        entries: [],
+        blocked: true,
+        blockReason: '已废弃',
+      }],
+    };
+    installStorage({ yakit_timeline: { worldbooks: { [worldbook.key]: stored } } });
+
+    const loaded = loadWorldbookTimelineConfig(worldbook.key);
+    expect(loaded?.groups).toHaveLength(1);
+    expect(loaded?.groups.some(group => group.id === '__ungrouped__')).toBe(false);
   });
 
   it('检测正文 Hash 变化但保留旧配置继续运行', async () => {

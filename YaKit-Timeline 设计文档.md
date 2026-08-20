@@ -159,6 +159,8 @@ extension_settings.yakit_timeline
     "largeJumpDays": 5,
     "ai": {
       "mode": "sillytavern",
+      "customPrompt": "",
+      "jailbreakPrompt": "",
       "openaiCompatible": {
         "baseUrl": "",
         "apiKey": "",
@@ -540,6 +542,8 @@ V1 不在用户发送下一条消息前执行世界书状态保险校验。
 - 拖拽调整顺序
 
 人工修改结果优先于 AI。
+
+删除分组时直接删除该分组及其插件配置映射，不创建“未分组”兜底；世界书正文与原生条目保持不变，需要恢复时重新分析并确认配置。
 
 ---
 
@@ -2065,6 +2069,7 @@ follow | light | dark
 - 桌面端设置列表最大宽度控制在 900～1000px，推荐 960px；折叠卡片高度约 76～88px，水平内边距 24px、垂直内边距 16～18px，卡片间距 12～16px，标题与副标题间距 4px，标题区到第一张卡片约 24px。展开内容应紧凑纵向排列，不制造额外大面积留白。
 - 设置卡片使用不透明语义 Token；Light Token 下呈白色或极浅灰卡片、弱边框、16～20px 圆角与轻阴影，不得使用毛玻璃或大面积高对比色块。
 - AI 分析折叠组按接口提供商、输入项、连接状态、操作按钮的顺序纵向排列，保留 SillyTavern API、独立 API、模型、连接测试和全部高级参数。
+- AI 分析设置提供自定义提示词与破限提示词，均在保存 AI 设置后持久化并应用于后续分析请求。
 - 接口提供商显示为“跟随主 API / 使用 SillyTavern 当前主 API / 当前模型”和“副 API / 使用单独配置的备用接口”；默认选择跟随主 API，模型留空时跟随主 API 当前模型。
 - 主 API 与副 API 均提供“获取模型”按钮及自定义 Listbox；副 API 的模型 Listbox 位于“模型名称”上方，选中后同步模型名称。模型列表浮层不得撑开 Accordion 或外层 Modal。
 - 避免将需要主题变量的内容 Teleport 到 Shadow DOM 外部

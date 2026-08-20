@@ -55,10 +55,10 @@ const orderedEntries = computed(() => {
 });
 
 const mergeTargets = computed(() => {
-  return orderedGroups.value.filter(group => group.id !== currentGroup.value?.id && !group.isUngrouped);
+  return orderedGroups.value.filter(group => group.id !== currentGroup.value?.id);
 });
 
-const formalGroupCount = computed(() => props.groups.filter(group => !group.isUngrouped).length);
+const formalGroupCount = computed(() => props.groups.length);
 
 watch(
   () => props.groups,
@@ -66,11 +66,7 @@ watch(
     const ids = groups.map(group => group.id);
     const retained = groupOrder.value.filter(id => ids.includes(id));
     const appended = ids.filter(id => !retained.includes(id));
-    groupOrder.value = [...retained, ...appended].sort((left, right) => {
-      const leftUngrouped = groups.find(group => group.id === left)?.isUngrouped ?? false;
-      const rightUngrouped = groups.find(group => group.id === right)?.isUngrouped ?? false;
-      return Number(leftUngrouped) - Number(rightUngrouped);
-    });
+    groupOrder.value = [...retained, ...appended];
 
     if (groups.length === 0) {
       selectedGroupId.value = '';
@@ -103,7 +99,7 @@ function selectGroup(groupId: string): void {
 
 function beginRename(): void {
   const group = currentGroup.value;
-  if (!group || group.isUngrouped) return;
+  if (!group) return;
   nameDraft.value = group.name;
   renaming.value = true;
   moreOpen.value = false;
@@ -113,7 +109,7 @@ function beginRename(): void {
 function saveRename(): void {
   const group = currentGroup.value;
   const name = nameDraft.value.trim();
-  if (!group || group.isUngrouped || !name) {
+  if (!group || !name) {
     nameInput.value?.focus();
     return;
   }
@@ -123,7 +119,7 @@ function saveRename(): void {
 
 function openOperation(mode: Exclude<OperationMode, null>): void {
   const group = currentGroup.value;
-  if (mode !== 'create' && (!group || group.isUngrouped)) return;
+  if (mode !== 'create' && !group) return;
 
   operationMode.value = mode;
   moreOpen.value = false;
@@ -186,9 +182,8 @@ function dropGroup(targetGroupId: string): void {
   if (!sourceGroupId || sourceGroupId === targetGroupId) return;
 
   const next = reorder(groupOrder.value, sourceGroupId, targetGroupId);
-  const ungrouped = next.filter(id => props.groups.find(group => group.id === id)?.isUngrouped);
-  groupOrder.value = [...next.filter(id => !ungrouped.includes(id)), ...ungrouped];
-  emit('reorderGroups', groupOrder.value.filter(id => !ungrouped.includes(id)));
+  groupOrder.value = next;
+  emit('reorderGroups', groupOrder.value);
 }
 
 function dropEntry(targetEntryId: EntryId): void {
@@ -250,15 +245,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             v-for="group in orderedGroups"
             :key="group.id"
             type="button"
-            :draggable="!group.isUngrouped"
-            :class="['group-list-item', { 'is-selected': currentGroup?.id === group.id, 'is-ungrouped': group.isUngrouped }]"
+            draggable="true"
+            :class="['group-list-item', { 'is-selected': currentGroup?.id === group.id }]"
             @click="selectGroup(group.id)"
             @dragstart="draggedGroupId = group.id"
             @dragend="draggedGroupId = null"
             @dragover.prevent
             @drop.prevent="dropGroup(group.id)"
           >
-            <span v-if="!group.isUngrouped" class="drag-mark" aria-hidden="true">⠿</span>
+            <span class="drag-mark" aria-hidden="true">⠿</span>
             <span class="group-list-name">{{ group.name }}</span>
             <span class="group-list-count">{{ group.entries.length }}</span>
           </button>
@@ -276,12 +271,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           </div>
 
           <div class="group-detail-actions">
-            <button type="button" :disabled="currentGroup.isUngrouped" @click="beginRename">重命名</button>
+            <button type="button" @click="beginRename">重命名</button>
             <div class="group-more" @click.stop>
               <button
                 class="group-more-trigger"
                 type="button"
-                :disabled="currentGroup.isUngrouped"
                 aria-label="更多分组操作"
                 :aria-expanded="moreOpen"
                 @click="moreOpen = !moreOpen"
@@ -385,8 +379,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           </label>
 
           <div v-else class="delete-notice">
-            <p>删除分组不会删除世界书条目。</p>
-            <span>分组内条目应由配置层安全移至“未分组”。</span>
+            <p>删除后将移除该分组及其时间线映射。</p>
+            <span>不会修改世界书正文；如需恢复，请重新分析并确认配置。</span>
           </div>
 
           <p v-if="operationMode === 'split'" class="dialog-hint">

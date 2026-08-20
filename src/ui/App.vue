@@ -17,6 +17,7 @@ import {
   renameTimelineGroup,
   reorderTimelineEntries,
   reorderTimelineGroups,
+  sanitizeWorldbookTimelineConfig,
   saveWorldbookTimelineConfig,
   splitTimelineGroup,
   type WorldbookTimelineConfig,
@@ -145,7 +146,6 @@ const managementGroups = computed<readonly GroupManagementSummary[]>(() => {
   return config.groups.map(group => ({
     id: group.id,
     name: group.name,
-    isUngrouped: group.id === '__ungrouped__',
     entries: group.entries.map(entry => ({
       entryId: entry.entryId,
       originalComment: sources.get(String(entry.entryId))?.comment || entry.originalComment,
@@ -806,21 +806,22 @@ async function takeWorldbookControl(): Promise<void> {
 }
 
 async function saveTimelineConfig(nextConfig: WorldbookTimelineConfig, notice: string): Promise<void> {
+  const safeConfig = sanitizeWorldbookTimelineConfig(nextConfig);
   const worldbook = hostScope.value.worldbook;
-  if (!worldbook || nextConfig.worldbookKey !== worldbook.key) {
+  if (!worldbook || safeConfig.worldbookKey !== worldbook.key) {
     runtimeNotice.value = '当前角色或世界书已变化，配置未保存。';
     return;
   }
-    if (!saveWorldbookTimelineConfig(nextConfig)) {
+  if (!saveWorldbookTimelineConfig(safeConfig)) {
     runtimeNotice.value = '配置保存失败：无法写入 SillyTavern 扩展设置。';
     return;
   }
-  worldbookConfig.value = nextConfig;
+  worldbookConfig.value = safeConfig;
   if (chatTimelineState.value) {
     persistChatState(bindChatTimelineState(
       chatTimelineState.value,
       worldbook.key,
-      nextConfig.groups.map(group => group.id),
+      safeConfig.groups.map(group => group.id),
     ));
   }
   runtimeNotice.value = notice;
@@ -863,7 +864,7 @@ async function splitGroup(sourceGroupId: string, name: string, movedEntryIds: re
 async function deleteGroup(groupId: string): Promise<void> {
   const config = worldbookConfig.value;
   if (!config) return;
-  await saveTimelineConfig(deleteTimelineGroup(config, groupId), '分组已删除，条目已移至未分组且停止自动切换。');
+  await saveTimelineConfig(deleteTimelineGroup(config, groupId), '分组及其时间线映射已删除；世界书正文未被修改。');
 }
 
 async function reorderGroups(orderedGroupIds: readonly string[]): Promise<void> {
@@ -928,17 +929,18 @@ async function importConfig(file: File): Promise<void> {
       runtimeNotice.value = '导入失败：配置所属世界书与当前角色绑定世界书不一致。';
       return;
     }
+    const safePayload = sanitizeWorldbookTimelineConfig(payload);
     const sourceIds = new Set(worldbook.entries.map(entry => String(entry.id)));
-    const missing = payload.groups.flatMap(group => group.entries)
+    const missing = safePayload.groups.flatMap(group => group.entries)
       .filter(entry => !sourceIds.has(String(entry.entryId)));
     const confirmation = [
-      `即将导入 ${payload.groups.length} 个时间线组。`,
+      `即将导入 ${safePayload.groups.length} 个时间线组。`,
       missing.length > 0 ? `${missing.length} 个原条目当前不存在，将保留为 stale 并停止自动切换。` : '',
       '确认后会更新插件配置；不会直接修改世界书正文或未受管条目。',
     ].filter(Boolean).join('\n');
     if (!globalThis.confirm(confirmation)) return;
-    await saveTimelineConfig({ ...payload, worldbookName: worldbook.name }, '配置已导入；当前聊天自动组正在重新校准。');
-    appendSystemLog('info', '配置已导入', `已校验并导入 ${payload.groups.length} 个时间线组。`, 'config');
+    await saveTimelineConfig({ ...safePayload, worldbookName: worldbook.name }, '配置已导入；当前聊天自动组正在重新校准。');
+    appendSystemLog('info', '配置已导入', `已校验并导入 ${safePayload.groups.length} 个时间线组。`, 'config');
   } catch (error) {
     runtimeNotice.value = error instanceof Error ? `导入失败：${error.message}` : '导入失败：JSON 文件无法读取。';
   }

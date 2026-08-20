@@ -1451,12 +1451,6 @@ h2 {
   background: var(--tl-primary-surface-medium);
 }
 
-.group-list-item.is-ungrouped {
-  border-style: dashed;
-  border-color: var(--tl-border-medium);
-  color: var(--tl-text-muted);
-}
-
 .drag-mark,
 .entry-drag-mark {
   flex: 0 0 auto;
@@ -2975,13 +2969,41 @@ h2 {
   transition: border-color 160ms ease-out, box-shadow 160ms ease-out, background-color 160ms ease-out;
 }
 
-.settings-field input:focus {
+.settings-field textarea {
+  width: 100%;
+  min-height: 108px;
+  padding: 10px 13px;
+  border: 1px solid var(--tl-border-soft);
+  border-radius: 12px;
+  outline: none;
+  resize: vertical;
+  color: var(--tl-text);
+  background: var(--tl-control-surface);
+  font: inherit;
+  line-height: 1.55;
+  transition: border-color 160ms ease-out, box-shadow 160ms ease-out, background-color 160ms ease-out;
+}
+
+.settings-field input:focus,
+.settings-field textarea:focus {
   border-color: var(--tl-primary);
   box-shadow: var(--tl-focus-ring);
 }
 
-.settings-field input::placeholder {
+.settings-field input::placeholder,
+.settings-field textarea::placeholder {
   color: var(--tl-text-dim);
+}
+
+.settings-textarea-field small,
+.settings-help--section {
+  color: var(--tl-text-dim);
+  font-size: 11px;
+  line-height: 17px;
+}
+
+.settings-help--section {
+  margin: -4px 0 16px;
 }
 
 .settings-row {

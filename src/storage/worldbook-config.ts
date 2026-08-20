@@ -37,9 +37,6 @@ export interface WorldbookTimelineConfig {
   worldbookName: string;
 }
 
-export const UNGROUPED_GROUP_ID = '__ungrouped__';
-export const UNGROUPED_GROUP_NAME = '未分组';
-
 interface StorageContext {
   extensionSettings: Record<string, unknown>;
   saveSettingsDebounced: () => void;
@@ -61,6 +58,11 @@ function getContext(): StorageContext | null {
   } catch {
     return null;
   }
+}
+
+export function sanitizeWorldbookTimelineConfig(config: WorldbookTimelineConfig): WorldbookTimelineConfig {
+  const groups = config.groups.filter(group => group.id !== '__ungrouped__');
+  return groups.length === config.groups.length ? config : { ...config, groups };
 }
 
 function getStoredNamespace(context: StorageContext | null): Record<string, unknown> | null {
@@ -266,19 +268,22 @@ export function loadWorldbookTimelineConfig(worldbookKey: string): WorldbookTime
   const namespace = getStoredNamespace(context);
   const worldbooks = recordValue(namespace?.worldbooks);
   const config = worldbooks?.[worldbookKey];
-  return isConfig(config) && config.worldbookKey === worldbookKey ? config : null;
+  return isConfig(config) && config.worldbookKey === worldbookKey
+    ? sanitizeWorldbookTimelineConfig(config)
+    : null;
 }
 
 export function saveWorldbookTimelineConfig(config: WorldbookTimelineConfig): boolean {
   const context = getContext();
   if (!context) return false;
+  const sanitizedConfig = sanitizeWorldbookTimelineConfig(config);
   const previousNamespace = context.extensionSettings[SETTINGS_NAMESPACE];
   try {
     const namespace = getStoredNamespace(context) ?? {};
     const worldbooks = recordValue(namespace.worldbooks) ?? {};
     context.extensionSettings[SETTINGS_NAMESPACE] = {
       ...namespace,
-      worldbooks: { ...worldbooks, [config.worldbookKey]: config },
+      worldbooks: { ...worldbooks, [sanitizedConfig.worldbookKey]: sanitizedConfig },
     };
     context.saveSettingsDebounced();
     return true;
@@ -364,17 +369,6 @@ function nextConfig(
   };
 }
 
-function emptyUngroupedGroup(): TimelineGroupConfig {
-  return {
-    id: UNGROUPED_GROUP_ID,
-    name: UNGROUPED_GROUP_NAME,
-    nameLocked: true,
-    entries: [],
-    blocked: true,
-    blockReason: '未分组条目不会参与自动时间线切换。',
-  };
-}
-
 function uniqueGroupId(config: WorldbookTimelineConfig, prefix: string): string {
   const ids = new Set(config.groups.map(group => group.id));
   let index = 1;
@@ -387,19 +381,20 @@ function mutateConfig(
   config: WorldbookTimelineConfig,
   mutate: (groups: TimelineGroupConfig[]) => void,
 ): WorldbookTimelineConfig {
-  const groups = config.groups.map(group => ({
+  const sanitized = sanitizeWorldbookTimelineConfig(config);
+  const groups = sanitized.groups.map(group => ({
     ...group,
     entries: group.entries.map(cloneEntry) as ManagedTimelineEntry[],
   }));
   mutate(groups);
-  return nextConfig(config, groups);
+  return nextConfig(sanitized, groups);
 }
 
 export function createTimelineGroup(config: WorldbookTimelineConfig, name: string): WorldbookTimelineConfig {
   const trimmed = name.trim();
   if (!trimmed) return config;
   return mutateConfig(config, groups => {
-    groups.splice(Math.max(0, groups.length - (groups.some(group => group.id === UNGROUPED_GROUP_ID) ? 1 : 0)), 0, {
+    groups.push({
       id: uniqueGroupId(config, 'manual-group'),
       name: trimmed,
       nameLocked: true,
@@ -415,7 +410,7 @@ export function renameTimelineGroup(
   name: string,
 ): WorldbookTimelineConfig {
   const trimmed = name.trim();
-  if (!trimmed || groupId === UNGROUPED_GROUP_ID) return config;
+  if (!trimmed) return config;
   return mutateConfig(config, groups => {
     const group = groups.find(item => item.id === groupId);
     if (group) {
@@ -432,8 +427,6 @@ export function reorderTimelineGroups(
   return mutateConfig(config, groups => {
     const order = new Map(orderedGroupIds.map((id, index) => [id, index]));
     groups.sort((left, right) => {
-      if (left.id === UNGROUPED_GROUP_ID) return 1;
-      if (right.id === UNGROUPED_GROUP_ID) return -1;
       return (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER);
     });
   });
@@ -467,7 +460,7 @@ export function moveTimelineEntries(
   targetGroupId: string,
   movedEntryIds: readonly EntryId[],
 ): WorldbookTimelineConfig {
-  if (sourceGroupId === targetGroupId || targetGroupId === UNGROUPED_GROUP_ID) return config;
+  if (sourceGroupId === targetGroupId) return config;
   return mutateConfig(config, groups => {
     const source = groups.find(group => group.id === sourceGroupId);
     const target = groups.find(group => group.id === targetGroupId);
@@ -483,7 +476,6 @@ export function moveTimelineEntries(
         ...entry,
         managed: true,
         manualFields: [...new Set([...entry.manualFields, 'managed', 'group'])],
-        warnings: entry.warnings.filter(warning => warning !== '该条目已移至未分组，不会参与自动切换。'),
       })),
     ];
   });
@@ -498,7 +490,7 @@ export function mergeTimelineGroups(
   return mutateConfig(config, groups => {
     const source = groups.find(group => group.id === sourceGroupId);
     const target = groups.find(group => group.id === targetGroupId);
-    if (!source || !target || target.id === UNGROUPED_GROUP_ID || source.id === UNGROUPED_GROUP_ID) return;
+    if (!source || !target) return;
     const existing = new Set(target.entries.map(entry => String(entry.entryId)));
     target.entries = [
       ...target.entries,
@@ -519,7 +511,7 @@ export function splitTimelineGroup(
   movedEntryIds: readonly EntryId[],
 ): WorldbookTimelineConfig {
   const trimmed = name.trim();
-  if (!trimmed || sourceGroupId === UNGROUPED_GROUP_ID) return config;
+  if (!trimmed) return config;
   return mutateConfig(config, groups => {
     const source = groups.find(group => group.id === sourceGroupId);
     if (!source) return;
@@ -546,27 +538,9 @@ export function deleteTimelineGroup(
   config: WorldbookTimelineConfig,
   groupId: string,
 ): WorldbookTimelineConfig {
-  if (groupId === UNGROUPED_GROUP_ID) return config;
   return mutateConfig(config, groups => {
     const sourceIndex = groups.findIndex(group => group.id === groupId);
     if (sourceIndex < 0) return;
-    const source = groups[sourceIndex];
-    let ungrouped = groups.find(group => group.id === UNGROUPED_GROUP_ID);
-    if (!ungrouped) {
-      ungrouped = emptyUngroupedGroup();
-      groups.push(ungrouped);
-    }
-    const existing = new Set(ungrouped.entries.map(entry => String(entry.entryId)));
-    ungrouped.entries = [
-      ...ungrouped.entries,
-      ...source.entries.filter(entry => !existing.has(String(entry.entryId))).map(entry => ({
-      ...entry,
-      managed: false,
-      manualFields: [...new Set([...entry.manualFields, 'managed'])],
-      stale: true,
-      warnings: [...new Set([...entry.warnings, '该条目已移至未分组，不会参与自动切换。'])],
-      })),
-    ];
     groups.splice(sourceIndex, 1);
   });
 }
@@ -633,15 +607,16 @@ export async function mergeWorldbookTimelineConfig(
   worldbook: WorldbookSnapshot,
   updatedAt = Date.now(),
 ): Promise<WorldbookTimelineConfig> {
+  const sanitizedPrevious = sanitizeWorldbookTimelineConfig(previous);
   const incoming = await buildWorldbookTimelineConfig(draft, worldbook, updatedAt);
   const used = new Set<string>();
   const groups: TimelineGroupConfig[] = [];
 
   for (const nextGroup of incoming.groups) {
-    const oldGroup = previous.groups.find(group => group.id === nextGroup.id)
-      ?? previous.groups.find(group => normalizedText(group.name) === normalizedText(nextGroup.name));
+    const oldGroup = sanitizedPrevious.groups.find(group => group.id === nextGroup.id)
+      ?? sanitizedPrevious.groups.find(group => normalizedText(group.name) === normalizedText(nextGroup.name));
     const mergedEntries = nextGroup.entries.map(entry => {
-      const match = matchedOldEntry(entry, previous, used, oldGroup?.id);
+      const match = matchedOldEntry(entry, sanitizedPrevious, used, oldGroup?.id);
       if (!match) return entry;
       used.add(match.key);
       return mergeEntry(entry, match.entry);
@@ -658,8 +633,7 @@ export async function mergeWorldbookTimelineConfig(
     });
   }
 
-  for (const oldGroup of previous.groups) {
-    if (oldGroup.id === UNGROUPED_GROUP_ID) continue;
+  for (const oldGroup of sanitizedPrevious.groups) {
     const staleEntries = oldGroup.entries
       .filter(entry => !used.has(`${oldGroup.id}:${String(entry.entryId)}`))
       .map(entry => ({
@@ -685,17 +659,8 @@ export async function mergeWorldbookTimelineConfig(
     }
   }
 
-  const oldUngrouped = previous.groups.find(group => group.id === UNGROUPED_GROUP_ID);
-  if (oldUngrouped) {
-    const entries = oldUngrouped.entries
-      .filter(entry => !used.has(`${oldUngrouped.id}:${String(entry.entryId)}`))
-      .map(cloneEntry);
-    if (entries.length > 0 || !groups.some(group => group.id === UNGROUPED_GROUP_ID)) {
-      groups.push({ ...oldUngrouped, entries });
-    }
-  }
   return {
-    ...previous,
+    ...sanitizedPrevious,
     groups: groups.map(group => ({ ...group, entries: normalizeTimelineEntries(group.entries) })),
     updatedAt,
     worldbookKey: worldbook.key,

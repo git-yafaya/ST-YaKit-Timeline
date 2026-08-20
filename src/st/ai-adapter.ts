@@ -137,10 +137,20 @@ async function postChatCompletion(
   }
 }
 
-function messages(prompt: string): Array<{ content: string; role: 'system' | 'user' }> {
+function systemPrompt(settings: AiSettings): string {
+  const jailbreakPrompt = settings.jailbreakPrompt.trim();
+  return jailbreakPrompt ? `${SYSTEM_PROMPT}\n\n${jailbreakPrompt}` : SYSTEM_PROMPT;
+}
+
+function userPrompt(settings: AiSettings, prompt: string): string {
+  const customPrompt = settings.customPrompt.trim();
+  return customPrompt ? `${customPrompt}\n\n${prompt}` : prompt;
+}
+
+function messages(settings: AiSettings, prompt: string): Array<{ content: string; role: 'system' | 'user' }> {
   return [
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: prompt },
+    { role: 'system', content: systemPrompt(settings) },
+    { role: 'user', content: userPrompt(settings, prompt) },
   ];
 }
 
@@ -155,7 +165,7 @@ async function generateWithMainApi(
     return postChatCompletion(context, {
       ...context.chatCompletionSettings,
       type: 'quiet',
-      messages: messages(prompt),
+      messages: messages(settings, prompt),
       model: selectedModel,
       temperature: settings.temperature,
       max_tokens: settings.maxOutputTokens,
@@ -185,8 +195,8 @@ async function generateWithMainApi(
   try {
     return await Promise.race([
       context.generateRaw({
-        prompt,
-        systemPrompt: SYSTEM_PROMPT,
+        prompt: userPrompt(settings, prompt),
+        systemPrompt: systemPrompt(settings),
         responseLength: settings.maxOutputTokens,
         jsonSchema: STRUCTURED_SCHEMA,
       }),
@@ -211,7 +221,7 @@ function generateWithIndependentApi(
 
   return postChatCompletion(context, {
     type: 'quiet',
-    messages: messages(prompt),
+    messages: messages(settings, prompt),
     model,
     temperature: settings.temperature,
     max_tokens: settings.maxOutputTokens,

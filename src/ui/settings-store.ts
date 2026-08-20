@@ -15,6 +15,8 @@ export const DEFAULT_SETTINGS: SettingsSnapshot = {
     provider: 'sillytavern',
     apiUrl: '',
     apiKey: '',
+    customPrompt: '',
+    jailbreakPrompt: '',
     model: '',
     temperature: 0.9,
     maxOutputTokens: 23333,
@@ -35,6 +37,8 @@ interface TimelineGlobalSettingsRecord extends Record<string, unknown> {
 }
 
 interface TimelineAiSettingsRecord extends Record<string, unknown> {
+  customPrompt?: unknown;
+  jailbreakPrompt?: unknown;
   mode?: unknown;
   openaiCompatible?: OpenAiCompatibleSettingsRecord;
 }
@@ -158,6 +162,8 @@ export function loadSettings(fallback: SettingsSnapshot): SettingsSnapshot {
       provider: isApiProvider(storedAi?.mode) ? storedAi.mode : fallback.ai.provider,
       apiUrl: storedString(openAiCompatible?.baseUrl, fallback.ai.apiUrl),
       apiKey: storedString(openAiCompatible?.apiKey, fallback.ai.apiKey),
+      customPrompt: storedString(storedAi?.customPrompt, fallback.ai.customPrompt),
+      jailbreakPrompt: storedString(storedAi?.jailbreakPrompt, fallback.ai.jailbreakPrompt),
       model: storedString(openAiCompatible?.model, fallback.ai.model),
       temperature: storedNumber(
         openAiCompatible?.temperature,
@@ -209,6 +215,8 @@ export function saveAiSettings(settings: AiSettings): boolean {
     provider: isApiProvider(settings.provider) ? settings.provider : DEFAULT_SETTINGS.ai.provider,
     apiUrl: storedString(settings.apiUrl, DEFAULT_SETTINGS.ai.apiUrl),
     apiKey: storedString(settings.apiKey, DEFAULT_SETTINGS.ai.apiKey),
+    customPrompt: storedString(settings.customPrompt, DEFAULT_SETTINGS.ai.customPrompt),
+    jailbreakPrompt: storedString(settings.jailbreakPrompt, DEFAULT_SETTINGS.ai.jailbreakPrompt),
     model: storedString(settings.model, DEFAULT_SETTINGS.ai.model),
     temperature: storedNumber(
       settings.temperature,
@@ -242,6 +250,8 @@ export function saveAiSettings(settings: AiSettings): boolean {
       ai: {
         ...currentAi,
         mode: normalizedSettings.provider,
+        customPrompt: normalizedSettings.customPrompt,
+        jailbreakPrompt: normalizedSettings.jailbreakPrompt,
         openaiCompatible: {
           ...currentOpenAiCompatible,
           baseUrl: normalizedSettings.apiUrl,

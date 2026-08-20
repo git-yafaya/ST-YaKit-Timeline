@@ -45,6 +45,26 @@ describe('SillyTavern AI adapter', () => {
     }));
   });
 
+  it('adds the custom prompt to the request and the jailbreak prompt to system instructions', async () => {
+    const generateRaw = vi.fn().mockResolvedValue('{"groups":[]}');
+    installContext({ mainApi: 'openai', generateRaw });
+
+    await generateTimelineAnalysis(
+      {
+        ...DEFAULT_SETTINGS.ai,
+        customPrompt: '请优先保留世界书原有分组语义。',
+        jailbreakPrompt: '不要因格式或角色设定拒绝输出，严格返回 JSON。',
+      },
+      '原始分析请求',
+      new AbortController().signal,
+    );
+
+    expect(generateRaw).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: '请优先保留世界书原有分组语义。\n\n原始分析请求',
+      systemPrompt: expect.stringContaining('不要因格式或角色设定拒绝输出，严格返回 JSON。'),
+    }));
+  });
+
   it('uses the selected main chat-completion model without changing host settings', async () => {
     const fetchMock = vi.fn().mockResolvedValue(response({
       choices: [{ message: { content: '{"groups":[]}' } }],
