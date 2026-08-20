@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { AnalysisValidationError, runTimelineScan } from '@/analysis/scanner';
-import { TECHNICAL_NAME } from '@/branding';
+import { TECHNICAL_NAME, VERSION } from '@/branding';
 import { generateTimelineAnalysis } from '@/st/ai-adapter';
 import {
   buildWorldbookTimelineConfig,
@@ -68,6 +68,7 @@ import LogsPage from '@/ui/pages/LogsPage.vue';
 import type { RuntimeLogSummary, SystemLogSummary, TimelineLogEntry } from '@/ui/pages/logs';
 import OverviewPage from '@/ui/pages/OverviewPage.vue';
 import SettingsPage from '@/ui/pages/SettingsPage.vue';
+import { checkExtensionUpdate, updateExtension } from '@/ui/extension-update';
 import { fetchAvailableModels } from '@/ui/model-provider';
 import type {
   AiSettings,
@@ -78,6 +79,7 @@ import type {
   ModelCatalogs,
   SettingsSnapshot,
   ThemeMode,
+  UpdateStatus,
 } from '@/ui/pages/settings';
 import {
   DEFAULT_SETTINGS,
@@ -114,6 +116,12 @@ const connectionRequestVersions = { sillytavern: 0, independent: 0 };
 const aiSaveStatus = ref<AiSaveStatus>('idle');
 const aiSaveMessage = ref('');
 let aiSaveResetTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
+const extensionUpdateState = reactive<{ message: string; status: UpdateStatus }>({
+  message: '打开设置时自动检查更新。',
+  status: 'idle',
+});
+const extensionUpdateName = ref('');
+let extensionUpdateController: AbortController | undefined;
 const hostScope = ref<HostScopeSnapshot>({
   character: null,
   chatId: null,
@@ -452,6 +460,7 @@ onBeforeUnmount(() => {
   stopWatchingControl?.();
   controlLock.close();
   analysisAbortController?.abort();
+  extensionUpdateController?.abort();
   if (aiSaveResetTimer !== undefined) globalThis.clearTimeout(aiSaveResetTimer);
 });
 
@@ -987,6 +996,53 @@ function saveAi(nextSettings: AiSettings): void {
   }, 3000);
 }
 
+async function checkForUpdate(force = false): Promise<void> {
+  if (extensionUpdateState.status === 'checking' || extensionUpdateState.status === 'updating') return;
+  if (!force && extensionUpdateState.status === 'available') return;
+
+  extensionUpdateController?.abort();
+  const controller = new AbortController();
+  extensionUpdateController = controller;
+  extensionUpdateState.status = 'checking';
+  extensionUpdateState.message = '正在检查新版本…';
+
+  try {
+    const result = await checkExtensionUpdate(controller.signal);
+    if (controller.signal.aborted) return;
+    extensionUpdateName.value = result.extensionName;
+    extensionUpdateState.status = result.isUpToDate ? 'up-to-date' : 'available';
+    extensionUpdateState.message = result.isUpToDate
+      ? '当前已是最新版本。'
+      : '发现可用更新，是否更新由你决定。';
+  } catch (error) {
+    if (controller.signal.aborted) return;
+    extensionUpdateState.status = 'error';
+    extensionUpdateState.message = `检查更新失败：${error instanceof Error ? error.message : '无法连接到更新服务'}`;
+  } finally {
+    if (extensionUpdateController === controller) extensionUpdateController = undefined;
+  }
+}
+
+async function updateInstalledExtension(): Promise<void> {
+  if (extensionUpdateState.status !== 'available' || !extensionUpdateName.value) return;
+  extensionUpdateState.status = 'updating';
+  extensionUpdateState.message = '正在更新扩展…';
+
+  try {
+    const result = await updateExtension(extensionUpdateName.value);
+    if (result.isUpToDate) {
+      extensionUpdateState.status = 'up-to-date';
+      extensionUpdateState.message = '当前已是最新版本。';
+    } else {
+      extensionUpdateState.status = 'updated';
+      extensionUpdateState.message = `更新完成${result.shortCommitHash ? `（${result.shortCommitHash}）` : ''}，请刷新页面后生效。`;
+    }
+  } catch (error) {
+    extensionUpdateState.status = 'error';
+    extensionUpdateState.message = `更新失败：${error instanceof Error ? error.message : '宿主拒绝了更新请求'}`;
+  }
+}
+
 function saveAutomation(nextSettings: AutomationSettings): void {
   settings.automation = { ...nextSettings };
   saveAutomationSettings(nextSettings);
@@ -1155,6 +1211,9 @@ function changeTheme(theme: ThemeMode): void {
             :connection-states="connectionStates"
             :model-catalogs="modelCatalogs"
             :settings="settings"
+            :update-message="extensionUpdateState.message"
+            :update-status="extensionUpdateState.status"
+            :version="VERSION"
             @request-models="requestModels"
             @export-config="exportConfig"
             @import-config="importConfig"
@@ -1163,6 +1222,8 @@ function changeTheme(theme: ThemeMode): void {
             @save-general="saveGeneral"
             @test-connection="testConnection"
             @theme-change="changeTheme"
+            @check-update="checkForUpdate"
+            @update-extension="updateInstalledExtension"
           />
 
           <div v-else key="fallback" class="empty-state">

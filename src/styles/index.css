@@ -1955,6 +1955,23 @@ h2 {
   width: min(680px, 100%);
 }
 
+.settings-update-dialog {
+  width: min(520px, 100%);
+}
+
+.settings-update-confirm-body p {
+  color: var(--tl-text);
+  line-height: 1.6;
+}
+
+.settings-update-confirm-body small {
+  display: block;
+  margin-top: 12px;
+  color: var(--tl-text-muted);
+  font-size: 11px;
+  line-height: 17px;
+}
+
 .dialog-hint {
   margin-top: 12px;
 }
@@ -2895,6 +2912,123 @@ h2 {
 .settings-heading p {
   margin-top: 4px;
   color: var(--tl-text-muted);
+}
+
+.settings-version-area {
+  min-width: 176px;
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-version-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  border: 1px solid var(--tl-border-soft);
+  border-radius: 12px;
+  color: var(--tl-text);
+  background: var(--tl-control-surface);
+  cursor: pointer;
+  transition: color 160ms ease-out, background-color 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out, opacity 160ms ease-out;
+}
+
+.settings-version-button:hover:not(:disabled),
+.settings-version-button:focus-visible {
+  border-color: var(--tl-primary-border-heavy);
+  background: var(--tl-primary-surface-soft);
+  box-shadow: var(--tl-focus-ring);
+}
+
+.settings-version-button:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.settings-version-button > span {
+  color: var(--tl-text-muted);
+  font-size: 11px;
+}
+
+.settings-version-button > strong {
+  color: var(--tl-primary);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+}
+
+.settings-version-button > i {
+  color: var(--tl-text-muted);
+  font-size: 16px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.settings-version-button.is-available {
+  border-color: var(--tl-primary-border-heavy);
+  background: var(--tl-primary-surface-soft);
+}
+
+.settings-version-button.is-error {
+  border-color: var(--tl-danger-border);
+}
+
+.settings-version-button.is-updated {
+  border-color: var(--tl-success-border);
+}
+
+.settings-version-button > i.is-spinning {
+  animation: timeline-time-spin 800ms linear infinite;
+}
+
+.settings-update-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--tl-primary);
+  font-size: 11px;
+}
+
+.settings-update-action {
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid var(--tl-primary-border-medium);
+  border-radius: 7px;
+  color: var(--tl-primary);
+  background: var(--tl-primary-surface-soft);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.settings-update-action:hover,
+.settings-update-action:focus-visible {
+  border-color: var(--tl-primary-border-heavy);
+  background: var(--tl-primary-surface-medium);
+}
+
+.settings-version-message {
+  max-width: 280px;
+  color: var(--tl-text-dim);
+  font-size: 10px;
+  line-height: 15px;
+  text-align: right;
+}
+
+.settings-version-message.is-available {
+  color: var(--tl-primary);
+}
+
+.settings-version-message.is-updated,
+.settings-version-message.is-up-to-date {
+  color: var(--tl-success);
+}
+
+.settings-version-message.is-error {
+  color: var(--tl-danger);
 }
 
 .settings-accordion-list {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { PRODUCT_NAME } from '@/branding';
 import { DEFAULT_FIXED_PROMPT } from '@/st/ai-prompts';
 import DeepListbox from '@/ui/components/DeepListbox.vue';
@@ -15,6 +15,7 @@ import type {
   SettingsCategory,
   SettingsSnapshot,
   ThemeMode,
+  UpdateStatus,
 } from '@/ui/pages/settings';
 
 const props = withDefaults(
@@ -24,6 +25,9 @@ const props = withDefaults(
     connectionStates?: ConnectionStates;
     modelCatalogs?: ModelCatalogs;
     settings: SettingsSnapshot;
+    updateMessage?: string;
+    updateStatus?: UpdateStatus;
+    version: string;
   }>(),
   {
     aiSaveMessage: '',
@@ -36,6 +40,8 @@ const props = withDefaults(
       sillytavern: { status: 'idle', models: [], message: '' },
       independent: { status: 'idle', models: [], message: '' },
     }),
+    updateMessage: '打开设置时自动检查更新。',
+    updateStatus: 'idle',
   },
 );
 
@@ -48,7 +54,11 @@ const emit = defineEmits<{
   saveGeneral: [settings: GeneralSettings];
   testConnection: [settings: AiSettings];
   themeChange: [theme: ThemeMode];
+  checkUpdate: [force?: boolean];
+  updateExtension: [];
 }>();
+
+onMounted(() => emit('checkUpdate'));
 
 const expandedCategory = ref<SettingsCategory | null>(null);
 const themeDraft = ref<ThemeMode>('follow');
@@ -62,6 +72,7 @@ const jailbreakPromptDialogOpen = ref(false);
 const jailbreakPromptModalDraft = ref('');
 const fixedPromptDialogOpen = ref(false);
 const fixedPromptModalDraft = ref('');
+const updateConfirmOpen = ref(false);
 const modelDraft = ref('');
 const temperatureDraft = ref(0.9);
 const maxTokensDraft = ref(23333);
@@ -230,6 +241,23 @@ function saveFixedPromptDialog(): void {
   saveAi();
 }
 
+function openUpdateConfirm(): void {
+  if (props.updateStatus === 'available') updateConfirmOpen.value = true;
+}
+
+function closeUpdateConfirm(): void {
+  updateConfirmOpen.value = false;
+}
+
+function confirmUpdate(): void {
+  closeUpdateConfirm();
+  emit('updateExtension');
+}
+
+function requestUpdateCheck(): void {
+  emit('checkUpdate', true);
+}
+
 function testConnection(): void {
   emit('testConnection', currentAiSettings());
 }
@@ -262,6 +290,25 @@ function onImportFile(event: Event): void {
       <div>
         <h1>设置</h1>
         <p>配置 {{ PRODUCT_NAME }} 的分析、切换与数据选项。</p>
+      </div>
+      <div class="settings-version-area">
+        <button
+          :class="['settings-version-button', `is-${updateStatus}`]"
+          type="button"
+          :disabled="updateStatus === 'checking' || updateStatus === 'updating'"
+          :aria-busy="updateStatus === 'checking' || updateStatus === 'updating'"
+          aria-label="检查 YaKit-理脉更新"
+          @click="requestUpdateCheck"
+        >
+          <span>当前版本</span>
+          <strong>v{{ version }}</strong>
+          <i :class="{ 'is-spinning': updateStatus === 'checking' || updateStatus === 'updating' }" aria-hidden="true">↻</i>
+        </button>
+        <div v-if="updateStatus === 'available'" class="settings-update-row">
+          <span>发现新版本</span>
+          <button class="settings-update-action" type="button" @click="openUpdateConfirm">更新</button>
+        </div>
+        <small :class="['settings-version-message', `is-${updateStatus}`]" aria-live="polite">{{ updateMessage }}</small>
       </div>
     </div>
 
@@ -561,6 +608,31 @@ function onImportFile(event: Event): void {
           <button class="confirm-action" type="submit">保存提示词</button>
         </footer>
       </form>
+    </div>
+
+    <div v-if="updateConfirmOpen" class="group-dialog-overlay" @click.self="closeUpdateConfirm">
+      <section
+        class="group-dialog settings-update-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="settings-update-dialog-title"
+      >
+        <header>
+          <div>
+            <h2 id="settings-update-dialog-title">确认更新</h2>
+            <p>YaKit-理脉发现了可用更新</p>
+          </div>
+          <button type="button" aria-label="关闭更新确认弹窗" @click="closeUpdateConfirm">×</button>
+        </header>
+        <div class="group-dialog-body settings-update-confirm-body">
+          <p>确认后由 SillyTavern 拉取扩展仓库的最新代码。不会自动执行更新，页面更新完成后需要手动刷新才能生效。</p>
+          <small>如果当前安装目录没有可访问的 Git 远端，更新请求会失败且不会改动本地文件。</small>
+        </div>
+        <footer>
+          <button type="button" @click="closeUpdateConfirm">暂不更新</button>
+          <button class="confirm-action" type="button" @click="confirmUpdate">确认更新</button>
+        </footer>
+      </section>
     </div>
   </div>
 </template>

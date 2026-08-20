@@ -4,6 +4,7 @@ export type ConnectionStatus = 'idle' | 'testing' | 'connected' | 'error';
 export type SettingsCategory = 'general' | 'analysis' | 'prompts' | 'automation' | 'data';
 export type ThemeMode = 'follow' | 'light' | 'dark';
 export type ModelLoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
+export type UpdateStatus = 'idle' | 'checking' | 'up-to-date' | 'available' | 'updating' | 'updated' | 'error';
 
 export interface AiSettings {
   apiKey: string;

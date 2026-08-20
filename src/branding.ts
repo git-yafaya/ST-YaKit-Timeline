@@ -1,7 +1,10 @@
-/** 产品展示名与不能使用中文的技术标识集中定义，避免界面和持久化边界再次漂移。 */
+import manifest from '../manifest.json';
+
+/** 产品展示名、版本与不能使用中文的技术标识集中定义，避免界面和持久化边界再次漂移。 */
 export const PRODUCT_NAME = 'YaKit-理脉';
 export const TECHNICAL_NAME = 'YaKit-Timeline';
 export const TECHNICAL_SLUG = 'yakit-timeline';
+export const VERSION = manifest.version;
 
 export const SETTINGS_NAMESPACE = 'yakit_timeline';
 export const CHAT_METADATA_KEY = 'yakit_timeline';
