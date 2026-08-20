@@ -35,6 +35,7 @@ import {
 } from '@/st/sillytavern-adapter';
 import { formatStoryTime } from '@/timeline/date';
 import { syncAutomaticTimeline, toggleManualTimelineEntry } from '@/timeline/engine';
+import { validateTimelineGroup } from '@/timeline/matcher';
 import { parseWlogTime } from '@/timeline/wlog';
 import {
   applyStoryTimeCandidate as applyStoryTimeCandidateToState,
@@ -169,7 +170,10 @@ const managementGroups = computed<readonly GroupManagementSummary[]>(() => {
       origin: entry.manualFields.length > 0 || entry.titleLocked ? 'manual' as const : 'ai' as const,
       rangeLabel: `${entry.effectiveStartDate} ～ ${entry.effectiveEndDate ?? '∞'}`,
       title: entry.displayTitle,
-      warning: group.blockReason || entry.warnings[0] || (entry.stale ? '当前映射可能已过期。' : undefined),
+      warning: group.blockReason
+        || validateTimelineGroup(group)
+        || entry.warnings[0]
+        || (entry.stale ? '当前映射可能已过期。' : undefined),
     })),
   }));
 });
@@ -269,6 +273,8 @@ let analysisRequestVersion = 0;
 let activeAnalysisScopeKey = '';
 let analysisDraftScopeKey = '';
 let stopWatchingControl: (() => void) | undefined;
+let hostScopeRefreshPromise: Promise<void> | undefined;
+let hostScopeRefreshQueued = false;
 
 function logTime(): string {
   return new Date().toLocaleString('zh-CN', { hour12: false });
@@ -419,7 +425,7 @@ function restoreChatState(snapshot: HostScopeSnapshot, config: WorldbookTimeline
   }
 }
 
-async function refreshHostScope(): Promise<void> {
+async function refreshHostScopeInternal(): Promise<void> {
   const version = ++hostScopeVersion;
   const snapshot = await readCurrentHostScope();
   if (version !== hostScopeVersion) return;
@@ -479,6 +485,27 @@ async function refreshHostScope(): Promise<void> {
   worldbookConfig.value = config;
   restoreChatState(snapshot, config);
   void syncCurrentTimeline('进入当前聊天', nextScopeKey);
+}
+
+async function refreshHostScope(): Promise<void> {
+  if (hostScopeRefreshPromise) {
+    hostScopeRefreshQueued = true;
+    const current = hostScopeRefreshPromise;
+    await current;
+    if (hostScopeRefreshQueued) {
+      hostScopeRefreshQueued = false;
+      await refreshHostScope();
+    }
+    return;
+  }
+
+  const current = refreshHostScopeInternal();
+  hostScopeRefreshPromise = current;
+  try {
+    await current;
+  } finally {
+    if (hostScopeRefreshPromise === current) hostScopeRefreshPromise = undefined;
+  }
 }
 
 onMounted(() => {
@@ -619,7 +646,9 @@ async function applyStoryTimeCandidate(nextTime: NonNullable<ReturnType<typeof p
 }
 
 async function processLatestAssistantMessage(): Promise<void> {
-  if (!chatTimelineState.value) await refreshHostScope();
+  // MESSAGE_RECEIVED 可能紧接在 CHAT_CHANGED 后到达；先重新确认角色、聊天和世界书作用域，
+  // 避免把新聊天的最新时间写进旧聊天状态。
+  await refreshHostScope();
   const latestMessage = readLastAssistantMessageText();
   const nextTime = latestMessage ? parseWlogTime(latestMessage) : null;
   if (!nextTime) {
@@ -633,7 +662,8 @@ async function getCurrentTime(): Promise<void> {
   if (timeActionBusy.value) return;
   timeActionBusy.value = true;
   try {
-    if (!chatTimelineState.value) await refreshHostScope();
+    // 手动读取也必须以当前聊天为准，不能依赖异步宿主事件已经完成刷新。
+    await refreshHostScope();
     const latestMessage = readLastAssistantMessageText();
     const nextTime = latestMessage ? parseWlogTime(latestMessage) : null;
     if (!nextTime) {
@@ -849,6 +879,15 @@ function inspectTimeline(): void {
   selectPage('timeline');
 }
 
+async function resyncTimeline(): Promise<void> {
+  if (!chatTimelineState.value?.currentTime) {
+    showMissingTimeNotice();
+    return;
+  }
+  runtimeNotice.value = '正在重新同步当前故事时间线…';
+  await syncCurrentTimeline('手动重新同步');
+}
+
 async function changeGroupMode(groupId: string, mode: 'auto' | 'manual'): Promise<void> {
   const state = chatTimelineState.value;
   if (!state || !worldbookConfig.value) return;
@@ -911,7 +950,8 @@ function deferConflict(groupId: string, entryId: EntryId): void {
 }
 
 function resolveConflict(groupId: string, entryId: EntryId): void {
-  runtimeNotice.value = `条目 ${String(entryId)} 的冲突不能自动覆盖；请重新分析或在分组管理中人工修正后再试。`;
+  selectPage('groups');
+  runtimeNotice.value = `已打开分组管理；请修正分组 ${groupId} 中的条目 ${String(entryId)} 后再重新同步。`;
   appendSystemLog('warning', '配置冲突待处理', `分组 ${groupId} 的条目 ${String(entryId)} 仍保持阻断。`, 'config');
 }
 
@@ -1048,17 +1088,55 @@ async function importConfig(file: File): Promise<void> {
       return;
     }
     const safePayload = sanitizeWorldbookTimelineConfig(payload);
+    const invalidGroup = safePayload.groups
+      .map(group => ({ group, reason: validateTimelineGroup(group) }))
+      .find(item => item.reason);
+    if (invalidGroup?.reason) {
+      runtimeNotice.value = `导入失败：分组「${invalidGroup.group.name}」配置无效：${invalidGroup.reason}`;
+      return;
+    }
+    const importedEntryIds = safePayload.groups.flatMap(group => group.entries.map(entry => String(entry.entryId)));
+    if (new Set(importedEntryIds).size !== importedEntryIds.length) {
+      runtimeNotice.value = '导入失败：同一世界书条目被多个分组重复纳管。';
+      return;
+    }
+    const reconciledPayload = await migrateWorldbookTimelineConfig(safePayload, worldbook);
+    const freshness = await detectWorldbookConfigStale(reconciledPayload, worldbook);
+    const checkedPayload = freshness.config;
     const sourceIds = new Set(worldbook.entries.map(entry => String(entry.id)));
-    const missing = safePayload.groups.flatMap(group => group.entries)
+    const importedIds = new Set(safePayload.groups.flatMap(group => group.entries).map(entry => String(entry.entryId)));
+    const checkedEntries = checkedPayload.groups.flatMap(group => group.entries);
+    const missing = checkedEntries
       .filter(entry => !sourceIds.has(String(entry.entryId)));
+    const rematched = checkedEntries.filter(entry => !importedIds.has(String(entry.entryId)));
+    const hashChanged = checkedEntries.filter(entry => (
+      entry.stale && sourceIds.has(String(entry.entryId))
+    ));
+    const currentEntries = worldbookConfig.value?.groups.flatMap(group => group.entries) ?? [];
+    const currentById = new Map(currentEntries.map(entry => [String(entry.entryId), entry]));
+    const checkedById = new Map(checkedEntries.map(entry => [String(entry.entryId), entry]));
+    const added = checkedEntries.filter(entry => !currentById.has(String(entry.entryId)));
+    const removed = currentEntries.filter(entry => !checkedById.has(String(entry.entryId)));
+    const changed = checkedEntries.filter(entry => {
+      const previous = currentById.get(String(entry.entryId));
+      return Boolean(previous && (
+        previous.displayTitle !== entry.displayTitle
+        || previous.effectiveStartDate !== entry.effectiveStartDate
+        || previous.effectiveEndDate !== entry.effectiveEndDate
+        || previous.contentHash !== entry.contentHash
+      ));
+    });
     const confirmation = [
-      `即将导入 ${safePayload.groups.length} 个时间线组。`,
+      `已校验当前世界书：${checkedPayload.groups.length} 个时间线组。`,
+      `差异：新增 ${added.length}、变化 ${changed.length}、旧映射待处理 ${removed.length}。`,
+      rematched.length > 0 ? `已按正文 Hash 重新匹配 ${rematched.length} 个条目。` : '',
+      hashChanged.length > 0 ? `${hashChanged.length} 个条目正文 Hash 已变化，旧映射会标记为 stale 并暂停自动切换。` : '',
       missing.length > 0 ? `${missing.length} 个原条目当前不存在，将保留为 stale 并停止自动切换。` : '',
       '确认后会更新插件配置；不会直接修改世界书正文或未受管条目。',
     ].filter(Boolean).join('\n');
     if (!globalThis.confirm(confirmation)) return;
-    await saveTimelineConfig({ ...safePayload, worldbookName: worldbook.name }, '配置已导入；当前聊天自动组正在重新校准。');
-    appendSystemLog('info', '配置已导入', `已校验并导入 ${safePayload.groups.length} 个时间线组。`, 'config');
+    await saveTimelineConfig({ ...checkedPayload, worldbookName: worldbook.name }, '配置已导入；当前聊天自动组正在重新校准。');
+    appendSystemLog('info', '配置已导入', `已校验并导入 ${checkedPayload.groups.length} 个时间线组。`, 'config');
   } catch (error) {
     runtimeNotice.value = error instanceof Error ? `导入失败：${error.message}` : '导入失败：JSON 文件无法读取。';
   }
@@ -1224,6 +1302,7 @@ function changeTheme(theme: ThemeMode): void {
             @change-mode="changeGroupMode"
             @defer-conflict="deferConflict"
             @resolve-conflict="resolveConflict"
+            @resync="resyncTimeline"
             @start-analysis="openAnalysis"
             @toggle-entry="toggleEntry"
           />

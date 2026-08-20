@@ -34,6 +34,8 @@ const moreOpen = ref(false);
 const renaming = ref(false);
 const nameDraft = ref('');
 const mergeTargetId = ref('');
+const splitEntryIds = ref<string[]>([]);
+const splitError = ref('');
 const draggedGroupId = ref<string | null>(null);
 const draggedEntryId = ref<EntryId | null>(null);
 const nameInput = ref<HTMLInputElement | null>(null);
@@ -125,6 +127,10 @@ function openOperation(mode: Exclude<OperationMode, null>): void {
   moreOpen.value = false;
   nameDraft.value = mode === 'split' && group ? `${group.name} - 拆分` : '';
   mergeTargetId.value = mergeTargets.value[0]?.id ?? '';
+  splitError.value = '';
+  splitEntryIds.value = mode === 'split' && group
+    ? orderedEntries.value.slice(Math.ceil(orderedEntries.value.length / 2)).map(entry => String(entry.entryId))
+    : [];
   void nextTick(() => nameInput.value?.focus());
 }
 
@@ -132,6 +138,20 @@ function closeOperation(): void {
   operationMode.value = null;
   nameDraft.value = '';
   mergeTargetId.value = '';
+  splitEntryIds.value = [];
+  splitError.value = '';
+}
+
+function isSplitEntrySelected(entryId: EntryId): boolean {
+  return splitEntryIds.value.includes(String(entryId));
+}
+
+function toggleSplitEntry(entryId: EntryId, selected: boolean): void {
+  const key = String(entryId);
+  const next = splitEntryIds.value.filter(id => id !== key);
+  if (selected) next.push(key);
+  splitEntryIds.value = next;
+  splitError.value = '';
 }
 
 function confirmOperation(): void {
@@ -146,12 +166,18 @@ function confirmOperation(): void {
   } else if (operationMode.value === 'split' && group) {
     const name = nameDraft.value.trim();
     if (!name) return nameInput.value?.focus();
-    const splitAt = Math.ceil(orderedEntries.value.length / 2);
+    const movedEntryIds = orderedEntries.value
+      .filter(entry => isSplitEntrySelected(entry.entryId))
+      .map(entry => entry.entryId);
+    if (movedEntryIds.length === 0 || movedEntryIds.length === orderedEntries.value.length) {
+      splitError.value = '请选择至少一个、但不要选择全部条目。';
+      return;
+    }
     emit(
       'splitGroup',
       group.id,
       name,
-      orderedEntries.value.slice(splitAt).map(entry => entry.entryId),
+      movedEntryIds,
     );
   } else if (operationMode.value === 'delete' && group) {
     emit('deleteGroup', group.id);
@@ -442,8 +468,22 @@ onUnmounted(() => {
           </div>
 
           <p v-if="operationMode === 'split'" class="dialog-hint">
-            将按当前顺序把后半部分条目移动到新分组；应用前由配置层再次校验。
+            勾选要移动到新分组的条目。原分组和新分组都会保留人工排序，应用前由配置层再次校验。
           </p>
+          <div v-if="operationMode === 'split'" class="split-entry-picker">
+            <label v-for="entry in orderedEntries" :key="entry.entryId" class="split-entry-option">
+              <input
+                type="checkbox"
+                :checked="isSplitEntrySelected(entry.entryId)"
+                @change="toggleSplitEntry(entry.entryId, ($event.target as HTMLInputElement).checked)"
+              />
+              <span>
+                <strong>{{ entry.title }}</strong>
+                <small>{{ entry.rangeLabel }} · {{ entry.originalComment }}</small>
+              </span>
+            </label>
+            <p v-if="splitError" class="dialog-error" role="alert">{{ splitError }}</p>
+          </div>
         </div>
 
         <footer>

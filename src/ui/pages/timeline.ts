@@ -2,12 +2,14 @@ import type { EntryId } from '@/timeline/types';
 import type { OverviewGroupMode } from '@/ui/pages/overview';
 
 export type TimelineEntryState = 'active' | 'inactive' | 'warning';
-export type TimelineStatusFilter = 'all' | TimelineEntryState;
+export type TimelineStatusFilter = 'all' | 'active' | 'inactive' | 'attention' | 'manual';
 
 export interface TimelineEntrySummary {
   contentPreview?: string;
   enabled: boolean;
   entryId: EntryId;
+  manuallyModified: boolean;
+  pending: boolean;
   originalComment: string;
   rangeLabel: string;
   state: TimelineEntryState;

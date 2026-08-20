@@ -13,6 +13,39 @@ interface ParsedEntry {
   end: StoryDate | null;
 }
 
+/** 校验已确认配置的结构，供时间线管理页在没有运行同步时也能显示冲突。 */
+export function validateTimelineGroup(group: MatchableTimelineGroup): string | null {
+  const entries = group.entries.filter(entry => entry.managed !== false);
+  if (entries.length === 0) return null;
+
+  const parsed: ParsedEntry[] = [];
+  for (const entry of entries) {
+    const start = parseStoryDate(entry.effectiveStartDate);
+    if (!start) return `条目 ${String(entry.entryId)} 的生效起点无效。`;
+
+    const end = entry.effectiveEndDate ? parseStoryDate(entry.effectiveEndDate) : null;
+    if (entry.effectiveEndDate && !end) return `条目 ${String(entry.entryId)} 的生效终点无效。`;
+    if (end && compareStoryDates(end, start) < 0) return `条目 ${String(entry.entryId)} 的终点早于起点。`;
+    parsed.push({ source: entry, start, end });
+  }
+
+  for (let index = 1; index < parsed.length; index += 1) {
+    const previous = parsed[index - 1];
+    const current = parsed[index];
+    const startOrder = compareStoryDates(current.start, previous.start);
+    if (startOrder === 0) return '多个条目具有相同的生效起点。';
+    if (startOrder < 0) return '条目顺序与生效起点不一致。';
+
+    if (!previous.end) continue;
+    const distance = differenceInStoryDays(previous.end, current.start);
+    if (distance <= 0) return '相邻条目的有效时间范围重叠。';
+    if (distance > 1) return '相邻条目的有效时间范围存在空档。';
+  }
+
+  if (parsed.at(-1)?.end) return '最后一个条目的有效终点必须保持开放。';
+  return null;
+}
+
 /** 使用已确认配置做确定性匹配；任何结构歧义都返回错误，不选择“最近项”。 */
 export function matchTimelineEntry(date: StoryDate, group: MatchableTimelineGroup): MatchResult {
   if (!isValidStoryDate(date)) {

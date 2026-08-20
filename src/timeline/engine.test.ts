@@ -129,4 +129,36 @@ describe('timeline engine', () => {
     expect(result.status).toBe('synced');
     expect((await adapter.readCurrentWorldbook())?.entries.map(entry => entry.enabled)).toEqual([true, true]);
   });
+
+  it('首次保存失败时只重试一次并在成功后复读校验', async () => {
+    const base = worldbook([{ id: 1, enabled: false }, { id: 2, enabled: true }]);
+    let current = base;
+    let pending = base;
+    let saveCount = 0;
+    const adapter: WorldbookWriteAdapter = {
+      readCurrentWorldbook: async () => current,
+      setEntryEnabled: async (entryId, enabled) => {
+        pending = {
+          ...pending,
+          entries: pending.entries.map(entry => String(entry.id) === String(entryId) ? { ...entry, enabled } : entry),
+        };
+      },
+      saveWorldbook: async () => {
+        saveCount += 1;
+        if (saveCount === 1) throw new Error('模拟首次保存失败');
+        current = pending;
+      },
+    };
+
+    const result = await syncAutomaticTimeline({
+      adapter,
+      config: config([group('main', [1, 2])]),
+      currentTime: { year: 419, month: 6, day: 1, raw: '0419-06-01' },
+      state: state(['main']),
+    });
+
+    expect(result.groups[0]).toMatchObject({ status: 'synced', targetEntryId: 1 });
+    expect(saveCount).toBe(2);
+    expect((await adapter.readCurrentWorldbook())?.entries.map(entry => entry.enabled)).toEqual([true, false]);
+  });
 });

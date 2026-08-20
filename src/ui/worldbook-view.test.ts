@@ -48,6 +48,8 @@ describe('worldbook config UI projections', () => {
         originalComment: '当前名称',
         contentPreview: '正文',
         enabled: true,
+        manuallyModified: false,
+        pending: false,
         state: 'active',
       }],
     });
@@ -66,5 +68,24 @@ describe('worldbook config UI projections', () => {
   it('does not project a configuration into a different worldbook', () => {
     expect(buildOverviewGroupSummaries(config, { ...worldbook, key: 'other' })).toEqual([]);
     expect(buildTimelineGroupDetails(config, { ...worldbook, key: 'other' })).toEqual([]);
+  });
+
+  it('exposes pending and manual flags for timeline filters', () => {
+    const flagged = {
+      ...config,
+      groups: [{
+        ...config.groups[0],
+        entries: [{
+          ...config.groups[0].entries[0],
+          confidence: 0.6,
+          manualFields: ['displayTitle'],
+          titleLocked: false,
+        }],
+      }],
+    };
+    expect(buildTimelineGroupDetails(flagged, worldbook)[0].entries[0]).toMatchObject({
+      manuallyModified: true,
+      pending: true,
+    });
   });
 });

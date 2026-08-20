@@ -23,6 +23,7 @@ const emit = defineEmits<{
   changeMode: [groupId: string, mode: 'auto' | 'manual'];
   deferConflict: [groupId: string, entryId: EntryId];
   resolveConflict: [groupId: string, entryId: EntryId];
+  resync: [];
   startAnalysis: [];
   toggleEntry: [groupId: string, entryId: EntryId, enabled: boolean];
 }>();
@@ -41,9 +42,10 @@ const groupOptions = computed<readonly DeepListboxOption[]>(() => {
 
 const statusOptions: readonly DeepListboxOption[] = [
   { value: 'all', label: '状态：全部' },
-  { value: 'active', label: '状态：生效中' },
+  { value: 'active', label: '只看当前生效' },
+  { value: 'attention', label: '只看异常 / 待确认' },
+  { value: 'manual', label: '只看人工修改' },
   { value: 'inactive', label: '状态：未生效' },
-  { value: 'warning', label: '状态：异常' },
 ];
 
 const currentGroup = computed(() => {
@@ -58,7 +60,11 @@ const filteredEntries = computed(() => {
   return group.entries.filter(entry => {
     const matchesQuery =
       query.length === 0 || `${entry.title} ${entry.originalComment}`.toLocaleLowerCase('zh-CN').includes(query);
-    const matchesStatus = statusFilter.value === 'all' || entry.state === statusFilter.value;
+    const matchesStatus = statusFilter.value === 'all'
+      || (statusFilter.value === 'attention' && (entry.pending || entry.state === 'warning'))
+      || (statusFilter.value === 'manual' && entry.manuallyModified)
+      || (statusFilter.value === 'active' && entry.state === 'active')
+      || (statusFilter.value === 'inactive' && entry.state === 'inactive');
     return matchesQuery && matchesStatus;
   });
 });
@@ -88,7 +94,7 @@ function selectGroupFilter(groupId: string): void {
 }
 
 function selectStatusFilter(status: string): void {
-  if (status === 'all' || status === 'active' || status === 'inactive' || status === 'warning') {
+  if (status === 'all' || status === 'active' || status === 'inactive' || status === 'attention' || status === 'manual') {
     statusFilter.value = status;
   }
 }
@@ -208,6 +214,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <span :class="['entry-status', `is-${entry.state}`]">
                   <i aria-hidden="true"></i>{{ statusLabel(entry.state) }}
                 </span>
+                <span v-if="entry.pending" class="entry-flag is-pending">待确认</span>
+                <span v-if="entry.manuallyModified" class="entry-flag is-manual">人工修改</span>
               </div>
             </div>
 
@@ -238,12 +246,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               </div>
               <div class="conflict-actions">
                 <button type="button" @click="emit('deferConflict', currentGroup.id, entry.entryId)">暂不处理</button>
+                <button type="button" @click="$emit('resync')">重新同步</button>
                 <button
                   class="resolve-button"
                   type="button"
                   @click="emit('resolveConflict', currentGroup.id, entry.entryId)"
                 >
-                  处理冲突
+                  前往分组管理
                 </button>
               </div>
             </div>

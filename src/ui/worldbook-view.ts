@@ -3,6 +3,7 @@ import type { ChatGroupState } from '@/storage/chat-state';
 import type { ManagedTimelineEntry, WorldbookTimelineConfig } from '@/storage/worldbook-config';
 import type { OverviewGroupSummary } from '@/ui/pages/overview';
 import type { TimelineGroupDetail } from '@/ui/pages/timeline';
+import { validateTimelineGroup } from '@/timeline/matcher';
 
 function rangeLabel(entry: ManagedTimelineEntry): string {
   return `${entry.effectiveStartDate} ～ ${entry.effectiveEndDate ?? '∞'}`;
@@ -24,7 +25,9 @@ export function buildOverviewGroupSummaries(
   return config.groups.map(group => {
     const enabledEntries = group.entries.filter(entry => sources.get(String(entry.entryId))?.enabled);
     const warningEntry = group.entries.find(entry => !sources.has(String(entry.entryId)) || entry.stale || entry.warnings.length > 0);
-    const warning = group.blockReason || (warningEntry ? entryWarning(warningEntry, Boolean(sources.get(String(warningEntry.entryId)))) : undefined);
+    const warning = group.blockReason
+      || (validateTimelineGroup(group) ?? undefined)
+      || (warningEntry ? entryWarning(warningEntry, Boolean(sources.get(String(warningEntry.entryId)))) : undefined);
     const active = enabledEntries.length === 1 ? enabledEntries[0] : undefined;
     return {
       id: group.id,
@@ -49,14 +52,23 @@ export function buildTimelineGroupDetails(
   if (!config || !worldbook || config.worldbookKey !== worldbook.key) return [];
   const sources = new Map(worldbook.entries.map(entry => [String(entry.id), entry]));
   return config.groups.map(group => {
+    const groupValidationWarning = validateTimelineGroup(group);
     const entries = group.entries.map(entry => {
       const source = sources.get(String(entry.entryId));
-      const warning = group.blockReason || entryWarning(entry, Boolean(source));
+      const warning = group.blockReason || groupValidationWarning || entryWarning(entry, Boolean(source));
       return {
         contentPreview: source?.content ?? '',
         enabled: source?.enabled ?? false,
         entryId: entry.entryId,
+        manuallyModified: entry.manualFields.length > 0 || entry.titleLocked,
         originalComment: source?.comment || entry.originalComment,
+        pending: Boolean(
+          group.blocked
+          || entry.stale
+          || entry.warnings.length > 0
+          || !source
+          || (entry.confidence < 0.8 && !entry.titleLocked),
+        ),
         rangeLabel: rangeLabel(entry),
         state: warning ? 'warning' as const : source?.enabled ? 'active' as const : 'inactive' as const,
         title: entry.displayTitle,

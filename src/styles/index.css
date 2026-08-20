@@ -1210,6 +1210,29 @@ h2 {
   color: var(--tl-warning);
 }
 
+.entry-flag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border: 1px solid var(--tl-border);
+  border-radius: 999px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.entry-flag.is-pending {
+  border-color: var(--tl-warning-border-heavy);
+  color: var(--tl-warning);
+  background: var(--tl-warning-surface);
+}
+
+.entry-flag.is-manual {
+  border-color: var(--tl-primary-border);
+  color: var(--tl-primary);
+  background: var(--tl-primary-surface);
+}
+
 .timeline-entry-actions {
   display: flex;
   align-items: center;
@@ -1714,6 +1737,63 @@ h2 {
 .group-dialog-field select:focus {
   border-color: var(--tl-primary);
   box-shadow: var(--tl-focus-ring);
+}
+
+.split-entry-picker {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px solid var(--tl-border);
+  border-radius: 10px;
+  background: var(--tl-surface-subtle);
+  scrollbar-gutter: stable;
+}
+
+.split-entry-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px;
+  border-radius: 8px;
+  color: var(--tl-text);
+  cursor: pointer;
+}
+
+.split-entry-option:hover {
+  background: var(--tl-surface-hover);
+}
+
+.split-entry-option input {
+  margin-top: 3px;
+  accent-color: var(--tl-primary);
+}
+
+.split-entry-option span {
+  min-width: 0;
+}
+
+.split-entry-option strong,
+.split-entry-option small {
+  display: block;
+}
+
+.split-entry-option strong {
+  overflow-wrap: anywhere;
+}
+
+.split-entry-option small {
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  color: var(--tl-text-muted);
+  font-size: 11px;
+}
+
+.dialog-error {
+  color: var(--tl-warning);
+  font-size: 12px;
 }
 
 .group-dialog-field input::placeholder {

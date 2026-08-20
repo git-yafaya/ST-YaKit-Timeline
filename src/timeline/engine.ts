@@ -124,12 +124,50 @@ async function writeAndVerify(
     }
     await adapter.saveWorldbook();
   } catch (error) {
+    const firstError = error instanceof Error ? error.message : '世界书保存失败。';
     discardPendingChanges(adapter);
-    return { changed: false, error: error instanceof Error ? error.message : '世界书保存失败。' };
+    if (!hasControl()) return { changed: false, error: firstError };
+
+    // 首次写入或保存失败也只重试一次；重试前丢弃未提交批次，避免把半成品继续带入下一次写入。
+    try {
+      for (const state of desired.values()) {
+        if (!hasControl()) {
+          discardPendingChanges(adapter);
+          return { changed: false, error: '重试写入过程中控制权已丢失，已停止后续写入。' };
+        }
+        await adapter.setEntryEnabled(state.entryId, state.enabled);
+      }
+      await adapter.saveWorldbook();
+    } catch (retryError) {
+      discardPendingChanges(adapter);
+      const retryMessage = retryError instanceof Error ? retryError.message : '世界书保存失败。';
+      return { changed: false, error: `${firstError}；重试保存失败：${retryMessage}` };
+    }
+
+    let retryRead: WorldbookSnapshot | null;
+    try {
+      retryRead = await adapter.readCurrentWorldbook();
+    } catch (readError) {
+      return {
+        changed: true,
+        error: `${firstError}；重试后复读失败：${readError instanceof Error ? readError.message : '无法读取世界书状态'}`,
+      };
+    }
+    const retryVerificationError = verifyDesired(retryRead, expectedKey, desired);
+    return {
+      changed: true,
+      error: retryVerificationError ? `${firstError}；重试后${retryVerificationError}` : null,
+    };
   }
 
-  let reread = await adapter.readCurrentWorldbook();
-  let verificationError = verifyDesired(reread, expectedKey, desired);
+  let reread: WorldbookSnapshot | null = null;
+  let verificationError: string | null;
+  try {
+    reread = await adapter.readCurrentWorldbook();
+    verificationError = verifyDesired(reread, expectedKey, desired);
+  } catch (readError) {
+    verificationError = `写入后复读失败：${readError instanceof Error ? readError.message : '无法读取世界书状态'}`;
+  }
   if (!verificationError) return { changed: true, error: null };
 
   // 外部世界书编辑或缓存延迟可能造成一次不一致；按同一目标集合重试一次。
@@ -153,8 +191,12 @@ async function writeAndVerify(
     };
   }
 
-  reread = await adapter.readCurrentWorldbook();
-  verificationError = verifyDesired(reread, expectedKey, desired);
+  try {
+    reread = await adapter.readCurrentWorldbook();
+    verificationError = verifyDesired(reread, expectedKey, desired);
+  } catch (readError) {
+    verificationError = `${verificationError}；重试后复读失败：${readError instanceof Error ? readError.message : '无法读取世界书状态'}`;
+  }
   return { changed: true, error: verificationError };
 }
 
@@ -214,7 +256,18 @@ async function syncGroup(
     };
   }
 
-  const worldbook = await options.adapter.readCurrentWorldbook();
+  let worldbook: WorldbookSnapshot | null;
+  try {
+    worldbook = await options.adapter.readCurrentWorldbook();
+  } catch (error) {
+    return {
+      changed: false,
+      groupId: group.id,
+      status: 'error',
+      targetEntryId: match.entry.entryId,
+      message: `读取当前世界书失败：${error instanceof Error ? error.message : '未知错误'}`,
+    };
+  }
   const scopeError = currentWorldbookError(worldbook, options.config.worldbookKey);
   if (scopeError) {
     return { changed: false, groupId: group.id, status: 'blocked', message: scopeError };
@@ -264,7 +317,16 @@ export async function syncAutomaticTimeline(options: TimelineSyncOptions): Promi
   const duplicateGroups = duplicateManagedEntryGroups(options.config.groups, options.state);
   const groups: TimelineGroupSyncResult[] = [];
   for (const group of options.config.groups) {
-    groups.push(await syncGroup(options, group, duplicateGroups));
+    try {
+      groups.push(await syncGroup(options, group, duplicateGroups));
+    } catch (error) {
+      groups.push({
+        changed: false,
+        groupId: group.id,
+        status: 'error',
+        message: `时间线组运行失败：${error instanceof Error ? error.message : '未知错误'}`,
+      });
+    }
   }
   return {
     changed: groups.some(group => group.changed),
@@ -294,7 +356,17 @@ export async function toggleManualTimelineEntry(
     return { changed: false, enabled: options.enabled, status: 'blocked', message: '当前标签页没有世界书控制权，已阻止写入。' };
   }
 
-  const worldbook = await options.adapter.readCurrentWorldbook();
+  let worldbook: WorldbookSnapshot | null;
+  try {
+    worldbook = await options.adapter.readCurrentWorldbook();
+  } catch (error) {
+    return {
+      changed: false,
+      enabled: options.enabled,
+      status: 'error',
+      message: `读取当前世界书失败：${error instanceof Error ? error.message : '未知错误'}`,
+    };
+  }
   const scopeError = currentWorldbookError(worldbook, options.config.worldbookKey);
   if (scopeError) return { changed: false, enabled: options.enabled, status: 'blocked', message: scopeError };
   const actual = worldbookEntriesById(worldbook!);

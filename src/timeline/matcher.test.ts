@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchTimelineEntry } from '@/timeline/matcher';
+import { matchTimelineEntry, validateTimelineGroup } from '@/timeline/matcher';
 import type { MatchableTimelineGroup, StoryDate } from '@/timeline/types';
 
 const group: MatchableTimelineGroup = {
@@ -25,6 +25,15 @@ const group: MatchableTimelineGroup = {
 const date = (year: number, month: number, day: number): StoryDate => ({ year, month, day });
 
 describe('matchTimelineEntry', () => {
+  it('可在运行同步前报告配置冲突', () => {
+    expect(validateTimelineGroup({
+      entries: [
+        { entryId: 1, effectiveStartDate: '419-01-01', effectiveEndDate: '420-01-10' },
+        { entryId: 2, effectiveStartDate: '420-01-01' },
+      ],
+    })).toBe('相邻条目的有效时间范围重叠。');
+  });
+
   it('早于首条实际起点时仍匹配首条', () => {
     expect(matchTimelineEntry(date(419, 1, 1), group)).toMatchObject({ status: 'matched', entry: { entryId: 17 } });
   });
