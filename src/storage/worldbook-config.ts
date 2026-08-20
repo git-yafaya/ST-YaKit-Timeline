@@ -325,6 +325,147 @@ export function loadWorldbookTimelineConfig(worldbookKey: string): WorldbookTime
     : null;
 }
 
+export interface WorldbookMigrationCandidate {
+  config: WorldbookTimelineConfig;
+  matchedEntryCount: number;
+  score: number;
+  totalEntryCount: number;
+}
+
+interface HashedWorldbookEntry {
+  entry: WorldbookSnapshot['entries'][number];
+  hash: string;
+}
+
+async function hashWorldbookEntries(worldbook: WorldbookSnapshot): Promise<HashedWorldbookEntry[]> {
+  return Promise.all(worldbook.entries.map(async entry => ({
+    entry,
+    hash: await contentHash(entry.content),
+  })));
+}
+
+function countWorldbookMatches(
+  config: WorldbookTimelineConfig,
+  currentEntries: readonly HashedWorldbookEntry[],
+): number {
+  const byId = new Map(currentEntries.map(item => [String(item.entry.id), item]));
+  const byHash = new Map<string, HashedWorldbookEntry[]>();
+  for (const item of currentEntries) {
+    const matches = byHash.get(item.hash) ?? [];
+    matches.push(item);
+    byHash.set(item.hash, matches);
+  }
+
+  const used = new Set<string>();
+  let count = 0;
+  for (const entry of config.groups.flatMap(group => group.entries)) {
+    const exact = byId.get(String(entry.entryId));
+    const byExactId = exact && exact.hash === entry.contentHash && !used.has(String(exact.entry.id)) ? exact : undefined;
+    const byContent = byHash.get(entry.contentHash)?.find(item => !used.has(String(item.entry.id)));
+    const match = byExactId ?? byContent;
+    if (!match) continue;
+    used.add(String(match.entry.id));
+    count += 1;
+  }
+  return count;
+}
+
+/**
+ * 在当前 key 没有配置时，查找可能只是改名或重新导入后的旧配置。
+ * 只返回有明确正文 Hash 重叠的候选，是否迁移由用户决定。
+ */
+export async function findWorldbookConfigMigrationCandidates(
+  worldbook: WorldbookSnapshot,
+): Promise<WorldbookMigrationCandidate[]> {
+  const context = getContext();
+  const namespace = getStoredNamespace(context);
+  const worldbooks = recordValue(namespace?.worldbooks);
+  if (!worldbooks) return [];
+
+  const currentEntries = await hashWorldbookEntries(worldbook);
+  const candidates: WorldbookMigrationCandidate[] = [];
+  for (const [key, value] of Object.entries(worldbooks)) {
+    if (key === worldbook.key || !isConfig(value)) continue;
+    const config = sanitizeWorldbookTimelineConfig(value);
+    const totalEntryCount = config.groups.reduce((total, group) => total + group.entries.length, 0);
+    if (totalEntryCount === 0) continue;
+    const matchedEntryCount = countWorldbookMatches(config, currentEntries);
+    const sameName = normalizedText(config.worldbookName) === normalizedText(worldbook.name);
+    const overlap = matchedEntryCount / Math.max(1, Math.min(totalEntryCount, currentEntries.length));
+    if (matchedEntryCount === 0 || (!sameName && overlap < 0.5)) continue;
+    candidates.push({
+      config,
+      matchedEntryCount,
+      score: Math.round(overlap * 100),
+      totalEntryCount,
+    });
+  }
+
+  return candidates.sort((left, right) => (
+    right.score - left.score || right.matchedEntryCount - left.matchedEntryCount
+  ));
+}
+
+/** 将用户确认的旧配置迁移到当前世界书 key，并按正文 Hash 更新条目 ID。 */
+export async function migrateWorldbookTimelineConfig(
+  config: WorldbookTimelineConfig,
+  worldbook: WorldbookSnapshot,
+  updatedAt = Date.now(),
+): Promise<WorldbookTimelineConfig> {
+  const currentEntries = await hashWorldbookEntries(worldbook);
+  const byId = new Map(currentEntries.map(item => [String(item.entry.id), item]));
+  const byHash = new Map<string, HashedWorldbookEntry[]>();
+  for (const item of currentEntries) {
+    const matches = byHash.get(item.hash) ?? [];
+    matches.push(item);
+    byHash.set(item.hash, matches);
+  }
+
+  const used = new Set<string>();
+  const groups = config.groups.map(group => {
+    let missing = false;
+    const entries = group.entries.map(entry => {
+      const exact = byId.get(String(entry.entryId));
+      const byExactId = exact && exact.hash === entry.contentHash && !used.has(String(exact.entry.id)) ? exact : undefined;
+      const byContent = byHash.get(entry.contentHash)?.find(item => !used.has(String(item.entry.id)));
+      const match = byExactId ?? byContent;
+      if (!match) {
+        missing = true;
+        return {
+          ...cloneEntry(entry),
+          managed: false,
+          stale: true,
+          warnings: [...new Set([...entry.warnings, '迁移后未找到对应原条目，已停止自动切换。'])],
+        };
+      }
+      used.add(String(match.entry.id));
+      return {
+        ...cloneEntry(entry),
+        contentFingerprint: contentFingerprint(match.entry.content),
+        contentHash: match.hash,
+        entryId: match.entry.id,
+        originalComment: match.entry.comment,
+      };
+    });
+    return {
+      ...group,
+      blocked: group.blocked || missing,
+      ...(missing
+        ? { blockReason: group.blockReason || '世界书配置迁移后存在未匹配条目，已停止自动切换。' }
+        : {}),
+      entries,
+    };
+  });
+
+  return {
+    ...config,
+    groups,
+    updatedAt,
+    worldbookKey: worldbook.key,
+    worldbookName: worldbook.name,
+  };
+}
+
 export function saveWorldbookTimelineConfig(config: WorldbookTimelineConfig): boolean {
   const context = getContext();
   if (!context) return false;

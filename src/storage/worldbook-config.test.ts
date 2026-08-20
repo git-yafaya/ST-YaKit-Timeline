@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildWorldbookTimelineConfig,
   detectWorldbookConfigStale,
+  findWorldbookConfigMigrationCandidates,
   findWorldbookReconciliationSuggestions,
   getDraftApplicationIssue,
   loadWorldbookTimelineConfig,
   mergeWorldbookTimelineConfig,
+  migrateWorldbookTimelineConfig,
   deleteTimelineGroup,
   createTimelineGroup,
   saveWorldbookTimelineConfig,
@@ -294,5 +296,30 @@ describe('worldbook timeline config', () => {
     );
     expect(confirmed.groups[0].entries.some(entry => entry.entryId === 17)).toBe(false);
     expect(confirmed.groups[0].entries[0]).toMatchObject({ entryId: 117, managed: true, stale: true });
+  });
+
+  it('只为正文 Hash 有足够重叠的旧世界书配置提供改名迁移候选', async () => {
+    const oldWorldbook: WorldbookSnapshot = {
+      ...worldbook,
+      key: '旧世界书',
+      name: '旧世界书',
+    };
+    const renamedWorldbook: WorldbookSnapshot = {
+      ...oldWorldbook,
+      key: '新世界书',
+      name: '新世界书',
+      entries: oldWorldbook.entries.map((entry, index) => ({ ...entry, id: 117 + index })),
+    };
+    const previous = await buildWorldbookTimelineConfig(draft, oldWorldbook, 12345);
+    installStorage({ yakit_timeline: { worldbooks: { [oldWorldbook.key]: previous } } });
+
+    const candidates = await findWorldbookConfigMigrationCandidates(renamedWorldbook);
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({ matchedEntryCount: 2, totalEntryCount: 2, score: 100 });
+
+    const migrated = await migrateWorldbookTimelineConfig(candidates[0].config, renamedWorldbook, 99999);
+    expect(migrated).toMatchObject({ worldbookKey: '新世界书', worldbookName: '新世界书', updatedAt: 99999 });
+    expect(migrated.groups[0].entries.map(entry => entry.entryId)).toEqual([117, 118]);
+    expect(migrated.groups[0].entries.every(entry => entry.managed && !entry.stale)).toBe(true);
   });
 });

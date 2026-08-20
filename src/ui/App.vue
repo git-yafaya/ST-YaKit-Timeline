@@ -10,8 +10,10 @@ import {
   getDraftApplicationIssue,
   detectWorldbookConfigStale,
   findWorldbookReconciliationSuggestions,
+  findWorldbookConfigMigrationCandidates,
   isWorldbookTimelineConfig,
   loadWorldbookTimelineConfig,
+  migrateWorldbookTimelineConfig,
   mergeTimelineGroups,
   mergeWorldbookTimelineConfig,
   moveTimelineEntries,
@@ -252,6 +254,7 @@ const rollbackPrompt = computed(() => {
   };
 });
 let hostScopeVersion = 0;
+const worldbookMigrationDecisions = new Set<string>();
 let stopWatchingHostTheme: (() => void) | undefined;
 let stopWatchingHostScope: (() => void) | undefined;
 let stopWatchingHostRuntime: (() => void) | undefined;
@@ -424,6 +427,40 @@ async function refreshHostScope(): Promise<void> {
   let config = snapshot.worldbook
     ? loadWorldbookTimelineConfig(snapshot.worldbook.key)
     : null;
+  if (!config && snapshot.worldbook && !worldbookMigrationDecisions.has(snapshot.worldbook.key)) {
+    const candidates = await findWorldbookConfigMigrationCandidates(snapshot.worldbook);
+    if (version !== hostScopeVersion) return;
+    const candidate = candidates[0];
+    if (candidate) {
+      const sourceName = candidate.config.worldbookName || candidate.config.worldbookKey;
+      const migrationMessage = [
+        `检测到当前世界书可能由「${sourceName}」改名或重新导入。`,
+        `已匹配 ${candidate.matchedEntryCount}/${candidate.totalEntryCount} 个受管条目（相似度 ${candidate.score}%）。`,
+        '确认后会迁移插件配置并按正文 Hash 更新条目 ID；不会修改世界书正文或原生字段。',
+        '取消则按新世界书处理，旧配置保留但不会接管当前世界书。是否迁移？',
+      ].join('\n');
+      const shouldMigrate = typeof globalThis.confirm === 'function' && globalThis.confirm(migrationMessage);
+      worldbookMigrationDecisions.add(snapshot.worldbook.key);
+      if (shouldMigrate) {
+        const migrated = await migrateWorldbookTimelineConfig(candidate.config, snapshot.worldbook);
+        if (version !== hostScopeVersion) return;
+        if (saveWorldbookTimelineConfig(migrated)) {
+          config = migrated;
+          appendSystemLog(
+            'warning',
+            '世界书配置已迁移',
+            `已从「${sourceName}」迁移 ${candidate.matchedEntryCount} 个受管条目映射。`,
+            'config',
+          );
+        } else {
+          worldbookMigrationDecisions.delete(snapshot.worldbook.key);
+          appendSystemLog('error', '世界书配置迁移失败', '无法保存迁移后的时间线配置，当前世界书按新配置处理。', 'config');
+        }
+      } else {
+        appendSystemLog('info', '世界书配置未迁移', '用户选择将当前世界书作为新世界书处理。', 'config');
+      }
+    }
+  }
   if (config && snapshot.worldbook) {
     const freshness = await detectWorldbookConfigStale(config, snapshot.worldbook);
     if (version !== hostScopeVersion) return;
