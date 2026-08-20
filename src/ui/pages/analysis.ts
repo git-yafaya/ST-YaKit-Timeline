@@ -13,6 +13,7 @@ export interface AnalysisDraftEntry {
   manuallyLocked?: boolean;
   orderLocked?: boolean;
   selected: boolean;
+  sourceContent?: string;
   sourceComment: string;
   title: string;
   warnings?: readonly string[];

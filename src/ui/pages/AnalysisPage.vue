@@ -66,6 +66,9 @@ const draggedEntry = ref<{ entryId: EntryId; groupId: string } | null>(null);
 const draggedGroupId = ref<string | null>(null);
 const editingGroupNameId = ref('');
 const editingGroupNameDraft = ref('');
+const selectedSource = ref<AnalysisDraftEntry | null>(null);
+const sourceExpanded = ref(false);
+const copyNotice = ref('');
 
 const selectedCount = computed(() => {
   return props.draft?.groups.reduce((total, group) => total + group.entries.filter(entry => entry.selected).length, 0) ?? 0;
@@ -169,6 +172,29 @@ function saveGroupRename(): void {
   cancelGroupRename();
 }
 
+function openSource(entry: AnalysisDraftEntry): void {
+  selectedSource.value = entry;
+  sourceExpanded.value = false;
+  copyNotice.value = '';
+}
+
+function closeSource(): void {
+  selectedSource.value = null;
+  sourceExpanded.value = false;
+  copyNotice.value = '';
+}
+
+async function copySource(): Promise<void> {
+  const content = selectedSource.value?.sourceContent;
+  if (!content) return;
+  try {
+    await navigator.clipboard.writeText(content);
+    copyNotice.value = '已复制正文';
+  } catch {
+    copyNotice.value = '复制失败，请手动选择正文';
+  }
+}
+
 function dropAnalysisGroup(targetGroupId: string): void {
   const sourceGroupId = draggedGroupId.value;
   draggedGroupId.value = null;
@@ -197,10 +223,14 @@ function dropAnalysisEntry(groupId: string, targetEntryId?: EntryId): void {
 }
 
 function onKeydown(event: KeyboardEvent): void {
-  if (
-    event.key !== 'Escape'
-    || (!createDialogOpen.value && editingEntryId.value === null && !editingGroupNameId.value)
-  ) return;
+  if (event.key !== 'Escape') return;
+  if (selectedSource.value) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeSource();
+    return;
+  }
+  if (!createDialogOpen.value && editingEntryId.value === null && !editingGroupNameId.value) return;
   event.preventDefault();
   event.stopImmediatePropagation();
   closeCreateDialog();
@@ -375,9 +405,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                       <span v-for="warning in entry.warnings" :key="warning">! {{ warning }}</span>
                     </div>
                   </div>
-                  <button class="analysis-edit-button" type="button" @click="beginEdit(group, entry)">
-                    {{ entry.confidence === 'low' ? '检查' : '编辑' }}
-                  </button>
+                  <div class="analysis-entry-actions">
+                    <button class="analysis-source-button" type="button" @click.stop="openSource(entry)">查看正文</button>
+                    <button class="analysis-edit-button" type="button" @click="beginEdit(group, entry)">
+                      {{ entry.confidence === 'low' ? '检查' : '编辑' }}
+                    </button>
+                  </div>
                 </template>
 
                 <form v-else class="analysis-entry-editor" @submit.prevent="saveEdit">
@@ -448,6 +481,29 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </div>
         <footer><button type="button" @click="closeCreateDialog">取消</button><button class="confirm-action" type="submit">创建</button></footer>
       </form>
+    </div>
+
+    <div v-if="selectedSource" class="source-dialog-overlay" @click.self="closeSource">
+      <section class="source-dialog" role="dialog" aria-modal="true" aria-label="AI 分析原条目只读预览">
+        <header>
+          <div>
+            <h2>{{ selectedSource.title }}</h2>
+            <p>只读预览</p>
+          </div>
+          <div class="source-dialog-actions">
+            <button type="button" @click="sourceExpanded = !sourceExpanded">{{ sourceExpanded ? '收起' : '展开全文' }}</button>
+            <button type="button" :disabled="!selectedSource.sourceContent" @click="copySource">复制</button>
+            <small v-if="copyNotice">{{ copyNotice }}</small>
+          </div>
+          <button type="button" aria-label="关闭正文预览" @click="closeSource">×</button>
+        </header>
+        <div class="source-dialog-body">
+          <div class="source-dialog-meta">原条目：{{ selectedSource.sourceComment }}</div>
+          <div class="source-dialog-content">
+            {{ selectedSource.sourceContent ? (sourceExpanded ? selectedSource.sourceContent : selectedSource.sourceContent.slice(0, 1000) + (selectedSource.sourceContent.length > 1000 ? '…' : '')) : '正文尚未读取。' }}
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </template>

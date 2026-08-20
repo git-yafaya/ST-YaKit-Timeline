@@ -2538,9 +2538,17 @@ h2 {
   font-size: 12px;
 }
 
+.analysis-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.analysis-source-button,
 .analysis-edit-button {
   flex: 0 0 auto;
-  padding: 6px 12px;
+  padding: 6px 10px;
   border: 1px solid var(--tl-border-medium);
   border-radius: 8px;
   color: var(--tl-text-muted);
@@ -2548,9 +2556,16 @@ h2 {
   cursor: pointer;
 }
 
-.analysis-edit-button:hover {
+.analysis-source-button:hover,
+.analysis-source-button:focus-visible,
+.analysis-edit-button:hover,
+.analysis-edit-button:focus-visible {
   color: var(--tl-text);
   background: var(--tl-surface-hover);
+}
+
+.analysis-edit-button {
+  padding-inline: 12px;
 }
 
 .analysis-entry-editor {
@@ -3942,6 +3957,15 @@ h2 {
   .analysis-workspace > header .secondary-action,
   .analysis-edit-button {
     width: 100%;
+    justify-content: center;
+  }
+
+  .analysis-entry-actions {
+    width: 100%;
+  }
+
+  .analysis-entry-actions > button {
+    flex: 1 1 50%;
     justify-content: center;
   }
 

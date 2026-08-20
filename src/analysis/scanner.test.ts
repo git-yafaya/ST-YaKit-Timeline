@@ -36,7 +36,12 @@ describe('timeline analysis scanner', () => {
       }],
     }, sources);
 
-    expect(draft.groups[0].entries[0]).toMatchObject({ confidence: 'high', selected: true, entryId: 1 });
+    expect(draft.groups[0].entries[0]).toMatchObject({
+      confidence: 'high',
+      selected: true,
+      entryId: 1,
+      sourceContent: sources[0].content,
+    });
     expect(draft.groups[0].entries[1]).toMatchObject({ confidence: 'low', selected: false, entryId: '2' });
     expect(() => validateAnalysisDraft({
       groups: [{ name: '错误', entries: [{ entryId: 99, title: '未知', confidence: 1, warnings: [] }] }],

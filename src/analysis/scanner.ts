@@ -184,6 +184,7 @@ export function validateAnalysisDraft(
           contentStartDate: optionalDate(entry.contentStartDate, `条目 ${canonicalId} contentStartDate`),
           entryId: sourceId as EntryId,
           selected: confidence !== 'low',
+          sourceContent: source?.content ?? '',
           sourceComment: source?.comment || `条目 ${canonicalId}`,
           title: textValue(entry.title, `条目 ${canonicalId} title`),
           warnings: warningValues(entry.warnings),
