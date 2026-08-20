@@ -3,7 +3,9 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { PRODUCT_NAME } from '@/branding';
 import { DEFAULT_FIXED_PROMPT, DEFAULT_JAILBREAK_PROMPT } from '@/st/ai-prompts';
 import DeepListbox from '@/ui/components/DeepListbox.vue';
+import ThemeSelector from '@/ui/components/ThemeSelector.vue';
 import type { DeepListboxOption } from '@/ui/components/deep-listbox';
+import type { SharedSecondaryConnection } from '@/ui/shared-secondary-api';
 import type {
   AiSettings,
   AiSaveStatus,
@@ -24,6 +26,7 @@ const props = withDefaults(
     aiSaveStatus?: AiSaveStatus;
     connectionStates?: ConnectionStates;
     modelCatalogs?: ModelCatalogs;
+    secondaryConnections?: readonly SharedSecondaryConnection[];
     settings: SettingsSnapshot;
     updateMessage?: string;
     updateStatus?: UpdateStatus;
@@ -40,6 +43,7 @@ const props = withDefaults(
       sillytavern: { status: 'idle', models: [], message: '' },
       independent: { status: 'idle', models: [], message: '' },
     }),
+    secondaryConnections: () => [],
     updateMessage: '打开设置时自动检查更新。',
     updateStatus: 'idle',
   },
@@ -49,16 +53,21 @@ const emit = defineEmits<{
   exportConfig: [];
   importConfig: [file: File];
   requestModels: [settings: AiSettings];
+  refreshSecondaryConnections: [];
   saveAi: [settings: AiSettings];
   saveAutomation: [settings: AutomationSettings];
   saveGeneral: [settings: GeneralSettings];
   testConnection: [settings: AiSettings];
+  selectSecondaryConnection: [connectionId: string];
   themeChange: [theme: ThemeMode];
   checkUpdate: [force?: boolean];
   updateExtension: [];
 }>();
 
-onMounted(() => emit('checkUpdate'));
+onMounted(() => {
+  emit('checkUpdate');
+  emit('refreshSecondaryConnections');
+});
 
 const expandedCategory = ref<SettingsCategory | null>(null);
 const themeDraft = ref<ThemeMode>('follow');
@@ -66,6 +75,10 @@ const notificationDraft = ref(true);
 const providerDraft = ref<ApiProvider>('sillytavern');
 const apiUrlDraft = ref('');
 const apiKeyDraft = ref('');
+const apiKeyConfiguredDraft = ref(false);
+const secondaryConnectionIdDraft = ref('');
+const secondaryConnectionNameDraft = ref('副 API 1');
+const secretIdDraft = ref('');
 const jailbreakPromptDraft = ref('');
 const fixedPromptDraft = ref('');
 const jailbreakPromptDialogOpen = ref(false);
@@ -73,6 +86,7 @@ const jailbreakPromptModalDraft = ref('');
 const fixedPromptDialogOpen = ref(false);
 const fixedPromptModalDraft = ref('');
 const modelDraft = ref('');
+const primaryModelDraft = ref('');
 const temperatureDraft = ref(0.9);
 const maxTokensDraft = ref(23333);
 const timeoutDraft = ref(180);
@@ -90,16 +104,14 @@ const categories: ReadonlyArray<{ description: string; id: SettingsCategory; lab
   { id: 'data', label: '数据管理', description: '导入、导出与安全' },
 ];
 
-const themeOptions: readonly DeepListboxOption[] = [
-  { value: 'follow', label: '跟随 SillyTavern' },
-  { value: 'light', label: '浅色' },
-  { value: 'dark', label: '深色' },
-];
-
 const jumpDayOptions: readonly DeepListboxOption[] = [5, 10, 15, 20, 25, 30].map(days => ({
   value: String(days),
   label: `${days} 天`,
 }));
+const secondaryConnectionOptions = computed<readonly DeepListboxOption[]>(() => props.secondaryConnections.map(connection => ({
+  value: connection.id,
+  label: connection.model ? `${connection.name} · ${connection.model}` : connection.name,
+})));
 
 function normalizeJumpDays(days: number): string {
   const value = String(Math.round(Number(days)));
@@ -118,7 +130,7 @@ const connectionLabel = computed(() => {
 const currentModelCatalog = computed(() => props.modelCatalogs[providerDraft.value]);
 const fetchedModelOptions = computed<readonly DeepListboxOption[]>(() => {
   const models = [...currentModelCatalog.value.models];
-  const currentModel = modelDraft.value.trim();
+  const currentModel = (providerDraft.value === 'sillytavern' ? primaryModelDraft.value : modelDraft.value).trim();
   if (currentModel && !models.includes(currentModel)) models.unshift(currentModel);
   return models.map(model => ({ value: model, label: model }));
 });
@@ -137,23 +149,42 @@ const fixedPromptSummary = computed(() => {
 });
 
 watch(
-  () => props.settings,
-  settings => {
-    themeDraft.value = settings.general.theme;
-    notificationDraft.value = settings.general.showSwitchNotifications;
-    providerDraft.value = settings.ai.provider;
-    apiUrlDraft.value = settings.ai.apiUrl;
-    apiKeyDraft.value = settings.ai.apiKey;
-    jailbreakPromptDraft.value = settings.ai.jailbreakPrompt;
-    fixedPromptDraft.value = settings.ai.fixedPrompt;
-    modelDraft.value = settings.ai.model;
-    temperatureDraft.value = settings.ai.temperature;
-    maxTokensDraft.value = settings.ai.maxOutputTokens;
-    timeoutDraft.value = settings.ai.timeoutSeconds;
-    jumpDaysDraft.value = normalizeJumpDays(settings.automation.largeJumpNoticeDays);
+  () => props.settings.general,
+  general => {
+    themeDraft.value = general.theme;
+    notificationDraft.value = general.showSwitchNotifications;
+  },
+  { immediate: true, deep: true },
+);
+
+watch(
+  () => props.settings.ai,
+  ai => {
+    providerDraft.value = ai.provider;
+    apiUrlDraft.value = ai.apiUrl;
+    apiKeyDraft.value = ai.apiKey;
+    apiKeyConfiguredDraft.value = ai.apiKeyConfigured;
+    secondaryConnectionIdDraft.value = ai.secondaryConnectionId;
+    secondaryConnectionNameDraft.value = ai.secondaryConnectionName;
+    secretIdDraft.value = ai.secretId;
+    jailbreakPromptDraft.value = ai.jailbreakPrompt;
+    fixedPromptDraft.value = ai.fixedPrompt;
+    modelDraft.value = ai.model;
+    primaryModelDraft.value = ai.primaryModel;
+    temperatureDraft.value = ai.temperature;
+    maxTokensDraft.value = ai.maxOutputTokens;
+    timeoutDraft.value = ai.timeoutSeconds;
     showApiKey.value = false;
   },
-  { immediate: true },
+  { immediate: true, deep: true },
+);
+
+watch(
+  () => props.settings.automation,
+  automation => {
+    jumpDaysDraft.value = normalizeJumpDays(automation.largeJumpNoticeDays);
+  },
+  { immediate: true, deep: true },
 );
 
 function currentAiSettings(): AiSettings {
@@ -161,9 +192,14 @@ function currentAiSettings(): AiSettings {
     provider: providerDraft.value,
     apiUrl: apiUrlDraft.value.trim(),
     apiKey: apiKeyDraft.value,
+    apiKeyConfigured: apiKeyConfiguredDraft.value,
     jailbreakPrompt: jailbreakPromptDraft.value,
     fixedPrompt: fixedPromptDraft.value.trim() ? fixedPromptDraft.value : DEFAULT_FIXED_PROMPT,
     model: modelDraft.value.trim(),
+    primaryModel: primaryModelDraft.value.trim(),
+    secondaryConnectionId: secondaryConnectionIdDraft.value,
+    secondaryConnectionName: secondaryConnectionNameDraft.value.trim(),
+    secretId: secretIdDraft.value,
     temperature: Math.max(0, Math.min(2, Number(temperatureDraft.value) || 0)),
     maxOutputTokens: Math.max(1, Math.round(Number(maxTokensDraft.value) || 1)),
     timeoutSeconds: Math.max(1, Math.round(Number(timeoutDraft.value) || 1)),
@@ -195,7 +231,32 @@ function selectJumpDays(days: string): void {
 
 function selectModel(model: string): void {
   if (!fetchedModelOptions.value.some(option => option.value === model)) return;
-  modelDraft.value = model;
+  if (providerDraft.value === 'sillytavern') primaryModelDraft.value = model;
+  else modelDraft.value = model;
+}
+
+function selectSecondaryConnection(connectionId: string): void {
+  const connection = props.secondaryConnections.find(item => item.id === connectionId);
+  if (!connection) return;
+  secondaryConnectionIdDraft.value = connection.id;
+  secondaryConnectionNameDraft.value = connection.name;
+  apiUrlDraft.value = connection.apiUrl;
+  apiKeyDraft.value = '';
+  apiKeyConfiguredDraft.value = Boolean(connection.secretId);
+  secretIdDraft.value = connection.secretId;
+  modelDraft.value = connection.model;
+  emit('selectSecondaryConnection', connection.id);
+}
+
+function createSecondaryConnectionDraft(): void {
+  secondaryConnectionIdDraft.value = '';
+  secondaryConnectionNameDraft.value = '';
+  apiUrlDraft.value = '';
+  apiKeyDraft.value = '';
+  apiKeyConfiguredDraft.value = false;
+  secretIdDraft.value = '';
+  modelDraft.value = '';
+  showApiKey.value = false;
 }
 
 function requestModels(): void {
@@ -344,10 +405,8 @@ function onImportFile(event: Event): void {
                 <div class="settings-section">
                   <div class="settings-field">
                     <span>主题</span>
-                    <DeepListbox
-                      label="主题"
+                    <ThemeSelector
                       :model-value="themeDraft"
-                      :options="themeOptions"
                       @update:model-value="selectTheme"
                     />
                   </div>
@@ -368,13 +427,13 @@ function onImportFile(event: Event): void {
               <template v-else-if="category.id === 'analysis'">
                 <div class="settings-section">
                   <span class="settings-section-label">接口提供商</span>
-                  <div class="provider-options">
-                    <button type="button" :class="{ 'is-active': providerDraft === 'sillytavern' }" @click="providerDraft = 'sillytavern'">
+                  <div class="provider-options" role="radiogroup" aria-label="接口提供商">
+                    <button type="button" role="radio" :aria-checked="providerDraft === 'sillytavern'" :class="{ 'is-active': providerDraft === 'sillytavern' }" @click="providerDraft = 'sillytavern'">
                       <span aria-hidden="true">⌁</span>
                       <div><strong>跟随主 API</strong><small>使用 SillyTavern 当前主 API / 当前模型</small></div>
                       <i v-if="providerDraft === 'sillytavern'">✓</i>
                     </button>
-                    <button type="button" :class="{ 'is-active': providerDraft === 'independent' }" @click="providerDraft = 'independent'">
+                    <button type="button" role="radio" :aria-checked="providerDraft === 'independent'" :class="{ 'is-active': providerDraft === 'independent' }" @click="providerDraft = 'independent'">
                       <span aria-hidden="true">◎</span>
                       <div><strong>副 API</strong><small>使用单独配置的备用接口</small></div>
                       <i v-if="providerDraft === 'independent'">✓</i>
@@ -389,7 +448,7 @@ function onImportFile(event: Event): void {
                       <DeepListbox
                         :disabled="currentModelCatalog.status !== 'loaded' || fetchedModelOptions.length === 0"
                         label="主 API 模型选择"
-                        :model-value="modelDraft"
+                        :model-value="primaryModelDraft"
                         :options="fetchedModelOptions"
                         placeholder="留空则跟随主 API 当前模型"
                         @update:model-value="selectModel"
@@ -403,11 +462,33 @@ function onImportFile(event: Event): void {
                 </div>
 
                 <div v-else class="settings-section settings-ai-fields">
+                  <div class="settings-field settings-model-field">
+                    <span>YaKit 共享副 API</span>
+                    <div class="settings-model-control">
+                      <DeepListbox
+                        :disabled="secondaryConnectionOptions.length === 0"
+                        label="YaKit 共享副 API"
+                        :model-value="secondaryConnectionIdDraft"
+                        :options="secondaryConnectionOptions"
+                        placeholder="选择共享连接"
+                        @update:model-value="selectSecondaryConnection"
+                      />
+                      <button class="secondary-action" type="button" @click="createSecondaryConnectionDraft">新建副 API</button>
+                    </div>
+                    <small class="settings-model-status">与 YaKit-纪实共用；任一插件保存后，另一插件可直接选择并使用。</small>
+                  </div>
+                  <label class="settings-field"><span>连接名称</span><input v-model="secondaryConnectionNameDraft" type="text" autocomplete="off" placeholder="副 API 1" /></label>
                   <label class="settings-field"><span>API URL</span><input v-model="apiUrlDraft" type="url" autocomplete="url" placeholder="https://…/v1" /></label>
                   <label class="settings-field">
                     <span>API Key</span>
                     <div class="secret-field">
-                      <input v-model="apiKeyDraft" :type="showApiKey ? 'text' : 'password'" autocomplete="off" spellcheck="false" />
+                      <input
+                        v-model="apiKeyDraft"
+                        :type="showApiKey ? 'text' : 'password'"
+                        autocomplete="off"
+                        spellcheck="false"
+                        :placeholder="apiKeyConfiguredDraft ? '已安全保存；留空表示不修改' : '输入后保存到 SillyTavern Secrets'"
+                      />
                       <button type="button" :aria-label="showApiKey ? '隐藏 API Key' : '显示 API Key'" @click="showApiKey = !showApiKey">
                         {{ showApiKey ? '隐藏' : '显示' }}
                       </button>
@@ -450,7 +531,9 @@ function onImportFile(event: Event): void {
                   <button class="secondary-action" type="button" :disabled="currentConnectionState.status === 'testing'" @click="testConnection">
                     {{ currentConnectionState.status === 'testing' ? '测试中…' : '测试连接' }}
                   </button>
-                  <button class="settings-primary" type="button" @click="saveAi">保存 AI 设置</button>
+                  <button class="settings-primary" type="button" :disabled="aiSaveStatus === 'saving'" @click="saveAi">
+                    {{ aiSaveStatus === 'saving' ? '保存中…' : '保存 AI 设置' }}
+                  </button>
                 </div>
                 <p
                   v-if="aiSaveStatus !== 'idle'"

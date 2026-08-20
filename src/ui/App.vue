@@ -80,6 +80,13 @@ import OverviewPage from '@/ui/pages/OverviewPage.vue';
 import SettingsPage from '@/ui/pages/SettingsPage.vue';
 import { checkExtensionUpdate, updateExtension } from '@/ui/extension-update';
 import { fetchAvailableModels } from '@/ui/model-provider';
+import {
+  getSharedSecondaryConnection,
+  listSharedSecondaryConnections,
+  saveSharedSecondaryConnection,
+  setActiveSharedSecondaryConnection,
+  type SharedSecondaryConnection,
+} from '@/ui/shared-secondary-api';
 import type {
   AiSettings,
   AiSaveStatus,
@@ -94,6 +101,7 @@ import type {
 import {
   DEFAULT_SETTINGS,
   loadSettings,
+  migrateLegacyIndependentApiSettings,
   saveAiSettings,
   saveAutomationSettings,
   saveGeneralSettings,
@@ -114,6 +122,7 @@ const analysisNotice = ref('');
 const analysisApplying = ref(false);
 const systemLogs = ref<TimelineLogEntry[]>([]);
 const settings = reactive<SettingsSnapshot>(loadSettings(DEFAULT_SETTINGS));
+const sharedSecondaryConnections = ref<SharedSecondaryConnection[]>([]);
 const modelCatalogs = reactive<ModelCatalogs>({
   sillytavern: { status: 'idle', models: [], message: '' },
   independent: { status: 'idle', models: [], message: '' },
@@ -133,6 +142,7 @@ const extensionUpdateState = reactive<{ message: string; status: UpdateStatus }>
 });
 const extensionUpdateName = ref('');
 let extensionUpdateController: AbortController | undefined;
+let sharedSettingsInitialization: Promise<void> | undefined;
 const hostScope = ref<HostScopeSnapshot>({
   character: null,
   chatId: null,
@@ -511,6 +521,7 @@ async function refreshHostScope(): Promise<void> {
 }
 
 onMounted(() => {
+  sharedSettingsInitialization = initializeSharedSecondarySettings();
   stopWatchingHostTheme = watchSillyTavernTheme(theme => {
     hostTheme.value = theme;
   });
@@ -546,6 +557,7 @@ function openAnalysis(): void {
 }
 
 async function startAnalysis(mode: AnalysisScanMode): Promise<void> {
+  if (mode === 'deep') await sharedSettingsInitialization;
   const snapshot = hostScope.value;
   const worldbook = snapshot.worldbook;
   if (snapshot.status !== 'ready' || !worldbook || worldbook.entries.length === 0) {
@@ -1169,12 +1181,115 @@ function saveGeneral(nextSettings: GeneralSettings): void {
   saveGeneralSettings(nextSettings);
 }
 
-function saveAi(nextSettings: AiSettings): void {
-  const saved = saveAiSettings(nextSettings);
-  aiSaveStatus.value = saved ? 'saved' : 'error';
-  aiSaveMessage.value = saved ? 'AI 设置已保存' : '保存失败：无法写入 SillyTavern 扩展设置';
-  appendSystemLog(saved ? 'success' : 'error', saved ? 'AI 设置已保存' : 'AI 设置保存失败', aiSaveMessage.value, 'settings');
-  if (saved) settings.ai = { ...nextSettings };
+function applySharedSecondaryConnection(connection: SharedSecondaryConnection): void {
+  settings.ai = {
+    ...settings.ai,
+    apiKey: '',
+    apiKeyConfigured: Boolean(connection.secretId),
+    apiUrl: connection.apiUrl,
+    model: connection.model,
+    secondaryConnectionId: connection.id,
+    secondaryConnectionName: connection.name,
+    secretId: connection.secretId,
+  };
+}
+
+async function initializeSharedSecondarySettings(): Promise<void> {
+  try {
+    const currentSettings = { ...settings.ai };
+    const migratedSettings = await migrateLegacyIndependentApiSettings(currentSettings);
+    if (migratedSettings !== currentSettings) {
+      settings.ai = migratedSettings;
+      appendSystemLog('success', '副 API 已安全迁移', '旧理脉副 API 已迁入 YaKit 家族共享连接与 SillyTavern Secrets。', 'api');
+    }
+  } catch (error) {
+    appendSystemLog(
+      'warning',
+      '旧副 API 迁移待重试',
+      error instanceof Error ? error.message : '无法将旧副 API 安全迁入共享连接。',
+      'api',
+    );
+  }
+  refreshSharedSecondaryConnections();
+}
+
+function refreshSharedSecondaryConnections(): void {
+  try {
+    sharedSecondaryConnections.value = listSharedSecondaryConnections();
+    const selected = getSharedSecondaryConnection(settings.ai.secondaryConnectionId)
+      ?? getSharedSecondaryConnection();
+    if (selected) {
+      const sharedConfigured = Boolean(selected.apiUrl || selected.model || selected.secretId);
+      const hasLegacyDraft = Boolean(settings.ai.apiUrl || settings.ai.model || settings.ai.apiKey);
+      if (sharedConfigured || !hasLegacyDraft) applySharedSecondaryConnection(selected);
+      else {
+        settings.ai.secondaryConnectionId = selected.id;
+        settings.ai.secondaryConnectionName = selected.name;
+      }
+    }
+  } catch (error) {
+    sharedSecondaryConnections.value = [];
+    appendSystemLog(
+      'warning',
+      '共享副 API 读取失败',
+      error instanceof Error ? error.message : '无法读取 YaKit 家族共享副 API 配置。',
+      'api',
+    );
+  }
+}
+
+function selectSharedSecondaryConnection(connectionId: string): void {
+  try {
+    const connection = setActiveSharedSecondaryConnection(connectionId);
+    applySharedSecondaryConnection(connection);
+    sharedSecondaryConnections.value = listSharedSecondaryConnections();
+  } catch (error) {
+    aiSaveStatus.value = 'error';
+    aiSaveMessage.value = error instanceof Error ? error.message : '切换共享副 API 失败';
+  }
+}
+
+async function persistSharedSecondarySettings(nextSettings: AiSettings): Promise<AiSettings> {
+  const shouldPersist = nextSettings.provider === 'independent'
+    || Boolean(nextSettings.apiUrl || nextSettings.apiKey || nextSettings.secretId);
+  if (!shouldPersist) return nextSettings;
+  const connection = await saveSharedSecondaryConnection({
+    id: nextSettings.secondaryConnectionId || undefined,
+    name: nextSettings.secondaryConnectionName,
+    apiUrl: nextSettings.apiUrl,
+    apiKey: nextSettings.apiKey,
+    model: nextSettings.model,
+    secretId: nextSettings.secretId,
+  });
+  sharedSecondaryConnections.value = listSharedSecondaryConnections();
+  return {
+    ...nextSettings,
+    apiKey: '',
+    apiKeyConfigured: Boolean(connection.secretId),
+    apiUrl: connection.apiUrl,
+    model: connection.model,
+    secondaryConnectionId: connection.id,
+    secondaryConnectionName: connection.name,
+    secretId: connection.secretId,
+  };
+}
+
+async function saveAi(nextSettings: AiSettings): Promise<void> {
+  if (aiSaveStatus.value === 'saving') return;
+  aiSaveStatus.value = 'saving';
+  aiSaveMessage.value = '正在安全保存 AI 设置…';
+  try {
+    const persistedSettings = await persistSharedSecondarySettings(nextSettings);
+    const saved = saveAiSettings(persistedSettings);
+    aiSaveStatus.value = saved ? 'saved' : 'error';
+    aiSaveMessage.value = saved ? 'AI 设置已保存' : '保存失败：无法写入 SillyTavern 扩展设置';
+    appendSystemLog(saved ? 'success' : 'error', saved ? 'AI 设置已保存' : 'AI 设置保存失败', aiSaveMessage.value, 'settings');
+    if (saved) settings.ai = { ...persistedSettings };
+  } catch (error) {
+    aiSaveStatus.value = 'error';
+    aiSaveMessage.value = error instanceof Error ? error.message : '保存共享副 API 失败';
+    appendSystemLog('error', 'AI 设置保存失败', aiSaveMessage.value, 'settings');
+  }
 
   if (aiSaveResetTimer !== undefined) globalThis.clearTimeout(aiSaveResetTimer);
   aiSaveResetTimer = globalThis.setTimeout(() => {
@@ -1244,7 +1359,11 @@ async function requestModels(nextSettings: AiSettings): Promise<void> {
   catalog.message = '';
 
   try {
-    const models = await fetchAvailableModels(nextSettings);
+    const requestSettings = provider === 'independent'
+      ? await persistSharedSecondarySettings(nextSettings)
+      : nextSettings;
+    if (provider === 'independent') settings.ai = { ...requestSettings };
+    const models = await fetchAvailableModels(requestSettings);
     if (version !== modelRequestVersions[provider]) return;
     catalog.models = models;
     catalog.status = 'loaded';
@@ -1265,7 +1384,11 @@ async function testConnection(nextSettings: AiSettings): Promise<void> {
   connection.message = '正在测试连接…';
 
   try {
-    const result = await testAiConnection(nextSettings, new AbortController().signal);
+    const requestSettings = provider === 'independent'
+      ? await persistSharedSecondarySettings(nextSettings)
+      : nextSettings;
+    if (provider === 'independent') settings.ai = { ...requestSettings };
+    const result = await testAiConnection(requestSettings, new AbortController().signal);
     if (connectionVersion !== connectionRequestVersions[provider]) return;
     connection.status = 'connected';
     connection.message = `连接成功，${result}`;
@@ -1389,17 +1512,20 @@ function changeTheme(theme: ThemeMode): void {
             :ai-save-status="aiSaveStatus"
             :connection-states="connectionStates"
             :model-catalogs="modelCatalogs"
+            :secondary-connections="sharedSecondaryConnections"
             :settings="settings"
             :update-message="extensionUpdateState.message"
             :update-status="extensionUpdateState.status"
             :version="VERSION"
             @request-models="requestModels"
+            @refresh-secondary-connections="refreshSharedSecondaryConnections"
             @export-config="exportConfig"
             @import-config="importConfig"
             @save-ai="saveAi"
             @save-automation="saveAutomation"
             @save-general="saveGeneral"
             @test-connection="testConnection"
+            @select-secondary-connection="selectSharedSecondaryConnection"
             @theme-change="changeTheme"
             @check-update="checkForUpdate"
             @update-extension="updateInstalledExtension"

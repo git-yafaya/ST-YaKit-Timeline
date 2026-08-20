@@ -145,14 +145,16 @@ async function fetchMainApiModels(settings: AiSettings): Promise<string[]> {
 async function fetchIndependentApiModels(settings: AiSettings): Promise<string[]> {
   const baseUrl = settings.apiUrl.trim();
   if (!baseUrl) throw new Error('请先填写副 API URL');
+  if (!settings.secretId) throw new Error('请先保存副 API Key');
 
   const context = getSillyTavernContext();
   return postForModels(
     '/api/backends/chat-completions/status',
     {
-      chat_completion_source: 'openai',
-      reverse_proxy: baseUrl,
-      proxy_password: settings.apiKey,
+      chat_completion_source: 'custom',
+      custom_url: baseUrl,
+      custom_include_headers: '',
+      secret_id: settings.secretId,
     },
     requestHeaders(context),
     settings.timeoutSeconds,

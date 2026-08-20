@@ -52,6 +52,7 @@ interface SillyTavernSecretsModule {
 type SecretLoader = () => Promise<SillyTavernSecretsModule>;
 
 let testSecretLoader: SecretLoader | null = null;
+let sharedSaveQueue: Promise<void> = Promise.resolve();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -198,10 +199,12 @@ async function saveApiKey(name: string, apiKey: string): Promise<string> {
   if (!secretId) throw new Error('副 API Key 写入 SillyTavern Secrets 失败');
 
   if (previousActiveId && previousActiveId !== secretId) {
-    if (typeof secrets.rotateSecret !== 'function') {
-      throw new Error('副 API Key 已写入，但当前 SillyTavern 无法恢复之前活动的 Custom Secret');
+    try {
+      if (typeof secrets.rotateSecret !== 'function') throw new Error('宿主未提供 rotateSecret');
+      await secrets.rotateSecret(customKey, previousActiveId);
+    } catch (error) {
+      console.warn('[YaKit-Timeline] 无法恢复之前活动的 Custom Secret。', error);
     }
-    await secrets.rotateSecret(customKey, previousActiveId);
   }
 
   return secretId;
@@ -229,35 +232,55 @@ export function setActiveSharedSecondaryConnection(connectionId: string): Shared
   return cloneConnection(connection);
 }
 
-export async function saveSharedSecondaryConnection(
+async function saveSharedSecondaryConnectionNow(
   input: SaveSharedSecondaryConnectionInput,
 ): Promise<SharedSecondaryConnection> {
-  const { context, store } = readStore(false);
+  const initialStore = readStore(false).store;
   const requestedId = normalizedString(input.id);
   const existingIndex = requestedId
-    ? store.connections.findIndex(connection => connection.id === requestedId)
+    ? initialStore.connections.findIndex(connection => connection.id === requestedId)
     : -1;
-  const existing = existingIndex >= 0 ? store.connections[existingIndex] : undefined;
+  const initialConnection = existingIndex >= 0 ? initialStore.connections[existingIndex] : undefined;
   const id = requestedId || createConnectionId();
-  const name = normalizedString(input.name) || existing?.name || `副 API ${store.connections.length + 1}`;
+  const requestedName = normalizedString(input.name);
+  const apiKey = normalizedString(input.apiKey);
+  const savedSecretId = apiKey
+    ? await saveApiKey(requestedName || initialConnection?.name || `副 API ${initialStore.connections.length + 1}`, apiKey)
+    : '';
+
+  // Secrets 写入可能耗时；提交前重新读取共享 Store，避免覆盖纪实或另一标签页期间写入的连接。
+  const { context, store } = readStore(false);
+  const latestIndex = store.connections.findIndex(connection => connection.id === id);
+  const latestConnection = latestIndex >= 0 ? store.connections[latestIndex] : undefined;
+  const fallbackConnection = latestConnection ?? initialConnection;
   const connection: SharedSecondaryConnection = {
     id,
-    name,
+    name: requestedName || fallbackConnection?.name || `副 API ${store.connections.length + 1}`,
     apiUrl: input.apiUrl === undefined
-      ? normalizeOpenAiCompatibleUrl(existing?.apiUrl)
+      ? normalizeOpenAiCompatibleUrl(fallbackConnection?.apiUrl)
       : normalizeOpenAiCompatibleUrl(input.apiUrl),
-    model: input.model === undefined ? existing?.model ?? '' : normalizedString(input.model),
-    secretId: input.secretId === undefined ? existing?.secretId ?? '' : normalizedString(input.secretId),
+    model: input.model === undefined ? fallbackConnection?.model ?? '' : normalizedString(input.model),
+    secretId: savedSecretId || (input.secretId === undefined
+      ? fallbackConnection?.secretId ?? ''
+      : normalizedString(input.secretId)),
   };
 
-  const apiKey = normalizedString(input.apiKey);
-  if (apiKey) connection.secretId = await saveApiKey(connection.name, apiKey);
-
-  if (existingIndex >= 0) store.connections[existingIndex] = connection;
+  if (latestIndex >= 0) store.connections[latestIndex] = connection;
   else store.connections.push(connection);
   store.activeConnectionId = connection.id;
   writeStore(context, store);
   return cloneConnection(connection);
+}
+
+export function saveSharedSecondaryConnection(
+  input: SaveSharedSecondaryConnectionInput,
+): Promise<SharedSecondaryConnection> {
+  const task = sharedSaveQueue.then(
+    () => saveSharedSecondaryConnectionNow(input),
+    () => saveSharedSecondaryConnectionNow(input),
+  );
+  sharedSaveQueue = task.then(() => undefined, () => undefined);
+  return task;
 }
 
 export function getSharedSecondaryRequestConfig(

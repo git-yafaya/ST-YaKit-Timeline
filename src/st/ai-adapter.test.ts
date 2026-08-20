@@ -95,7 +95,7 @@ describe('SillyTavern AI adapter', () => {
     });
 
     await generateTimelineAnalysis(
-      { ...DEFAULT_SETTINGS.ai, model: 'selected-model' },
+      { ...DEFAULT_SETTINGS.ai, primaryModel: 'selected-model' },
       'prompt',
       new AbortController().signal,
     );
@@ -122,15 +122,15 @@ describe('SillyTavern AI adapter', () => {
       ...DEFAULT_SETTINGS.ai,
       provider: 'independent',
       apiUrl: 'https://backup.test/v1',
-      apiKey: 'test-key',
+      secretId: 'shared-secret-id',
       model: 'backup-model',
     }, 'prompt', new AbortController().signal);
 
     const [, request] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(String(request.body))).toMatchObject({
-      chat_completion_source: 'openai',
-      reverse_proxy: 'https://backup.test/v1',
-      proxy_password: 'test-key',
+      chat_completion_source: 'custom',
+      custom_url: 'https://backup.test/v1',
+      secret_id: 'shared-secret-id',
       model: 'backup-model',
     });
   });
@@ -164,6 +164,23 @@ describe('SillyTavern AI adapter', () => {
       'prompt',
       new AbortController().signal,
     )).rejects.toThrow('副 API URL');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses to send an independent request without a shared Secret ID', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    installContext({});
+    await expect(generateTimelineAnalysis(
+      {
+        ...DEFAULT_SETTINGS.ai,
+        provider: 'independent',
+        apiUrl: 'https://backup.test/v1',
+        model: 'backup-model',
+      },
+      'prompt',
+      new AbortController().signal,
+    )).rejects.toThrow('请先保存副 API Key');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

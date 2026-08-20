@@ -23,7 +23,7 @@ function independentSettings(overrides: Partial<AiSettings> = {}): AiSettings {
     ...DEFAULT_SETTINGS.ai,
     provider: 'independent',
     apiUrl: 'https://api.example.test/v1',
-    apiKey: 'example-key',
+    secretId: 'shared-secret-id',
     ...overrides,
   };
 }
@@ -100,9 +100,10 @@ describe('model provider', () => {
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('/api/backends/chat-completions/status');
     expect(JSON.parse(String(request.body))).toEqual({
-      chat_completion_source: 'openai',
-      reverse_proxy: 'https://api.example.test/v1',
-      proxy_password: 'example-key',
+      chat_completion_source: 'custom',
+      custom_url: 'https://api.example.test/v1',
+      custom_include_headers: '',
+      secret_id: 'shared-secret-id',
     });
   });
 
@@ -112,6 +113,15 @@ describe('model provider', () => {
 
     await expect(fetchAvailableModels(independentSettings({ apiUrl: '  ' })))
       .rejects.toThrow('请先填写副 API URL');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects an independent model request before fetch when its Secret is missing', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchAvailableModels(independentSettings({ secretId: '' })))
+      .rejects.toThrow('请先保存副 API Key');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

@@ -157,7 +157,7 @@ async function generateWithMainApi(
   prompt: string,
   signal: AbortSignal,
 ): Promise<unknown> {
-  const selectedModel = settings.model.trim();
+  const selectedModel = settings.primaryModel.trim();
   if (selectedModel && context.mainApi === 'openai' && context.chatCompletionSettings) {
     return postChatCompletion(context, {
       ...context.chatCompletionSettings,
@@ -215,6 +215,7 @@ function generateWithIndependentApi(
   const model = settings.model.trim();
   if (!baseUrl) throw new Error('请先在设置中填写副 API URL');
   if (!model) throw new Error('请先在设置中选择或填写副 API 模型名称');
+  if (!settings.secretId) throw new Error('请先保存副 API Key');
 
   return postChatCompletion(context, {
     type: 'quiet',
@@ -224,9 +225,12 @@ function generateWithIndependentApi(
     max_tokens: settings.maxOutputTokens,
     stream: false,
     n: 1,
-    chat_completion_source: 'openai',
-    reverse_proxy: baseUrl,
-    proxy_password: settings.apiKey,
+    chat_completion_source: 'custom',
+    custom_url: baseUrl,
+    custom_include_headers: '',
+    custom_include_body: '',
+    custom_exclude_body: '',
+    secret_id: settings.secretId,
     json_schema: STRUCTURED_SCHEMA,
   }, settings, signal);
 }

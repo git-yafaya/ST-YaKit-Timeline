@@ -3526,6 +3526,11 @@ h2 {
   background: var(--tl-primary-hover);
 }
 
+.settings-primary:disabled {
+  cursor: progress;
+  opacity: 0.68;
+}
+
 .provider-options {
   display: grid;
   grid-template-columns: 1fr;
@@ -3704,6 +3709,10 @@ h2 {
 
 .settings-operation-status.is-saved {
   color: var(--tl-success);
+}
+
+.settings-operation-status.is-saving {
+  color: var(--tl-primary);
 }
 
 .settings-operation-status.is-error {

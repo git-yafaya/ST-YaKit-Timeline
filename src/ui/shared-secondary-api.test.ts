@@ -181,6 +181,53 @@ describe('shared secondary API', () => {
     expect(getSharedSecondaryRequestConfig(saved.id)).toEqual(saved);
   });
 
+  it('等待 Secrets 写入期间会合并纪实新增的连接而不覆盖它', async () => {
+    const { extensionSettings } = installSillyTavern({
+      [SHARED_NAMESPACE]: {
+        version: 3,
+        activeConnectionId: 'base',
+        connections: [{ id: 'base', name: '基础', apiUrl: '', model: '', secretId: '' }],
+      },
+    });
+    let resolveWrite: ((secretId: string) => void) | undefined;
+    const writeSecret = vi.fn(() => new Promise<string>(resolve => {
+      resolveWrite = resolve;
+    }));
+    __setSharedSecondarySecretLoaderForTests(async () => ({
+      SECRET_KEYS: { CUSTOM: 'api_key_custom' },
+      secret_state: { api_key_custom: [] },
+      writeSecret,
+      rotateSecret: vi.fn(),
+    }));
+
+    const saving = saveSharedSecondaryConnection({
+      id: 'base',
+      name: '理脉编辑',
+      apiUrl: 'https://timeline.example/v1',
+      model: 'timeline-model',
+      apiKey: 'plaintext-key',
+    });
+    await vi.waitFor(() => expect(writeSecret).toHaveBeenCalledOnce());
+    (extensionSettings[SHARED_NAMESPACE] as {
+      activeConnectionId: string;
+      connections: Array<Record<string, string>>;
+    }).connections.push({
+      id: 'chat-added',
+      name: '纪实新增',
+      apiUrl: 'https://chat.example/v1',
+      model: 'chat-model',
+      secretId: 'chat-secret',
+    });
+    resolveWrite?.('timeline-secret');
+    await saving;
+
+    expect(listSharedSecondaryConnections()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'base', name: '理脉编辑', secretId: 'timeline-secret' }),
+      expect.objectContaining({ id: 'chat-added', name: '纪实新增', secretId: 'chat-secret' }),
+    ]));
+    expect(JSON.stringify(extensionSettings)).not.toContain('plaintext-key');
+  });
+
   it('更新连接且 Key 留空时保留原 Secret 并设为活动连接', async () => {
     const { saveSettingsDebounced } = installSillyTavern({
       [SHARED_NAMESPACE]: {
@@ -214,6 +261,26 @@ describe('shared secondary API', () => {
     });
     expect(getSharedSecondaryConnection()?.id).toBe('target');
     expect(saveSettingsDebounced).toHaveBeenCalledOnce();
+  });
+
+  it('恢复旧 Custom Secret 失败时仍保留已安全写入的共享连接', async () => {
+    const { extensionSettings } = installSillyTavern();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    __setSharedSecondarySecretLoaderForTests(async () => ({
+      SECRET_KEYS: { CUSTOM: 'api_key_custom' },
+      secret_state: { api_key_custom: [{ id: 'previous-secret', active: true }] },
+      writeSecret: vi.fn().mockResolvedValue('saved-secret'),
+      rotateSecret: vi.fn().mockRejectedValue(new Error('rotate failed')),
+    }));
+
+    await expect(saveSharedSecondaryConnection({
+      name: '可用连接',
+      apiUrl: 'https://api.example.test/v1',
+      model: 'model-z',
+      apiKey: 'plaintext-key',
+    })).resolves.toMatchObject({ secretId: 'saved-secret' });
+    expect(JSON.stringify(extensionSettings)).not.toContain('plaintext-key');
+    expect(warn).toHaveBeenCalledOnce();
   });
 
   it('生成与 ST 自定义后端兼容的请求配置并规范化 URL', () => {
