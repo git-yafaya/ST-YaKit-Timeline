@@ -1,7 +1,7 @@
 export type ApiProvider = 'sillytavern' | 'independent';
 export type AiSaveStatus = 'idle' | 'saved' | 'error';
 export type ConnectionStatus = 'idle' | 'testing' | 'connected' | 'error';
-export type SettingsCategory = 'general' | 'analysis' | 'automation' | 'data';
+export type SettingsCategory = 'general' | 'analysis' | 'prompts' | 'automation' | 'data';
 export type ThemeMode = 'follow' | 'light' | 'dark';
 export type ModelLoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
 

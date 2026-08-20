@@ -68,6 +68,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const categories: ReadonlyArray<{ description: string; id: SettingsCategory; label: string }> = [
   { id: 'general', label: '常规', description: '基础行为与显示偏好' },
   { id: 'analysis', label: 'AI 分析', description: '模型、接口与连接' },
+  { id: 'prompts', label: '自定义提示词', description: '通用规则、破限指令与扩展提示' },
   { id: 'automation', label: '自动切换', description: '时间变化与提醒' },
   { id: 'data', label: '数据管理', description: '导入、导出与安全' },
 ];
@@ -343,10 +344,29 @@ function onImportFile(event: Event): void {
                   </div>
                 </div>
 
+                <div class="settings-connection-status">
+                  <span>连接状态</span>
+                  <p :class="`is-${currentConnectionState.status}`" aria-live="polite"><i aria-hidden="true"></i>{{ connectionLabel }}</p>
+                </div>
+                <div class="settings-actions">
+                  <button class="secondary-action" type="button" :disabled="currentConnectionState.status === 'testing'" @click="testConnection">
+                    {{ currentConnectionState.status === 'testing' ? '测试中…' : '测试连接' }}
+                  </button>
+                  <button class="settings-primary" type="button" @click="saveAi">保存 AI 设置</button>
+                </div>
+                <p
+                  v-if="aiSaveStatus !== 'idle'"
+                  :class="['settings-operation-status', `is-${aiSaveStatus}`]"
+                  role="status"
+                  aria-live="polite"
+                >{{ aiSaveMessage }}</p>
+              </template>
+
+              <template v-else-if="category.id === 'prompts'">
                 <div class="settings-section settings-ai-fields">
-                  <span class="settings-section-label">提示词增强</span>
+                  <span class="settings-section-label">提示词内容</span>
                   <label class="settings-field settings-textarea-field">
-                    <span>自定义提示词</span>
+                    <span>通用自定义提示词</span>
                     <textarea
                       v-model="customPromptDraft"
                       rows="5"
@@ -366,15 +386,7 @@ function onImportFile(event: Event): void {
                     <small>会追加到系统指令后发送给模型。请只填写你明确理解且愿意承担风险的内容。</small>
                   </label>
                 </div>
-
-                <div class="settings-connection-status">
-                  <span>连接状态</span>
-                  <p :class="`is-${currentConnectionState.status}`" aria-live="polite"><i aria-hidden="true"></i>{{ connectionLabel }}</p>
-                </div>
                 <div class="settings-actions">
-                  <button class="secondary-action" type="button" :disabled="currentConnectionState.status === 'testing'" @click="testConnection">
-                    {{ currentConnectionState.status === 'testing' ? '测试中…' : '测试连接' }}
-                  </button>
                   <button class="settings-primary" type="button" @click="saveAi">保存 AI 设置</button>
                 </div>
                 <p
