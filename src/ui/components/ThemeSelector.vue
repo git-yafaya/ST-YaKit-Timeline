@@ -127,45 +127,40 @@ function onThemeKeydown(event: KeyboardEvent, current: ThemeMode): void {
   width: 100%;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(136px, 100%), 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(104px, 1fr));
+  gap: 8px;
+  flex: 0 1 390px;
 }
 
 .theme-selector-card {
   min-width: 0;
-  min-height: 78px;
+  min-height: 76px;
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-columns: 20px minmax(0, 1fr);
   grid-template-rows: auto auto;
   align-items: center;
-  column-gap: 10px;
-  row-gap: 2px;
-  padding: 11px 12px;
-  border: 1px solid var(--tl-border-soft);
+  column-gap: 8px;
+  padding: 10px 11px;
+  border: 1px solid var(--tl-border-subtle);
   border-radius: 14px;
   color: var(--tl-text-muted);
-  background: var(--tl-control-surface-muted);
+  background: var(--tl-panel-solid);
   font: inherit;
   text-align: left;
   cursor: pointer;
   transition:
-    color 160ms ease-out,
-    background-color 160ms ease-out,
-    border-color 160ms ease-out,
-    box-shadow 160ms ease-out,
-    transform 160ms ease-out;
+    color 180ms ease-out,
+    background-color 180ms ease-out,
+    border-color 180ms ease-out,
+    box-shadow 180ms ease-out,
+    transform 180ms ease-out;
 }
 
 .theme-selector-card:hover {
-  border-color: var(--tl-border-strong);
+  border-color: var(--tl-border-soft);
   color: var(--tl-text);
   background: var(--tl-surface-hover);
-}
-
-.theme-selector-card:focus-visible {
-  outline: none;
-  border-color: var(--tl-primary-border-focus);
-  box-shadow: var(--tl-focus-ring-strong);
+  box-shadow: var(--tl-shadow-elevated);
 }
 
 .theme-selector-card:active {
@@ -173,23 +168,21 @@ function onThemeKeydown(event: KeyboardEvent, current: ThemeMode): void {
 }
 
 .theme-selector-card.is-active {
-  border-color: var(--tl-primary-border-heavy);
+  border-color: var(--tl-primary);
   color: var(--tl-primary);
   background: var(--tl-primary-surface-soft);
   box-shadow: var(--tl-shadow-card);
 }
 
+.theme-selector-card:focus-visible {
+  outline: none;
+  border-color: var(--tl-border-soft);
+  box-shadow: var(--tl-shadow-card), var(--tl-focus-ring-strong);
+}
+
 .theme-selector-icon {
   grid-row: 1 / -1;
-  width: 28px;
-  height: 28px;
-  display: inline-grid;
-  place-items: center;
-  border: 1px solid var(--tl-primary-border-muted);
-  border-radius: 10px;
-  color: var(--tl-primary);
-  background: var(--tl-primary-surface-faint);
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .theme-selector-title,
@@ -213,15 +206,4 @@ function onThemeKeydown(event: KeyboardEvent, current: ThemeMode): void {
   line-height: 15px;
 }
 
-@media (max-width: 420px) {
-  .theme-selector {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 286px) {
-  .theme-selector {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 </style>
