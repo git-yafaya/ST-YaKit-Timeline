@@ -10,8 +10,26 @@ interface GenerateRawOptions {
   instructOverride?: boolean;
 }
 
+type EventListener = (eventData: unknown) => unknown;
+
+interface SillyTavernEventSource {
+  makeFirst: (event: string, listener: EventListener) => void;
+  makeLast: (event: string, listener: EventListener) => void;
+  on: (event: string, listener: EventListener) => void;
+  removeListener: (event: string, listener: EventListener) => void;
+}
+
+interface SillyTavernEventTypes {
+  CHAT_COMPLETION_PROMPT_READY?: string;
+  CHAT_COMPLETION_SETTINGS_READY?: string;
+  GENERATE_AFTER_COMBINE_PROMPTS?: string;
+  TEXT_COMPLETION_SETTINGS_READY?: string;
+}
+
 interface SillyTavernAiContext {
   chatCompletionSettings?: Record<string, unknown>;
+  eventSource?: SillyTavernEventSource;
+  eventTypes?: SillyTavernEventTypes;
   generateRaw?: (options: GenerateRawOptions) => Promise<unknown>;
   getRequestHeaders?: () => HeadersInit;
   mainApi?: unknown;
@@ -157,6 +175,161 @@ function messages(settings: AiSettings, prompt: string): Array<{ content: string
   ];
 }
 
+type SafeMessage = ReturnType<typeof messages>[number];
+
+let rawRequestSequence = 0;
+
+function cloneMessages(value: SafeMessage[]): SafeMessage[] {
+  return value.map(message => ({ ...message }));
+}
+
+function requestMarker(): string {
+  rawRequestSequence += 1;
+  return `\uE000YaKitTimelineRaw:${Date.now()}:${rawRequestSequence}\uE001`;
+}
+
+function eventRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' ? value as Record<string, unknown> : null;
+}
+
+function requireEventName(
+  eventTypes: SillyTavernEventTypes,
+  key: keyof SillyTavernEventTypes,
+): string {
+  const name = eventTypes[key];
+  if (!name) throw new Error(`当前 SillyTavern 未提供 ${key} 事件`);
+  return name;
+}
+
+function installRawRequestGuards(
+  context: SillyTavernAiContext,
+  requestPrompt: Array<{ content: string; name: string; role: 'user' }>,
+  safeMessages: SafeMessage[],
+  marker: string,
+): () => void {
+  const eventSource = context.eventSource;
+  const eventTypes = context.eventTypes;
+  const mainApi = typeof context.mainApi === 'string' ? context.mainApi : '';
+  if (!eventSource || !eventTypes || !mainApi) {
+    throw new Error('当前 SillyTavern 未提供可保护 AI 分析请求的事件上下文');
+  }
+
+  const registered: Array<{ event: string; listener: EventListener }> = [];
+  const registerFirst = (event: string, listener: EventListener): void => {
+    eventSource.on(event, listener);
+    eventSource.makeFirst(event, listener);
+    registered.push({ event, listener });
+  };
+  const registerLast = (event: string, listener: EventListener): void => {
+    eventSource.on(event, listener);
+    eventSource.makeLast(event, listener);
+    registered.push({ event, listener });
+  };
+
+  if (mainApi === 'openai') {
+    const promptEvent = requireEventName(eventTypes, 'CHAT_COMPLETION_PROMPT_READY');
+    const settingsEvent = requireEventName(eventTypes, 'CHAT_COMPLETION_SETTINGS_READY');
+    const ownedPromptEvents = new WeakSet<object>();
+    const ownedSettingsEvents = new WeakSet<object>();
+    let guardedMessages: SafeMessage[] | null = null;
+    let guardedMessageObjects: WeakSet<object> | null = null;
+
+    const identifyPrompt: EventListener = (value) => {
+      const data = eventRecord(value);
+      if (data && data.chat === requestPrompt) ownedPromptEvents.add(data);
+    };
+    const restorePrompt: EventListener = (value) => {
+      const data = eventRecord(value);
+      if (!data || !ownedPromptEvents.has(data)) return;
+      guardedMessages = cloneMessages(safeMessages);
+      guardedMessageObjects = new WeakSet(guardedMessages);
+      data.chat = guardedMessages;
+    };
+    const identifySettings: EventListener = (value) => {
+      const data = eventRecord(value);
+      const eventMessages = data && Array.isArray(data.messages) ? data.messages : null;
+      if (
+        data
+        && guardedMessages
+        && guardedMessageObjects
+        && eventMessages?.length === guardedMessages.length
+        && eventMessages.every(message => (
+          Boolean(message)
+          && typeof message === 'object'
+          && guardedMessageObjects?.has(message)
+        ))
+      ) {
+        ownedSettingsEvents.add(data);
+      }
+    };
+    const restoreSettings: EventListener = (value) => {
+      const data = eventRecord(value);
+      if (!data || !ownedSettingsEvents.has(data)) return;
+      data.messages = cloneMessages(safeMessages);
+      data.custom_include_body = '';
+      data.custom_exclude_body = '';
+      delete data.tools;
+      delete data.tool_choice;
+    };
+
+    registerFirst(promptEvent, identifyPrompt);
+    registerLast(promptEvent, restorePrompt);
+    registerFirst(settingsEvent, identifySettings);
+    registerLast(settingsEvent, restoreSettings);
+  } else {
+    const promptEvent = requireEventName(eventTypes, 'GENERATE_AFTER_COMBINE_PROMPTS');
+    const ownedPromptEvents = new WeakSet<object>();
+    const safePromptByEvent = new WeakMap<object, { marked: string; plain: string }>();
+    const keepMarkerForTextgen = mainApi === 'textgenerationwebui';
+
+    const identifyPrompt: EventListener = (value) => {
+      const data = eventRecord(value);
+      if (!data || typeof data.prompt !== 'string' || !data.prompt.includes(marker)) return;
+      ownedPromptEvents.add(data);
+      safePromptByEvent.set(data, {
+        marked: data.prompt,
+        plain: data.prompt.replace(marker, ''),
+      });
+      data.prompt = data.prompt.replace(marker, '');
+    };
+    const restorePrompt: EventListener = (value) => {
+      const data = eventRecord(value);
+      if (!data || !ownedPromptEvents.has(data)) return;
+      const safe = safePromptByEvent.get(data);
+      if (safe) data.prompt = keepMarkerForTextgen ? safe.marked : safe.plain;
+    };
+
+    registerFirst(promptEvent, identifyPrompt);
+    registerLast(promptEvent, restorePrompt);
+
+    if (keepMarkerForTextgen) {
+      const settingsEvent = requireEventName(eventTypes, 'TEXT_COMPLETION_SETTINGS_READY');
+      const ownedSettingsEvents = new WeakSet<object>();
+      const safePromptBySettings = new WeakMap<object, string>();
+      const identifySettings: EventListener = (value) => {
+        const data = eventRecord(value);
+        if (!data || typeof data.prompt !== 'string' || !data.prompt.includes(marker)) return;
+        ownedSettingsEvents.add(data);
+        const safePrompt = data.prompt.replace(marker, '');
+        safePromptBySettings.set(data, safePrompt);
+        data.prompt = safePrompt;
+      };
+      const restoreSettings: EventListener = (value) => {
+        const data = eventRecord(value);
+        if (!data || !ownedSettingsEvents.has(data)) return;
+        const safePrompt = safePromptBySettings.get(data);
+        if (safePrompt !== undefined) data.prompt = safePrompt;
+      };
+      registerFirst(settingsEvent, identifySettings);
+      registerLast(settingsEvent, restoreSettings);
+    }
+  }
+
+  return () => {
+    for (const { event, listener } of registered) eventSource.removeListener(event, listener);
+  };
+}
+
 async function generateWithMainApi(
   context: SillyTavernAiContext,
   settings: AiSettings,
@@ -167,6 +340,8 @@ async function generateWithMainApi(
   if (selectedModel && context.mainApi === 'openai' && context.chatCompletionSettings) {
     return postChatCompletion(context, {
       ...context.chatCompletionSettings,
+      custom_include_body: '',
+      custom_exclude_body: '',
       type: 'quiet',
       messages: messages(settings, prompt),
       model: selectedModel,
@@ -183,6 +358,25 @@ async function generateWithMainApi(
   }
   if (signal.aborted) throw abortError();
 
+  const protectedPrompt = protectRawPromptMacros(prompt);
+  const protectedSystemPrompt = protectRawPromptMacros(systemPrompt(settings));
+  const safeMessages = messages(settings, prompt).map(message => ({
+    ...message,
+    content: protectRawPromptMacros(message.content),
+  }));
+  const marker = context.mainApi === 'openai' ? '' : requestMarker();
+  const requestPrompt = [{
+    role: 'user' as const,
+    name: '',
+    content: `${protectedPrompt}${marker}`,
+  }];
+  const removeRequestGuards = installRawRequestGuards(
+    context,
+    requestPrompt,
+    safeMessages,
+    marker,
+  );
+
   let removeAbortListener: () => void = () => undefined;
   let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
   const interrupted = new Promise<never>((_, reject) => {
@@ -195,19 +389,19 @@ async function generateWithMainApi(
     );
   });
 
-  try {
-    return await Promise.race([
-      context.generateRaw({
-        prompt: [{
-          role: 'user',
-          name: '',
-          content: protectRawPromptMacros(prompt),
-        }],
-        systemPrompt: protectRawPromptMacros(systemPrompt(settings)),
+  const guardedGeneration = Promise.resolve()
+    .then(() => context.generateRaw?.({
+        prompt: requestPrompt,
+        systemPrompt: protectedSystemPrompt,
         responseLength: settings.maxOutputTokens,
         jsonSchema: STRUCTURED_SCHEMA,
         instructOverride: true,
-      }),
+      }))
+    .finally(removeRequestGuards);
+
+  try {
+    return await Promise.race([
+      guardedGeneration,
       interrupted,
     ]);
   } finally {

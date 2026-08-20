@@ -280,7 +280,9 @@ function serializeEntries(entries: readonly WorldInfoEntrySnapshot[]): string {
 
 function basePrompt(entries: readonly WorldInfoEntrySnapshot[]): string {
   return [
-    '分析以下 SillyTavern 世界书条目，识别时间线条目并分组、排序。',
+    '分析以下当前角色卡实际绑定世界书中的条目，识别时间线条目并分组、排序。',
+    '本次 AI 输入严格只包含每个条目的 entryId、comment、content 三个字段；只分析这些字段中的世界书条目数据。',
+    '不得读取、请求、推断或使用聊天消息正文、角色卡正文、chatMetadata，或输入对象中的任何其他字段。',
     '只输出符合约定的 JSON，不要输出 Markdown 或解释。不得杜撰 entryId，不得修改原文。',
     '日期统一为 YYYY-MM-DD；不确定的日期填 null，并在 warnings 中说明。',
     'confidence 使用 0 到 1 的数字。低置信度内容仍可返回，但必须准确标低。',
@@ -301,6 +303,8 @@ function summaryPrompt(drafts: readonly AnalysisDraft[], entries: readonly World
   }))));
   return [
     '将以下分批分析结果汇总成统一时间线分组并排序。只输出 JSON，不要解释。',
+    '汇总阶段只能使用分批 AI 已生成的结构化派生结果与允许的 entryId 列表，不得重新读取或请求原始输入。',
+    '不得读取、请求或使用世界书原始正文、聊天消息正文、角色卡正文或 chatMetadata，也不得补充派生结果之外的事实。',
     '不得新增或遗漏候选中的 entryId；可重新命名或合并分组，但不得修改已识别字段的事实含义。',
     '输出结构必须与输入批次相同。',
     `允许的 entryId：${JSON.stringify(entries.map(entry => entry.id))}`,
