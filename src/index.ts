@@ -1,10 +1,8 @@
 import { createApp } from 'vue';
 import App from '@/ui/App.vue';
+import { HOST_ID, MENU_ITEM_ID, PRODUCT_NAME } from '@/branding';
 import { openTimeline } from '@/ui/state';
 import '@/styles/index.css';
-
-const HOST_ID = 'st-yafaya-timeline-host';
-const MENU_ITEM_ID = 'st-yafaya-timeline-menu-item';
 
 function mountApp(): void {
   let host = document.getElementById(HOST_ID);
@@ -37,9 +35,9 @@ function injectMenuButton(): boolean {
   const container = document.createElement('div');
   container.className = 'extension_container interactable';
   container.innerHTML = `
-    <a id="${MENU_ITEM_ID}" class="list-group-item" href="#" title="时间线管理">
+    <a id="${MENU_ITEM_ID}" class="list-group-item" href="#" title="${PRODUCT_NAME}">
       <i class="fa-solid fa-timeline"></i>
-      <span>时间线管理</span>
+      <span>${PRODUCT_NAME}</span>
     </a>
   `;
 

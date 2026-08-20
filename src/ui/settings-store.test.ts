@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { LEGACY_SETTINGS_NAMESPACE, SETTINGS_NAMESPACE } from '@/branding';
 import type { SettingsSnapshot } from '@/ui/pages/settings';
 import {
   DEFAULT_SETTINGS,
@@ -32,7 +33,7 @@ describe('settings persistence', () => {
 
   it('loads all stored setting sections from the SillyTavern namespace', () => {
     installSillyTavern({
-      st_yafaya_timeline: {
+      yakit_timeline: {
         globalSettings: {
           theme: 'dark',
           switchToastEnabled: false,
@@ -69,7 +70,7 @@ describe('settings persistence', () => {
 
   it('uses defaults when stored values are absent or invalid', () => {
     installSillyTavern({
-      st_yafaya_timeline: {
+      yakit_timeline: {
         globalSettings: {
           theme: 'system',
           switchToastEnabled: 'yes',
@@ -98,7 +99,7 @@ describe('settings persistence', () => {
 
   it('keeps the focused general-settings loader compatible', () => {
     installSillyTavern({
-      st_yafaya_timeline: {
+      yakit_timeline: {
         globalSettings: { theme: 'follow', switchToastEnabled: false },
       },
     });
@@ -111,7 +112,7 @@ describe('settings persistence', () => {
 
   it('saves general settings without replacing other plugin data', () => {
     const { extensionSettings, saveSettingsDebounced } = installSillyTavern({
-      st_yafaya_timeline: {
+      yakit_timeline: {
         worldbooks: { bookA: { groups: [] } },
         globalSettings: {
           largeJumpDays: 15,
@@ -123,7 +124,7 @@ describe('settings persistence', () => {
     saveGeneralSettings({ theme: 'light', showSwitchNotifications: true });
 
     expect(extensionSettings).toEqual({
-      st_yafaya_timeline: {
+      yakit_timeline: {
         worldbooks: { bookA: { groups: [] } },
         globalSettings: {
           largeJumpDays: 15,
@@ -136,9 +137,26 @@ describe('settings persistence', () => {
     expect(saveSettingsDebounced).toHaveBeenCalledOnce();
   });
 
+  it('兼容读取旧设置命名空间，并在保存时迁移', () => {
+    const { extensionSettings } = installSillyTavern({
+      [LEGACY_SETTINGS_NAMESPACE]: {
+        globalSettings: { theme: 'dark', largeJumpDays: 15 },
+        unknown: true,
+      },
+    });
+
+    expect(loadSettings(DEFAULT_SETTINGS).general.theme).toBe('dark');
+    expect(saveGeneralSettings({ theme: 'light', showSwitchNotifications: true })).toBe(true);
+    expect(extensionSettings[SETTINGS_NAMESPACE]).toMatchObject({
+      globalSettings: { theme: 'light', largeJumpDays: 15, switchToastEnabled: true },
+      unknown: true,
+    });
+    expect(extensionSettings[LEGACY_SETTINGS_NAMESPACE]).toBeUndefined();
+  });
+
   it('saves AI settings while retaining automation, worldbooks, and unknown AI fields', () => {
     const { extensionSettings, saveSettingsDebounced } = installSillyTavern({
-      st_yafaya_timeline: {
+      yakit_timeline: {
         worldbooks: { bookA: { groups: [] } },
         globalSettings: {
           theme: 'dark',
@@ -163,7 +181,7 @@ describe('settings persistence', () => {
 
     expect(saved).toBe(true);
     expect(extensionSettings).toEqual({
-      st_yafaya_timeline: {
+      yakit_timeline: {
         worldbooks: { bookA: { groups: [] } },
         globalSettings: {
           theme: 'dark',
@@ -189,7 +207,7 @@ describe('settings persistence', () => {
 
   it('saves an allowed jump threshold without replacing AI settings', () => {
     const { extensionSettings, saveSettingsDebounced } = installSillyTavern({
-      st_yafaya_timeline: {
+      yakit_timeline: {
         globalSettings: {
           theme: 'follow',
           ai: { mode: 'independent' },
@@ -200,7 +218,7 @@ describe('settings persistence', () => {
     saveAutomationSettings({ largeJumpNoticeDays: 30 });
 
     expect(extensionSettings).toEqual({
-      st_yafaya_timeline: {
+      yakit_timeline: {
         globalSettings: {
           theme: 'follow',
           ai: { mode: 'independent' },
@@ -219,14 +237,14 @@ describe('settings persistence', () => {
     const snapshot = loadSettings(DEFAULT_SETTINGS);
     expect(snapshot.automation).toEqual({ largeJumpNoticeDays: 5 });
     expect(extensionSettings).toMatchObject({
-      st_yafaya_timeline: { globalSettings: { largeJumpDays: 5 } },
+      yakit_timeline: { globalSettings: { largeJumpDays: 5 } },
     });
   });
 
   it('does not mutate the provided fallback snapshot', () => {
     const fallback: SettingsSnapshot = structuredClone(DEFAULT_SETTINGS);
     installSillyTavern({
-      st_yafaya_timeline: { globalSettings: { theme: 'light', largeJumpDays: 10 } },
+      yakit_timeline: { globalSettings: { theme: 'light', largeJumpDays: 10 } },
     });
 
     loadSettings(fallback);

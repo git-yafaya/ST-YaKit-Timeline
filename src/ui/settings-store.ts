@@ -6,8 +6,7 @@ import type {
   SettingsSnapshot,
   ThemeMode,
 } from '@/ui/pages/settings';
-
-const SETTINGS_NAMESPACE = 'st_yafaya_timeline';
+import { LEGACY_SETTINGS_NAMESPACE, SETTINGS_NAMESPACE } from '@/branding';
 const ALLOWED_JUMP_NOTICE_DAYS = new Set([5, 10, 15, 20, 25, 30]);
 
 export const DEFAULT_SETTINGS: SettingsSnapshot = {
@@ -103,9 +102,16 @@ function getContext(): SillyTavernContext | null {
 }
 
 function getStoredGlobalSettings(context: SillyTavernContext | null): TimelineGlobalSettingsRecord | undefined {
-  const namespace = context?.extensionSettings[SETTINGS_NAMESPACE];
+  const namespace = getStoredNamespace(context);
   if (!isRecord(namespace) || !isRecord(namespace.globalSettings)) return undefined;
   return namespace.globalSettings as TimelineGlobalSettingsRecord;
+}
+
+function getStoredNamespace(context: SillyTavernContext | null): TimelineSettingsRecord | undefined {
+  const current = context?.extensionSettings[SETTINGS_NAMESPACE];
+  if (isRecord(current)) return current as TimelineSettingsRecord;
+  const legacy = context?.extensionSettings[LEGACY_SETTINGS_NAMESPACE];
+  return isRecord(legacy) ? legacy as TimelineSettingsRecord : undefined;
 }
 
 function updateGlobalSettings(
@@ -114,8 +120,12 @@ function updateGlobalSettings(
   const context = getContext();
   if (!context) return false;
 
+  const previousNamespace = context.extensionSettings[SETTINGS_NAMESPACE];
+  const previousLegacyNamespace = context.extensionSettings[LEGACY_SETTINGS_NAMESPACE];
   try {
-    const currentNamespace = context.extensionSettings[SETTINGS_NAMESPACE];
+    const currentNamespace = isRecord(previousNamespace)
+      ? previousNamespace
+      : previousLegacyNamespace;
     const namespace: TimelineSettingsRecord = isRecord(currentNamespace)
       ? { ...currentNamespace }
       : {};
@@ -125,9 +135,14 @@ function updateGlobalSettings(
 
     namespace.globalSettings = update(currentGlobalSettings);
     context.extensionSettings[SETTINGS_NAMESPACE] = namespace;
+    delete context.extensionSettings[LEGACY_SETTINGS_NAMESPACE];
     context.saveSettingsDebounced();
     return true;
   } catch {
+    if (previousNamespace === undefined) delete context.extensionSettings[SETTINGS_NAMESPACE];
+    else context.extensionSettings[SETTINGS_NAMESPACE] = previousNamespace;
+    if (previousLegacyNamespace === undefined) delete context.extensionSettings[LEGACY_SETTINGS_NAMESPACE];
+    else context.extensionSettings[LEGACY_SETTINGS_NAMESPACE] = previousLegacyNamespace;
     return false;
   }
 }

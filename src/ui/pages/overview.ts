@@ -1,5 +1,6 @@
 import type { EntryId } from '@/timeline/types';
 import type { HostScopeStatus } from '@/st/sillytavern-adapter';
+import { PRODUCT_NAME } from '@/branding';
 
 export type OverviewGroupKind = 'route' | 'character' | 'world';
 export type OverviewGroupMode = 'auto' | 'manual';
@@ -54,7 +55,7 @@ export function getOverviewSourceState(
       canScan: false,
       icon: '●',
       title: '当前未选择角色卡',
-      description: '请先打开一个角色聊天，再使用时间线管理。',
+      description: `请先打开一个角色聊天，再使用 ${PRODUCT_NAME}。`,
     };
   }
 
@@ -63,7 +64,7 @@ export function getOverviewSourceState(
       canScan: false,
       icon: '◎',
       title: '当前角色卡未绑定世界书',
-      description: '请先为角色卡绑定世界书后再使用时间线管理。',
+      description: `请先为角色卡绑定世界书后再使用 ${PRODUCT_NAME}。`,
     };
   }
 

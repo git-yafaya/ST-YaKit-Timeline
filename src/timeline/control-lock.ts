@@ -1,3 +1,5 @@
+import { CONTROL_CHANNEL_NAME, TECHNICAL_SLUG } from '@/branding';
+
 export type ControlStatus = 'available' | 'other' | 'owner' | 'unsupported';
 
 type ControlMessage =
@@ -19,7 +21,7 @@ function makeOwnerId(): string {
   } catch {
     // Some embedded webviews expose crypto but not randomUUID.
   }
-  return `timeline-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `yakit-timeline-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function isControlMessage(value: unknown): value is ControlMessage {
@@ -48,7 +50,7 @@ export class TimelineControlLock {
   private heartbeatTimer: ReturnType<typeof globalThis.setInterval> | undefined;
   private closed = false;
 
-  constructor(channelName = 'st-yafaya-timeline-control') {
+  constructor(channelName = CONTROL_CHANNEL_NAME) {
     this.ownerId = makeOwnerId();
     this.channel = typeof globalThis.BroadcastChannel === 'function'
       ? new globalThis.BroadcastChannel(channelName)
@@ -206,5 +208,5 @@ export class TimelineControlLock {
 }
 
 export function worldbookControlChannelName(worldbookKey: string): string {
-  return `st-yafaya-timeline-control:${worldbookKey}`;
+  return `${TECHNICAL_SLUG}-control:${worldbookKey}`;
 }

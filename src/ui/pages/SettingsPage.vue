@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { PRODUCT_NAME } from '@/branding';
 import DeepListbox from '@/ui/components/DeepListbox.vue';
 import type { DeepListboxOption } from '@/ui/components/deep-listbox';
 import type {
@@ -203,7 +204,7 @@ function onImportFile(event: Event): void {
     <div class="page-heading settings-heading">
       <div>
         <h1>设置</h1>
-        <p>配置时间线管理的分析、切换与数据选项。</p>
+        <p>配置 {{ PRODUCT_NAME }} 的分析、切换与数据选项。</p>
       </div>
     </div>
 

@@ -1,7 +1,8 @@
-# ST-yafaya-Timeline 设计文档
+# YaKit-Timeline 设计文档
 
-> 项目名称：**ST-yafaya-Timeline**  
-> 界面显示名：**时间线管理**  
+> 项目名称：**YaKit-理脉**<br>
+> 技术名称：**YaKit-Timeline**<br>
+> 界面显示名：**YaKit-理脉**<br>
 > 图标：Font Awesome `fa-timeline`  
 > 目标平台：**SillyTavern（不限制最低版本）**
 > V1 界面语言：**简体中文**  
@@ -11,7 +12,7 @@
 
 ## 1. 项目概述
 
-ST-yafaya-Timeline 是一个用于 **SillyTavern 世界书（World Info / Lorebook）时间线条目自动开关** 的第三方扩展。
+YaKit-理脉是一个用于 **SillyTavern 世界书（World Info / Lorebook）时间线条目自动开关** 的第三方扩展。
 
 插件解决的核心问题是：
 
@@ -133,7 +134,7 @@ https://github.com/baibai-git/ST-BaiBai-Book
 建议命名空间：
 
 ```text
-extension_settings.st_yafaya_timeline
+extension_settings.yakit_timeline
 ```
 
 全局配置负责：
@@ -180,7 +181,7 @@ extension_settings.st_yafaya_timeline
 存储于：
 
 ```text
-extension_settings.st_yafaya_timeline.worldbooks
+extension_settings.yakit_timeline.worldbooks
 ```
 
 该层回答：
@@ -217,7 +218,7 @@ extension_settings.st_yafaya_timeline.worldbooks
 存储于：
 
 ```text
-chatMetadata.st_yafaya_timeline
+chatMetadata.yakit_timeline
 ```
 
 该层回答：
@@ -376,7 +377,7 @@ minute = 15
 
 打开聊天时：
 
-1. 优先读取 `chatMetadata.st_yafaya_timeline`
+1. 优先读取 `chatMetadata.yakit_timeline`
 2. 如果已有合法保存时间，则直接使用保存时间恢复该聊天状态
 3. 读取最新世界书公共配置
 4. 对自动组重新计算当前应激活条目
@@ -1206,7 +1207,7 @@ B3：419年1月11日
 
 首次确认落地时，必须在写入前再次校验当前绑定世界书、选中条目 ID、置信度、未处理警告、内容开始日期、相邻切换边界和重复纳管。切换边界当天属于下一条，因此正式配置中前一条的 `effectiveEndDate` 必须计算为边界前一天，下一条的 `effectiveStartDate` 使用该边界日期；最后一条终点保持开放。
 
-正式配置按 `worldbookKey` 分区保存到 `extension_settings.st_yafaya_timeline.worldbooks`，同时记录原条目名称、正文 SHA-256、展示标题、人工锁定字段、实际内容日期、计算后有效范围、置信度与 stale 状态。保存当前世界书时不得覆盖全局设置、其他世界书配置或未知字段，保存调度失败时应恢复写入前的命名空间。
+正式配置按 `worldbookKey` 分区保存到 `extension_settings.yakit_timeline.worldbooks`，同时记录原条目名称、正文 SHA-256、展示标题、人工锁定字段、实际内容日期、计算后有效范围、置信度与 stale 状态。保存当前世界书时不得覆盖全局设置、其他世界书配置或未知字段，保存调度失败时应恢复写入前的命名空间。
 
 首次应用只建立插件正式配置，不修改任何世界书原生字段。当前聊天运行状态尚未得到合法时间时保持所有原生开关原样；总览与时间线页可读取正式配置，并结合当前世界书只读快照展示实际启用状态。已有正式配置的重新分析结果不得走首次确认路径直接覆盖，必须等待差异合并与人工锁定保护链路。
 
@@ -1689,7 +1690,7 @@ AI 新建议：
 如果检测到其他标签页已经控制同一本世界书：
 
 ```text
-⚠ 检测到同一本世界书正在其他标签页由时间线插件控制。
+⚠ 检测到同一本世界书正在其他标签页由 YaKit-理脉控制。
 为避免状态冲突，本标签页自动控制已暂停。
 ```
 
@@ -1814,7 +1815,7 @@ AI 分析第 2 / 5 批
 
 # 52. 关闭弹窗时扫描继续
 
-如果用户关闭“时间线管理”大弹窗：
+如果用户关闭“YaKit-理脉”大弹窗：
 
 > 扫描继续运行。
 
@@ -1893,7 +1894,7 @@ AI 分析第 2 / 5 批
 菜单项：
 
 ```text
-[fa-timeline] 时间线管理
+[fa-timeline] YaKit-理脉
 ```
 
 不在消息右侧按钮区域放入口。
@@ -2170,7 +2171,7 @@ V1 不声明最低 SillyTavern 客户端版本，扩展清单不使用 `minimum_
 以下为推荐实现结构，不要求目录名完全一致：
 
 ```text
-ST-yafaya-Timeline/
+YaKit-Timeline/
 ├── manifest.json
 ├── package.json
 ├── src/
@@ -2501,7 +2502,7 @@ V1 只有在以下核心功能全部通过实际测试后才视为完成。
 - [ ] 可通过 GitHub 安装为 SillyTavern 第三方扩展
 - [ ] 当前实际运行的 SillyTavern 正常加载
 - [ ] `manifest.json` 不声明最低客户端版本
-- [ ] 魔法棒菜单出现 `时间线管理`
+- [ ] 魔法棒菜单出现 `YaKit-理脉`
 - [ ] 点击后打开大弹窗
 - [ ] 中文 UI 完整
 - [ ] 跟随 ST / 浅色 / 深色主题正常
@@ -2625,7 +2626,7 @@ V1 只有在以下核心功能全部通过实际测试后才视为完成。
 
 # 75. V1 完成定义
 
-ST-yafaya-Timeline V1 的核心目标不是做一个通用世界书编辑器，而是完成一条可靠的闭环：
+YaKit-理脉 V1 的核心目标不是做一个通用世界书编辑器，而是完成一条可靠的闭环：
 
 ```text
 读取角色卡世界书

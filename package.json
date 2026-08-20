@@ -1,5 +1,6 @@
 {
-  "name": "st-yafaya-timeline",
+  "name": "yakit-timeline",
+  "description": "YaKit-理脉：SillyTavern 世界书时间线管理扩展",
   "version": "0.1.0",
   "private": true,
   "type": "module",

@@ -1,9 +1,8 @@
 import { compareStoryDates, daysInMonth, formatStoryDate, parseStoryDate } from '@/timeline/date';
+import { LEGACY_SETTINGS_NAMESPACE, SETTINGS_NAMESPACE } from '@/branding';
 import type { EntryId } from '@/timeline/types';
 import type { WorldbookSnapshot } from '@/st/sillytavern-adapter';
 import type { AnalysisConfidence, AnalysisDraft, AnalysisDraftEntry } from '@/ui/pages/analysis';
-
-const SETTINGS_NAMESPACE = 'st_yafaya_timeline';
 
 export interface ManagedTimelineEntry {
   boundaryDate?: string;
@@ -62,6 +61,12 @@ function getContext(): StorageContext | null {
   } catch {
     return null;
   }
+}
+
+function getStoredNamespace(context: StorageContext | null): Record<string, unknown> | null {
+  const current = recordValue(context?.extensionSettings[SETTINGS_NAMESPACE]);
+  if (current) return current;
+  return recordValue(context?.extensionSettings[LEGACY_SETTINGS_NAMESPACE]);
 }
 
 function previousDate(value: string): string {
@@ -260,7 +265,7 @@ export function isWorldbookTimelineConfig(value: unknown): value is WorldbookTim
 
 export function loadWorldbookTimelineConfig(worldbookKey: string): WorldbookTimelineConfig | null {
   const context = getContext();
-  const namespace = recordValue(context?.extensionSettings[SETTINGS_NAMESPACE]);
+  const namespace = getStoredNamespace(context);
   const worldbooks = recordValue(namespace?.worldbooks);
   const config = worldbooks?.[worldbookKey];
   return isConfig(config) && config.worldbookKey === worldbookKey ? config : null;
@@ -270,18 +275,22 @@ export function saveWorldbookTimelineConfig(config: WorldbookTimelineConfig): bo
   const context = getContext();
   if (!context) return false;
   const previousNamespace = context.extensionSettings[SETTINGS_NAMESPACE];
+  const previousLegacyNamespace = context.extensionSettings[LEGACY_SETTINGS_NAMESPACE];
   try {
-    const namespace = recordValue(previousNamespace) ?? {};
+    const namespace = getStoredNamespace(context) ?? {};
     const worldbooks = recordValue(namespace.worldbooks) ?? {};
     context.extensionSettings[SETTINGS_NAMESPACE] = {
       ...namespace,
       worldbooks: { ...worldbooks, [config.worldbookKey]: config },
     };
+    delete context.extensionSettings[LEGACY_SETTINGS_NAMESPACE];
     context.saveSettingsDebounced();
     return true;
   } catch {
     if (previousNamespace === undefined) delete context.extensionSettings[SETTINGS_NAMESPACE];
     else context.extensionSettings[SETTINGS_NAMESPACE] = previousNamespace;
+    if (previousLegacyNamespace === undefined) delete context.extensionSettings[LEGACY_SETTINGS_NAMESPACE];
+    else context.extensionSettings[LEGACY_SETTINGS_NAMESPACE] = previousLegacyNamespace;
     return false;
   }
 }

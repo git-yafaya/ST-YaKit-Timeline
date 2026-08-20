@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue';
+import { PRODUCT_NAME } from '@/branding';
 import ContextBar from '@/ui/components/ContextBar.vue';
 import TopNav from '@/ui/components/TopNav.vue';
 import type { TimelinePage } from '@/ui/state';
@@ -41,7 +42,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     <div class="ambient-glow ambient-glow--primary" aria-hidden="true"></div>
     <div class="ambient-glow ambient-glow--tertiary" aria-hidden="true"></div>
 
-    <section class="timeline-window" role="dialog" aria-modal="true" aria-label="时间线管理">
+    <section class="timeline-window" role="dialog" aria-modal="true" :aria-label="PRODUCT_NAME">
       <TopNav
         :active-page="activePage"
         :time-action-busy="timeActionBusy"

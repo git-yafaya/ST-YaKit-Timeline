@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { LEGACY_CHAT_METADATA_KEY } from '@/branding';
 import {
   CHAT_TIMELINE_METADATA_KEY,
   appendChatRuntimeLog,
@@ -56,6 +57,16 @@ describe('chat timeline storage', () => {
     expect(metadata.unrelated).toBe('keep');
     expect(metadata[CHAT_TIMELINE_METADATA_KEY]).toEqual(validState());
     expect(saveMetadataDebounced).toHaveBeenCalledOnce();
+  });
+
+  it('兼容读取旧聊天键，并在保存时迁移到新键', () => {
+    const metadata: Record<string, unknown> = { [LEGACY_CHAT_METADATA_KEY]: validState() };
+    installContext(metadata, undefined, vi.fn());
+
+    expect(loadChatTimelineState()).toEqual(validState());
+    expect(saveChatTimelineState(validState())).toBe(true);
+    expect(metadata[CHAT_TIMELINE_METADATA_KEY]).toEqual(validState());
+    expect(metadata[LEGACY_CHAT_METADATA_KEY]).toBeUndefined();
   });
 
   it('运行日志最多保留最近 100 条', () => {

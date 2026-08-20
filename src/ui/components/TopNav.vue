@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { PRODUCT_NAME } from '@/branding';
 import { TIMELINE_PAGES } from '@/ui/navigation';
 import type { TimelinePage } from '@/ui/state';
 
@@ -15,11 +16,11 @@ defineEmits<{
 </script>
 
 <template>
-  <nav class="timeline-nav" aria-label="时间线管理主导航">
+  <nav class="timeline-nav" :aria-label="`${PRODUCT_NAME}主导航`">
     <div class="timeline-nav-main">
       <div class="timeline-brand">
         <i class="fa-solid fa-timeline" aria-hidden="true"></i>
-        <span>时间线管理</span>
+        <span>{{ PRODUCT_NAME }}</span>
       </div>
 
       <div class="timeline-tabs timeline-tabs--desktop">

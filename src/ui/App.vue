@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { AnalysisValidationError, runTimelineScan } from '@/analysis/scanner';
+import { TECHNICAL_NAME } from '@/branding';
 import { generateTimelineAnalysis } from '@/st/ai-adapter';
 import {
   buildWorldbookTimelineConfig,
@@ -901,7 +902,7 @@ function exportConfig(): void {
   const url = globalThis.URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = `st-yafaya-timeline-${config.worldbookKey}.json`;
+  anchor.download = `${TECHNICAL_NAME}-${config.worldbookKey}.json`;
   anchor.click();
   globalThis.URL.revokeObjectURL(url);
   appendSystemLog('info', '配置已导出', '导出文件仅包含当前世界书时间线配置，不包含 API Key。', 'config');

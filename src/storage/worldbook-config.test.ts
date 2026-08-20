@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { LEGACY_SETTINGS_NAMESPACE, SETTINGS_NAMESPACE } from '@/branding';
 import {
   buildWorldbookTimelineConfig,
   detectWorldbookConfigStale,
@@ -115,7 +116,7 @@ describe('worldbook timeline config', () => {
 
   it('saves only the current worldbook slot and preserves unrelated settings', async () => {
     const { extensionSettings, saveSettingsDebounced } = installStorage({
-      st_yafaya_timeline: {
+      yakit_timeline: {
         globalSettings: { theme: 'dark' },
         worldbooks: { other: { worldbookKey: 'other', groups: [] } },
         unknown: true,
@@ -124,7 +125,7 @@ describe('worldbook timeline config', () => {
     const config = await buildWorldbookTimelineConfig(draft, worldbook, 12345);
     expect(saveWorldbookTimelineConfig(config)).toBe(true);
     expect(extensionSettings).toMatchObject({
-      st_yafaya_timeline: {
+      yakit_timeline: {
         globalSettings: { theme: 'dark' },
         worldbooks: {
           other: { worldbookKey: 'other', groups: [] },
@@ -137,11 +138,29 @@ describe('worldbook timeline config', () => {
     expect(loadWorldbookTimelineConfig('当前世界书')).toEqual(config);
   });
 
+  it('兼容读取旧世界书配置，并在保存时迁移命名空间', async () => {
+    const config = await buildWorldbookTimelineConfig(draft, worldbook, 12345);
+    const { extensionSettings } = installStorage({
+      [LEGACY_SETTINGS_NAMESPACE]: {
+        globalSettings: { theme: 'dark' },
+        worldbooks: { [worldbook.key]: config },
+      },
+    });
+
+    expect(loadWorldbookTimelineConfig(worldbook.key)).toEqual(config);
+    expect(saveWorldbookTimelineConfig(config)).toBe(true);
+    expect(extensionSettings[SETTINGS_NAMESPACE]).toMatchObject({
+      globalSettings: { theme: 'dark' },
+      worldbooks: { [worldbook.key]: config },
+    });
+    expect(extensionSettings[LEGACY_SETTINGS_NAMESPACE]).toBeUndefined();
+  });
+
   it('restores the previous namespace when scheduling persistence fails', async () => {
     const extensionSettings: Record<string, unknown> = {
-      st_yafaya_timeline: { globalSettings: { theme: 'light' } },
+      yakit_timeline: { globalSettings: { theme: 'light' } },
     };
-    const previous = extensionSettings.st_yafaya_timeline;
+    const previous = extensionSettings.yakit_timeline;
     Object.defineProperty(globalThis, 'SillyTavern', {
       configurable: true,
       value: {
@@ -154,7 +173,7 @@ describe('worldbook timeline config', () => {
     });
     const config = await buildWorldbookTimelineConfig(draft, worldbook);
     expect(saveWorldbookTimelineConfig(config)).toBe(false);
-    expect(extensionSettings.st_yafaya_timeline).toBe(previous);
+    expect(extensionSettings.yakit_timeline).toBe(previous);
   });
 
   it('重新分析保留人工锁定字段，并把未重新识别的旧映射安全停用', async () => {
