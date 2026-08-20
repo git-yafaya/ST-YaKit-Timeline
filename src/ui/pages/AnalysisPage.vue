@@ -24,6 +24,7 @@ const props = withDefaults(
     error?: AnalysisErrorState | null;
     notice?: string;
     progress?: AnalysisProgress | null;
+    scanMode?: AnalysisScanMode | null;
     sourceMessage?: string;
   }>(),
   {
@@ -36,6 +37,7 @@ const props = withDefaults(
     error: null,
     notice: '',
     progress: null,
+    scanMode: null,
     sourceMessage: '',
   },
 );
@@ -70,6 +72,8 @@ const selectedSource = ref<AnalysisDraftEntry | null>(null);
 const sourceExpanded = ref(false);
 const copyNotice = ref('');
 
+const isQuickScan = computed(() => props.scanMode === 'quick' || props.draft?.scanMode === 'quick');
+
 const selectedCount = computed(() => {
   return props.draft?.groups.reduce((total, group) => total + group.entries.filter(entry => entry.selected).length, 0) ?? 0;
 });
@@ -90,9 +94,10 @@ const excludedCount = computed(() => {
   return props.draft?.groups.reduce((total, group) => total + group.entries.filter(entry => !entry.selected).length, 0) ?? 0;
 });
 
-const stageOrder: readonly AnalysisStage[] = ['filtering', 'batches', 'summary', 'validation'];
+const stageOrder: readonly AnalysisStage[] = ['filtering', 'local', 'batches', 'summary', 'validation'];
 const stageLabels: Record<AnalysisStage, string> = {
   filtering: '候选筛选',
+  local: '本地整理',
   batches: 'AI批次',
   summary: '汇总',
   validation: '校验',
@@ -311,12 +316,12 @@ onUnmounted(() => {
   <div class="analysis-page">
     <div class="page-heading analysis-heading">
       <div>
-        <h1>AI分析</h1>
-        <p>{{ draft ? '分析完成，请确认时间线草稿。' : '识别世界书中的时间线候选并生成配置草稿。' }}</p>
+        <h1>{{ isQuickScan ? '快速扫描' : 'AI分析' }}</h1>
+        <p>{{ draft ? '扫描完成，请确认时间线草稿。' : '识别世界书中的时间线候选并生成配置草稿。' }}</p>
       </div>
       <div v-if="draft" class="analysis-heading-actions">
-        <button class="secondary-action" type="button" :disabled="Boolean(progress) || applying || !canStart" @click="$emit('startAnalysis', 'quick')">
-          重新分析
+        <button class="secondary-action" type="button" :disabled="Boolean(progress) || applying || !canStart" @click="$emit('startAnalysis', isQuickScan ? 'quick' : 'deep')">
+          {{ isQuickScan ? '重新扫描' : '重新分析' }}
         </button>
         <button
           class="analysis-apply"
@@ -350,17 +355,17 @@ onUnmounted(() => {
     <section v-if="!draft" class="analysis-empty" aria-labelledby="analysis-empty-title">
       <span class="analysis-empty-icon" aria-hidden="true">✦</span>
       <h2 id="analysis-empty-title">尚未生成时间线分析草稿</h2>
-      <p>{{ canStart ? '快速扫描会先在本地筛选候选；深度扫描会分析全部条目。两种方式都不会直接修改世界书。' : sourceMessage }}</p>
+      <p>{{ canStart ? '快速扫描只在本地识别明显候选，不调用 AI；深度扫描才会调用 AI 分析全部条目。两种方式都不会直接修改世界书。' : sourceMessage }}</p>
       <div class="analysis-scan-actions">
         <button class="analysis-scan-card" type="button" :disabled="Boolean(progress) || applying || !canStart" @click="$emit('startAnalysis', 'quick')">
           <span aria-hidden="true">⌁</span>
           <strong>快速扫描</strong>
-          <small>先筛选明显候选，减少发送内容</small>
+          <small>仅本地识别候选，不调用 AI</small>
         </button>
         <button class="analysis-scan-card" type="button" :disabled="Boolean(progress) || applying || !canStart" @click="$emit('startAnalysis', 'deep')">
           <span aria-hidden="true">◎</span>
           <strong>深度扫描全部条目</strong>
-          <small>适合格式特殊或可能被漏检的世界书</small>
+          <small>调用 AI 分析全部条目并分组排序</small>
         </button>
       </div>
     </section>
@@ -369,8 +374,8 @@ onUnmounted(() => {
       <div class="analysis-draft-notice">
         <span aria-hidden="true">✓</span>
         <div>
-          <strong>AI 草稿尚未应用</strong>
-          <p>请检查分组、条目顺序、时间边界和低置信度项目，确认后才会建立自动时间线。</p>
+          <strong>{{ isQuickScan ? '本地候选尚未应用' : 'AI 草稿尚未应用' }}</strong>
+          <p>{{ isQuickScan ? '快速扫描只提供本地候选；请人工分组、排序、补全日期和边界，确认后才会建立自动时间线。' : '请检查分组、条目顺序、时间边界和低置信度项目，确认后才会建立自动时间线。' }}</p>
         </div>
       </div>
 
@@ -390,7 +395,7 @@ onUnmounted(() => {
             </div>
             <p v-if="item.status === 'changed'">{{ item.oldRange }} → {{ item.newRange }}</p>
             <p v-else-if="item.status === 'removed'">原配置：{{ item.oldRange }}</p>
-            <p v-else-if="item.status === 'added'">AI 建议：{{ item.newRange }}</p>
+            <p v-else-if="item.status === 'added'">{{ isQuickScan ? '本地建议' : 'AI 建议' }}：{{ item.newRange }}</p>
             <p v-else>{{ item.newRange ?? item.oldRange }}</p>
           </article>
         </div>
@@ -406,8 +411,8 @@ onUnmounted(() => {
       <section class="analysis-workspace">
         <header>
           <div>
-            <h2>AI 识别结果</h2>
-            <p>可在应用前调整分组和条目。</p>
+            <h2>{{ isQuickScan ? '本地候选结果' : 'AI 识别结果' }}</h2>
+            <p>{{ isQuickScan ? '快速扫描不负责分组和边界推断，请人工整理后再应用。' : '可在应用前调整分组和条目。' }}</p>
           </div>
           <button class="secondary-action" type="button" @click="openCreateDialog"><span aria-hidden="true">＋</span>新建分组</button>
         </header>
@@ -536,7 +541,7 @@ onUnmounted(() => {
     <div v-if="progress" class="analysis-progress-overlay">
       <section class="analysis-progress" role="status" aria-live="polite">
         <header>
-          <div><h2>AI 分析进行中</h2><p>{{ progress.label }}</p></div>
+          <div><h2>{{ isQuickScan ? '快速扫描进行中' : 'AI 分析进行中' }}</h2><p>{{ progress.label }}</p></div>
           <strong>{{ Math.max(0, Math.min(100, progress.percent)) }}%</strong>
         </header>
         <div class="analysis-progress-track"><span :style="{ width: `${Math.max(0, Math.min(100, progress.percent))}%` }"></span></div>
@@ -547,8 +552,8 @@ onUnmounted(() => {
             :class="{ 'is-current': stage === progress.stage }"
           >{{ stageLabels[stage] }}</span>
         </div>
-        <button class="secondary-action" type="button" @click="$emit('cancelAnalysis')">取消分析</button>
-        <p>取消分析不会保存任何未完成结果。</p>
+        <button class="secondary-action" type="button" @click="$emit('cancelAnalysis')">{{ isQuickScan ? '取消扫描' : '取消分析' }}</button>
+        <p>{{ isQuickScan ? '取消扫描不会保存任何未完成结果。' : '取消分析不会保存任何未完成结果。' }}</p>
       </section>
     </div>
 
@@ -563,7 +568,7 @@ onUnmounted(() => {
     </div>
 
     <div v-if="selectedSource" class="source-dialog-overlay" @click.self="closeSource">
-      <section class="source-dialog" role="dialog" aria-modal="true" aria-label="AI 分析原条目只读预览">
+      <section class="source-dialog" role="dialog" aria-modal="true" :aria-label="isQuickScan ? '快速扫描原条目只读预览' : 'AI 分析原条目只读预览'">
         <header>
           <div>
             <h2>{{ selectedSource.title }}</h2>

@@ -1,4 +1,4 @@
-import { parseStoryDate } from '@/timeline/date';
+import { compareStoryDates, formatStoryDate, parseStoryDate } from '@/timeline/date';
 import type { EntryId } from '@/timeline/types';
 import type { WorldInfoEntrySnapshot } from '@/st/sillytavern-adapter';
 import type {
@@ -20,7 +20,7 @@ export interface AnalysisGenerator {
 
 export interface TimelineScanOptions {
   entries: readonly WorldInfoEntrySnapshot[];
-  generate: AnalysisGenerator;
+  generate?: AnalysisGenerator;
   mode: AnalysisScanMode;
   onProgress?: (progress: AnalysisProgress) => void;
   signal: AbortSignal;
@@ -75,8 +75,25 @@ function abortIfNeeded(signal: AbortSignal): void {
   if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new DOMException('分析已取消', 'AbortError');
 }
 
+interface LocalDateMatch {
+  date: string;
+}
+
+function extractLocalDates(value: string): LocalDateMatch[] {
+  const matches: LocalDateMatch[] = [];
+  for (const match of value.matchAll(DATE_CANDIDATE_PATTERN)) {
+    const year = match[1];
+    const month = match[2];
+    const day = match[3];
+    const parsed = parseStoryDate(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+    if (!parsed) continue;
+    matches.push({ date: formatStoryDate(parsed) });
+  }
+  return matches;
+}
+
 function countDates(value: string): number {
-  return [...value.matchAll(DATE_CANDIDATE_PATTERN)].length;
+  return extractLocalDates(value).length;
 }
 
 export function isQuickScanCandidate(entry: WorldInfoEntrySnapshot): boolean {
@@ -92,6 +109,60 @@ export function selectScanEntries(
   mode: AnalysisScanMode,
 ): WorldInfoEntrySnapshot[] {
   return mode === 'deep' ? [...entries] : entries.filter(isQuickScanCandidate);
+}
+
+function buildQuickScanDraft(
+  candidates: readonly WorldInfoEntrySnapshot[],
+  signal: AbortSignal,
+): AnalysisDraft {
+  const entries = candidates.map((source, sourceIndex) => {
+    abortIfNeeded(signal);
+    const text = `${source.comment}\n${source.content}`;
+    const dates = extractLocalDates(text);
+    const sourceComment = source.comment.trim() || `条目 ${source.id}`;
+    const warnings = ['快速扫描仅识别候选，不进行 AI 分组或边界推断。'];
+    if (dates.length === 0) {
+      warnings.push('未提取到完整日期，请人工补充内容开始日期。');
+    } else if (dates.length > 1) {
+      warnings.push(`检测到 ${dates.length} 个日期，起点暂取首次出现日期，请人工确认。`);
+    }
+
+    return {
+      entry: {
+        boundaryDate: undefined,
+        confidence: 'low' as const,
+        contentStartDate: dates[0]?.date,
+        entryId: source.id,
+        selected: false,
+        sourceContent: source.content,
+        sourceComment,
+        title: sourceComment,
+        warnings,
+      },
+      firstDate: dates[0]?.date,
+      sourceIndex,
+    };
+  });
+
+  entries.sort((left, right) => {
+    if (left.firstDate !== right.firstDate) {
+      if (!left.firstDate) return 1;
+      if (!right.firstDate) return -1;
+      const leftDate = parseStoryDate(left.firstDate);
+      const rightDate = parseStoryDate(right.firstDate);
+      if (leftDate && rightDate) return compareStoryDates(leftDate, rightDate);
+      return left.firstDate.localeCompare(right.firstDate);
+    }
+    return left.sourceIndex - right.sourceIndex;
+  });
+
+  return {
+    candidateCount: candidates.length,
+    groups: candidates.length > 0
+      ? [{ id: 'local-quick-candidates', name: '本地候选', entries: entries.map(item => item.entry) }]
+      : [],
+    scanMode: 'quick',
+  };
 }
 
 function recordValue(value: unknown): Record<string, unknown> | null {
@@ -275,7 +346,19 @@ export async function runTimelineScan(options: TimelineScanOptions): Promise<Ana
     percent: 15,
     label: `候选筛选完成 ${candidates.length} / ${entries.length}`,
   });
-  if (candidates.length === 0) return { candidateCount: 0, groups: [] };
+
+  if (mode === 'quick') {
+    onProgress?.({ stage: 'local', percent: 65, label: '正在整理本地候选结果' });
+    const draft = buildQuickScanDraft(candidates, signal);
+    onProgress?.({ stage: 'validation', percent: 100, label: '本地候选结果已生成' });
+    return draft;
+  }
+
+  if (candidates.length === 0) {
+    onProgress?.({ stage: 'validation', percent: 100, label: '没有可分析的条目' });
+    return { candidateCount: 0, groups: [], scanMode: mode };
+  }
+  if (!generate) throw new Error('深度扫描需要可用的 AI 生成器。');
 
   const batches: WorldInfoEntrySnapshot[][] = [];
   for (let index = 0; index < candidates.length; index += BATCH_SIZE) {
@@ -303,7 +386,7 @@ export async function runTimelineScan(options: TimelineScanOptions): Promise<Ana
 
   onProgress?.({ stage: 'validation', percent: 94, label: '正在校验 JSON 与条目 ID' });
   abortIfNeeded(signal);
-  const result = { ...draft, candidateCount: candidates.length };
+  const result = { ...draft, candidateCount: candidates.length, scanMode: mode };
   onProgress?.({ stage: 'validation', percent: 100, label: '分析草稿已生成' });
   return result;
 }

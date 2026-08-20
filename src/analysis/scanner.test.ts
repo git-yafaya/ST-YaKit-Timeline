@@ -51,19 +51,20 @@ describe('timeline analysis scanner', () => {
     }, sources)).toThrow('不是合法日期');
   });
 
-  it('accepts JSON fences and retries invalid AI output up to a valid result', async () => {
+  it('uses AI only for deep scans and retries invalid output up to a valid result', async () => {
     const generate = vi.fn()
       .mockResolvedValueOnce('not json')
       .mockResolvedValueOnce('```json\n{"groups":[{"name":"主线","entries":[{"entryId":1,"title":"第一章","contentStartDate":"424-05-01","boundaryDate":null,"confidence":0.9,"warnings":[]}]}]}\n```');
     const result = await runTimelineScan({
       entries: sources,
       generate,
-      mode: 'quick',
+      mode: 'deep',
       signal: new AbortController().signal,
     });
 
     expect(generate).toHaveBeenCalledTimes(2);
-    expect(result.candidateCount).toBe(1);
+    expect(result.candidateCount).toBe(2);
+    expect(result.scanMode).toBe('deep');
     expect(result.groups[0].entries[0].entryId).toBe(1);
   });
 
@@ -72,7 +73,7 @@ describe('timeline analysis scanner', () => {
     await expect(runTimelineScan({
       entries: sources,
       generate,
-      mode: 'quick',
+      mode: 'deep',
       signal: new AbortController().signal,
     })).rejects.toMatchObject({
       name: 'AnalysisValidationError',
@@ -81,7 +82,28 @@ describe('timeline analysis scanner', () => {
     expect(generate).toHaveBeenCalledTimes(3);
   });
 
-  it('does not call AI when quick scan finds no candidates', async () => {
+  it('does not call AI during quick scans and returns local candidates', async () => {
+    const generate = vi.fn();
+    const result = await runTimelineScan({
+      entries: sources,
+      generate,
+      mode: 'quick',
+      signal: new AbortController().signal,
+    });
+    expect(result.scanMode).toBe('quick');
+    expect(result.candidateCount).toBe(1);
+    expect(result.groups).toHaveLength(1);
+    expect(result.groups[0]).toMatchObject({ id: 'local-quick-candidates', name: '本地候选' });
+    expect(result.groups[0].entries[0]).toMatchObject({
+      entryId: 1,
+      contentStartDate: '424-05-01',
+      confidence: 'low',
+      selected: false,
+    });
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it('returns an empty local result without calling AI when quick scan finds no candidates', async () => {
     const generate = vi.fn();
     const result = await runTimelineScan({
       entries: [sources[1]],
@@ -89,7 +111,7 @@ describe('timeline analysis scanner', () => {
       mode: 'quick',
       signal: new AbortController().signal,
     });
-    expect(result).toEqual({ candidateCount: 0, groups: [] });
+    expect(result).toEqual({ candidateCount: 0, groups: [], scanMode: 'quick' });
     expect(generate).not.toHaveBeenCalled();
   });
 
@@ -138,7 +160,7 @@ describe('timeline analysis scanner', () => {
     await expect(runTimelineScan({
       entries: sources,
       generate,
-      mode: 'quick',
+      mode: 'deep',
       signal: controller.signal,
     })).rejects.toMatchObject({ name: 'AbortError' });
     expect(generate).toHaveBeenCalledOnce();

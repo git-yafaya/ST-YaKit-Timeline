@@ -2,7 +2,7 @@ import type { EntryId } from '@/timeline/types';
 
 export type AnalysisConfidence = 'high' | 'medium' | 'low';
 export type AnalysisScanMode = 'quick' | 'deep';
-export type AnalysisStage = 'filtering' | 'batches' | 'summary' | 'validation';
+export type AnalysisStage = 'filtering' | 'local' | 'batches' | 'summary' | 'validation';
 
 export interface AnalysisDraftEntry {
   boundaryDate?: string;
@@ -30,6 +30,7 @@ export interface AnalysisDraftGroup {
 export interface AnalysisDraft {
   candidateCount: number;
   groups: readonly AnalysisDraftGroup[];
+  scanMode?: AnalysisScanMode;
 }
 
 export interface AnalysisEntryPatch {

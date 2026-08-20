@@ -1973,6 +1973,13 @@ h2 {
   margin-top: 0;
 }
 
+.groups-empty-actions > button {
+  width: 144px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 14px;
+}
+
 .group-dialog-overlay {
   position: fixed;
   inset: 0;

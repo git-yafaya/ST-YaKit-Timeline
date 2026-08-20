@@ -108,6 +108,7 @@ import type { EntryId } from '@/timeline/types';
 const pageTitle = computed(() => getPageLabel(uiState.activePage));
 const analysisDraft = ref<AnalysisDraft | null>(null);
 const analysisProgress = ref<AnalysisProgress | null>(null);
+const analysisScanMode = ref<AnalysisScanMode | null>(null);
 const analysisError = ref<AnalysisErrorState | null>(null);
 const analysisNotice = ref('');
 const analysisApplying = ref(false);
@@ -390,6 +391,7 @@ function stopAnalysisForScopeChange(): void {
   analysisAbortController = undefined;
   activeAnalysisScopeKey = '';
   analysisProgress.value = null;
+  analysisScanMode.value = null;
   analysisError.value = { message: '角色、聊天或绑定世界书已变化，本次分析已安全停止。' };
 }
 
@@ -559,15 +561,23 @@ async function startAnalysis(mode: AnalysisScanMode): Promise<void> {
   activeAnalysisScopeKey = scopeKey;
   analysisError.value = null;
   analysisNotice.value = '';
-  const aiSettings = { ...settings.ai };
-  appendSystemLog('info', '开始世界书分析', `${mode === 'quick' ? '快速' : '深度'}扫描已开始。`, 'analysis');
+  analysisScanMode.value = mode;
+  const aiSettings = mode === 'deep' ? { ...settings.ai } : null;
+  appendSystemLog(
+    'info',
+    mode === 'quick' ? '开始本地快速扫描' : '开始世界书 AI 分析',
+    `${mode === 'quick' ? '快速' : '深度'}扫描已开始。`,
+    'analysis',
+  );
 
   try {
     const draft = await runTimelineScan({
       entries: worldbook.entries,
       mode,
       signal: controller.signal,
-      generate: (prompt, signal) => generateTimelineAnalysis(aiSettings, prompt, signal),
+      generate: mode === 'deep' && aiSettings
+        ? (prompt, signal) => generateTimelineAnalysis(aiSettings, prompt, signal)
+        : undefined,
       onProgress: progress => {
         if (requestVersion === analysisRequestVersion && !controller.signal.aborted) {
           analysisProgress.value = progress;
@@ -581,17 +591,28 @@ async function startAnalysis(mode: AnalysisScanMode): Promise<void> {
     ) return;
     analysisDraft.value = draft;
     analysisDraftScopeKey = scopeKey;
-    appendSystemLog('success', '世界书分析完成', `生成 ${draft.groups.length} 个候选时间线组。`, 'analysis');
+    appendSystemLog(
+      'success',
+      mode === 'quick' ? '本地快速扫描完成' : '世界书 AI 分析完成',
+      `生成 ${draft.groups.length} 个候选时间线组。`,
+      'analysis',
+    );
   } catch (error) {
     if (requestVersion !== analysisRequestVersion || controller.signal.aborted) return;
     analysisError.value = {
-      message: error instanceof Error ? error.message : 'AI 分析失败',
+      message: error instanceof Error ? error.message : mode === 'quick' ? '快速扫描失败' : 'AI 分析失败',
       rawOutput: error instanceof AnalysisValidationError ? error.rawOutput : undefined,
     };
-    appendSystemLog('error', '世界书分析失败', analysisError.value.message, 'analysis');
+    appendSystemLog(
+      'error',
+      mode === 'quick' ? '本地快速扫描失败' : '世界书 AI 分析失败',
+      analysisError.value.message,
+      'analysis',
+    );
   } finally {
     if (requestVersion === analysisRequestVersion) {
       analysisProgress.value = null;
+      analysisScanMode.value = null;
       analysisAbortController = undefined;
       activeAnalysisScopeKey = '';
     }
@@ -605,6 +626,7 @@ function cancelAnalysis(): void {
   analysisAbortController = undefined;
   activeAnalysisScopeKey = '';
   analysisProgress.value = null;
+  analysisScanMode.value = null;
   analysisError.value = null;
   analysisNotice.value = '';
 }
@@ -1327,6 +1349,7 @@ function changeTheme(theme: ThemeMode): void {
             key="analysis"
             :draft="analysisDraft"
             :diff="analysisDiff"
+            :scan-mode="analysisScanMode"
             :allow-apply="canApplyAnalysisDraft"
             :apply-blocked-message="draftApplicationIssue ?? ''"
             :applying="analysisApplying"

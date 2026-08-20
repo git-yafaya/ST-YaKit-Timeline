@@ -302,9 +302,9 @@ onUnmounted(() => {
     <section v-if="groups.length === 0" class="groups-empty" aria-labelledby="groups-empty-title">
       <span aria-hidden="true">◇</span>
       <h2 id="groups-empty-title">当前没有可管理的时间线分组</h2>
-      <p>先完成 AI 扫描并确认草稿，或手动新建一个空分组。</p>
+      <p>先完成扫描并确认草稿，或手动新建一个分组。</p>
       <div class="groups-empty-actions">
-        <button class="secondary-action" type="button" @click="openOperation('create')">新建空分组</button>
+        <button class="secondary-action" type="button" @click="openOperation('create')">新建分组</button>
         <button class="primary-action" type="button" @click="$emit('startAnalysis')">开始扫描</button>
       </div>
     </section>
