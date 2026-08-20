@@ -90,6 +90,26 @@ describe('worldbook timeline config', () => {
     expect(worldbook).toEqual(original);
   });
 
+  it('保存扫描确认阶段的组名、组顺序和条目归属人工锁定', async () => {
+    const manualDraft: AnalysisDraft = {
+      ...draft,
+      groups: [{
+        ...draft.groups[0],
+        name: '人工主线',
+        nameLocked: true,
+        orderLocked: true,
+        entries: draft.groups[0].entries.map(entry => ({
+          ...entry,
+          groupLocked: true,
+          orderLocked: true,
+        })),
+      }],
+    };
+    const config = await buildWorldbookTimelineConfig(manualDraft, worldbook, 12345);
+    expect(config.groups[0]).toMatchObject({ name: '人工主线', nameLocked: true, orderLocked: true });
+    expect(config.groups[0].entries[0].manualFields).toEqual(expect.arrayContaining(['group', 'order']));
+  });
+
   it('blocks unresolved confidence, warnings, missing boundaries, and unknown IDs', () => {
     const clone = structuredClone(draft);
     clone.groups[0].entries[0].confidence = 'medium';

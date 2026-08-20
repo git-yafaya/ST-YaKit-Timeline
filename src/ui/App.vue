@@ -57,6 +57,12 @@ import {
 import AppShell from '@/ui/components/AppShell.vue';
 import { getPageLabel } from '@/ui/navigation';
 import AnalysisPage from '@/ui/pages/AnalysisPage.vue';
+import {
+  moveAnalysisEntry as moveAnalysisEntryDraft,
+  renameAnalysisGroup as renameAnalysisGroupDraft,
+  reorderAnalysisEntries as reorderAnalysisEntriesDraft,
+  reorderAnalysisGroups as reorderAnalysisGroupsDraft,
+} from '@/ui/pages/analysis';
 import type {
   AnalysisDraft,
   AnalysisDiffItem,
@@ -726,24 +732,40 @@ function createAnalysisGroup(name: string): void {
     ...analysisDraft.value,
     groups: [
       ...analysisDraft.value.groups,
-      { id: `manual-group-${Date.now()}`, name, entries: [] },
+      { id: `manual-group-${Date.now()}`, name, nameLocked: true, orderLocked: true, entries: [] },
     ],
   };
 }
 
+function renameAnalysisGroup(groupId: string, name: string): void {
+  if (!analysisDraft.value) return;
+  analysisDraft.value = renameAnalysisGroupDraft(analysisDraft.value, groupId, name);
+}
+
+function reorderAnalysisGroups(orderedGroupIds: readonly string[]): void {
+  if (!analysisDraft.value) return;
+  analysisDraft.value = reorderAnalysisGroupsDraft(analysisDraft.value, orderedGroupIds);
+}
+
 function reorderAnalysisEntries(groupId: string, orderedEntryIds: readonly EntryId[]): void {
   if (!analysisDraft.value) return;
-  const lookup = new Map(analysisDraft.value.groups.find(group => group.id === groupId)?.entries.map(entry => [String(entry.entryId), entry]));
-  const group = analysisDraft.value.groups.find(item => item.id === groupId);
-  if (!group) return;
-  const ordered = orderedEntryIds
-    .map(entryId => lookup.get(String(entryId)))
-    .filter((entry): entry is typeof group.entries[number] => Boolean(entry));
-  for (const entry of group.entries) if (!ordered.includes(entry)) ordered.push(entry);
-  analysisDraft.value = {
-    ...analysisDraft.value,
-    groups: analysisDraft.value.groups.map(item => item.id === groupId ? { ...item, entries: ordered } : item),
-  };
+  analysisDraft.value = reorderAnalysisEntriesDraft(analysisDraft.value, groupId, orderedEntryIds);
+}
+
+function moveAnalysisEntry(
+  sourceGroupId: string,
+  targetGroupId: string,
+  entryId: EntryId,
+  targetEntryId?: EntryId,
+): void {
+  if (!analysisDraft.value) return;
+  analysisDraft.value = moveAnalysisEntryDraft(
+    analysisDraft.value,
+    sourceGroupId,
+    targetGroupId,
+    entryId,
+    targetEntryId,
+  );
 }
 
 async function applyAnalysisDraft(): Promise<void> {
@@ -1238,7 +1260,10 @@ function changeTheme(theme: ThemeMode): void {
             @apply-draft="applyAnalysisDraft"
             @create-group="createAnalysisGroup"
             @discard-draft="discardAnalysisDraft"
+            @move-entry="moveAnalysisEntry"
+            @rename-group="renameAnalysisGroup"
             @reorder-entries="reorderAnalysisEntries"
+            @reorder-groups="reorderAnalysisGroups"
             @start-analysis="startAnalysis"
             @toggle-entry="toggleAnalysisEntry"
             @update-entry="updateAnalysisEntry"

@@ -30,6 +30,7 @@ export interface TimelineGroupConfig {
   id: string;
   name: string;
   nameLocked: boolean;
+  orderLocked?: boolean;
 }
 
 export interface WorldbookTimelineConfig {
@@ -147,10 +148,20 @@ function selectedGroups(draft: AnalysisDraft): Array<{
   entries: AnalysisDraftEntry[];
   id: string;
   name: string;
+  nameLocked?: boolean;
+  orderLocked?: boolean;
 }> {
   return draft.groups.flatMap(group => {
     const entries = group.entries.filter(entry => entry.selected);
-    return entries.length > 0 ? [{ id: group.id, name: group.name.trim(), entries: [...entries] }] : [];
+    return entries.length > 0
+      ? [{
+          id: group.id,
+          name: group.name.trim(),
+          nameLocked: group.nameLocked,
+          orderLocked: group.orderLocked,
+          entries: [...entries],
+        }]
+      : [];
   });
 }
 
@@ -227,9 +238,11 @@ export async function buildWorldbookTimelineConfig(
       const draftEntry = group.entries[index];
       const source = sourceEntries.get(String(draftEntry.entryId))!;
       const isLast = index === group.entries.length - 1;
-      const manualFields = draftEntry.manuallyLocked
-        ? ['displayTitle', 'contentStartDate', 'boundaryDate', 'managed']
-        : [];
+      const manualFields = [
+        ...(draftEntry.manuallyLocked ? ['displayTitle', 'contentStartDate', 'boundaryDate', 'managed'] : []),
+        ...(draftEntry.groupLocked ? ['group'] : []),
+        ...(draftEntry.orderLocked ? ['order'] : []),
+      ];
       entries.push({
         boundaryDate: draftEntry.boundaryDate,
         confidence: confidenceNumber(draftEntry.confidence),
@@ -252,7 +265,8 @@ export async function buildWorldbookTimelineConfig(
     groups.push({
       id: group.id,
       name: group.name,
-      nameLocked: group.id.startsWith('manual-group-'),
+      nameLocked: Boolean(group.nameLocked) || group.id.startsWith('manual-group-'),
+      orderLocked: Boolean(group.orderLocked),
       entries,
       blocked: false,
     });
@@ -293,6 +307,7 @@ function isGroup(value: unknown): value is TimelineGroupConfig {
     typeof group.id === 'string' &&
     typeof group.name === 'string' &&
     typeof group.nameLocked === 'boolean' &&
+    (group.orderLocked === undefined || typeof group.orderLocked === 'boolean') &&
     typeof group.blocked === 'boolean' &&
     Array.isArray(group.entries) &&
     group.entries.every(isEntry)
@@ -622,6 +637,7 @@ export function reorderTimelineGroups(
     groups.sort((left, right) => {
       return (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER);
     });
+    for (const group of groups) group.orderLocked = true;
   });
 }
 
@@ -771,11 +787,12 @@ interface MatchedEntry extends EntryCandidate {
 function oldEntryCandidates(
   previous: WorldbookTimelineConfig,
   allowedGroupId?: string,
+  includeLockedGroupEntries = false,
 ): EntryCandidate[] {
   return previous.groups
-    .filter(group => !allowedGroupId || group.id === allowedGroupId)
+    .filter(group => includeLockedGroupEntries || !allowedGroupId || group.id === allowedGroupId)
     .flatMap(group => group.entries
-      .filter(item => !item.manualFields.includes('group') || group.id === allowedGroupId)
+      .filter(item => includeLockedGroupEntries || !item.manualFields.includes('group') || group.id === allowedGroupId)
       .map(item => ({
         groupId: group.id,
         item,
@@ -789,7 +806,7 @@ function stableOldEntryMatch(
   used: Set<string>,
   allowedGroupId?: string,
 ): MatchedEntry | null {
-  const candidates = oldEntryCandidates(previous, allowedGroupId);
+  const candidates = oldEntryCandidates(previous, allowedGroupId, entry.manualFields.includes('group'));
   const exact = candidates.find(candidate => !used.has(candidate.key) && String(candidate.item.entryId) === String(entry.entryId));
   const hashed = candidates.find(candidate => !used.has(candidate.key) && candidate.item.contentHash === entry.contentHash);
   if (exact) return { ...exact, kind: 'exact' };
@@ -803,7 +820,7 @@ function similarOldEntryMatch(
   used: Set<string>,
   allowedGroupId?: string,
 ): SimilarEntryCandidate | null {
-  const candidates = oldEntryCandidates(previous, allowedGroupId)
+  const candidates = oldEntryCandidates(previous, allowedGroupId, entry.manualFields.includes('group'))
     .filter(candidate => !used.has(candidate.key))
     .map(candidate => {
       const nameScore = textSimilarity(entry.originalComment, candidate.item.originalComment);
@@ -842,7 +859,7 @@ function mergeEntry(
   incoming: ManagedTimelineEntry,
   previous: ManagedTimelineEntry,
 ): ManagedTimelineEntry {
-  const manual = new Set(previous.manualFields);
+  const manual = new Set([...previous.manualFields, ...incoming.manualFields]);
   const sourceChanged = previous.contentHash !== incoming.contentHash;
   const warnings = sourceChanged
     ? [...new Set([...previous.warnings, '世界书正文已修改，请确认时间线映射。'])]
@@ -857,7 +874,7 @@ function mergeEntry(
       ? { boundaryDate: previous.boundaryDate }
       : {}),
     managed: manual.has('managed') ? previous.managed : incoming.managed,
-    manualFields: [...previous.manualFields],
+    manualFields: [...manual],
     stale: previous.stale || sourceChanged,
     titleLocked: previous.titleLocked,
     warnings,
@@ -937,9 +954,26 @@ export async function mergeWorldbookTimelineConfig(
       id: oldGroup?.id ?? nextGroup.id,
       name: retainedName,
       nameLocked: oldGroup?.nameLocked ?? nextGroup.nameLocked,
+      orderLocked: oldGroup?.orderLocked ?? nextGroup.orderLocked,
       blocked: oldGroup?.blocked ?? nextGroup.blocked,
       ...(oldGroup?.blockReason ? { blockReason: oldGroup.blockReason } : {}),
       entries: mergedEntries,
+    });
+  }
+
+  const previousOrder = new Map(
+    sanitizedPrevious.groups
+      .filter(group => group.orderLocked)
+      .map((group, index) => [group.id, index]),
+  );
+  if (previousOrder.size > 0) {
+    groups.sort((left, right) => {
+      const leftOrder = previousOrder.get(left.id);
+      const rightOrder = previousOrder.get(right.id);
+      if (leftOrder === undefined && rightOrder === undefined) return 0;
+      if (leftOrder === undefined) return 1;
+      if (rightOrder === undefined) return -1;
+      return leftOrder - rightOrder;
     });
   }
 

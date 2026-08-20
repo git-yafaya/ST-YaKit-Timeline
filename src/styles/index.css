@@ -2361,11 +2361,78 @@ h2 {
   margin-bottom: 12px;
 }
 
+.analysis-group[draggable="true"] > header,
+.analysis-group[draggable="true"] > header .drag-mark {
+  cursor: grab;
+}
+
+.analysis-group[draggable="true"]:active > header,
+.analysis-group[draggable="true"]:active > header .drag-mark {
+  cursor: grabbing;
+}
+
 .analysis-group > header h3 {
   margin: 0;
   color: var(--tl-text);
   font-size: 14px;
   line-height: 20px;
+}
+
+.analysis-group-edit {
+  padding: 3px 7px;
+  border: 1px solid var(--tl-border);
+  border-radius: 6px;
+  color: var(--tl-text-muted);
+  background: transparent;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.analysis-group-edit:hover,
+.analysis-group-edit:focus-visible {
+  border-color: var(--tl-primary-border-medium);
+  color: var(--tl-primary);
+  background: var(--tl-primary-surface-faint);
+}
+
+.analysis-group-rename {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+}
+
+.analysis-group-rename input {
+  min-width: 0;
+  width: min(300px, 100%);
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid var(--tl-primary-border-medium);
+  border-radius: 7px;
+  outline: none;
+  color: var(--tl-text);
+  background: var(--tl-control-surface);
+}
+
+.analysis-group-rename button {
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid var(--tl-border);
+  border-radius: 7px;
+  color: var(--tl-text);
+  background: transparent;
+  cursor: pointer;
+}
+
+.analysis-group-rename button:hover {
+  background: var(--tl-surface-hover);
+}
+
+.analysis-group-rename .confirm-action {
+  border-color: var(--tl-primary-deep);
+  color: var(--tl-on-primary);
+  background: var(--tl-primary-deep);
 }
 
 .analysis-group > header > span:last-child {

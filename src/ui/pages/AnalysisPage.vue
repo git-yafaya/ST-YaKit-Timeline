@@ -45,7 +45,10 @@ const emit = defineEmits<{
   cancelAnalysis: [];
   createGroup: [name: string];
   discardDraft: [];
+  moveEntry: [sourceGroupId: string, targetGroupId: string, entryId: EntryId, targetEntryId?: EntryId];
+  renameGroup: [groupId: string, name: string];
   reorderEntries: [groupId: string, orderedEntryIds: readonly EntryId[]];
+  reorderGroups: [orderedGroupIds: readonly string[]];
   startAnalysis: [mode: AnalysisScanMode];
   toggleEntry: [groupId: string, entryId: EntryId, selected: boolean];
   updateEntry: [groupId: string, entryId: EntryId, patch: AnalysisEntryPatch];
@@ -60,6 +63,9 @@ const createDialogOpen = ref(false);
 const groupNameDraft = ref('');
 const dialogInput = ref<HTMLInputElement | null>(null);
 const draggedEntry = ref<{ entryId: EntryId; groupId: string } | null>(null);
+const draggedGroupId = ref<string | null>(null);
+const editingGroupNameId = ref('');
+const editingGroupNameDraft = ref('');
 
 const selectedCount = computed(() => {
   return props.draft?.groups.reduce((total, group) => total + group.entries.filter(entry => entry.selected).length, 0) ?? 0;
@@ -146,25 +152,60 @@ function createGroup(): void {
   closeCreateDialog();
 }
 
-function dropAnalysisEntry(groupId: string, targetEntryId: EntryId): void {
+function beginGroupRename(group: AnalysisDraftGroup): void {
+  editingGroupNameId.value = group.id;
+  editingGroupNameDraft.value = group.name;
+}
+
+function cancelGroupRename(): void {
+  editingGroupNameId.value = '';
+  editingGroupNameDraft.value = '';
+}
+
+function saveGroupRename(): void {
+  const name = editingGroupNameDraft.value.trim();
+  if (!editingGroupNameId.value || !name) return;
+  emit('renameGroup', editingGroupNameId.value, name);
+  cancelGroupRename();
+}
+
+function dropAnalysisGroup(targetGroupId: string): void {
+  const sourceGroupId = draggedGroupId.value;
+  draggedGroupId.value = null;
+  if (!sourceGroupId || sourceGroupId === targetGroupId || !props.draft) return;
+  const ids = props.draft.groups.map(group => group.id).filter(id => id !== sourceGroupId);
+  const targetIndex = ids.indexOf(targetGroupId);
+  ids.splice(targetIndex < 0 ? ids.length : targetIndex, 0, sourceGroupId);
+  emit('reorderGroups', ids);
+}
+
+function dropAnalysisEntry(groupId: string, targetEntryId?: EntryId): void {
   const source = draggedEntry.value;
   draggedEntry.value = null;
-  if (!source || source.groupId !== groupId || source.entryId === targetEntryId || !props.draft) return;
+  if (!source || source.entryId === targetEntryId || !props.draft) return;
+  if (source.groupId !== groupId) {
+    emit('moveEntry', source.groupId, groupId, source.entryId, targetEntryId);
+    return;
+  }
   const group = props.draft.groups.find(item => item.id === groupId);
   if (!group) return;
   const ids = group.entries.map(entry => entry.entryId);
   const next = ids.filter(id => id !== source.entryId);
-  const index = next.findIndex(id => id === targetEntryId);
+  const index = targetEntryId === undefined ? next.length : next.findIndex(id => id === targetEntryId);
   next.splice(index < 0 ? next.length : index, 0, source.entryId);
   emit('reorderEntries', groupId, next);
 }
 
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key !== 'Escape' || (!createDialogOpen.value && editingEntryId.value === null)) return;
+  if (
+    event.key !== 'Escape'
+    || (!createDialogOpen.value && editingEntryId.value === null && !editingGroupNameId.value)
+  ) return;
   event.preventDefault();
   event.stopImmediatePropagation();
   closeCreateDialog();
   cancelEdit();
+  cancelGroupRename();
 }
 
 onMounted(() => window.addEventListener('keydown', onKeydown));
@@ -277,23 +318,42 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </header>
 
         <div v-if="draft.groups.length > 0" class="analysis-groups">
-          <section v-for="group in draft.groups" :key="group.id" class="analysis-group">
+          <section
+            v-for="group in draft.groups"
+            :key="group.id"
+            class="analysis-group"
+            draggable="true"
+            @dragstart.stop="draggedGroupId = group.id"
+            @dragend.stop="draggedGroupId = null"
+            @dragover.prevent
+            @drop.prevent.stop="dropAnalysisGroup(group.id)"
+          >
             <header>
               <span class="drag-mark" aria-hidden="true">⠿</span>
-              <h3>{{ group.name }}</h3>
+              <template v-if="editingGroupNameId === group.id">
+                <form class="analysis-group-rename" @submit.prevent="saveGroupRename">
+                  <input v-model="editingGroupNameDraft" type="text" maxlength="80" aria-label="时间线组名称" />
+                  <button type="button" @click="cancelGroupRename">取消</button>
+                  <button class="confirm-action" type="submit">保存</button>
+                </form>
+              </template>
+              <template v-else>
+                <h3>{{ group.name }}</h3>
+                <button class="analysis-group-edit" type="button" @click.stop="beginGroupRename(group)">编辑组名</button>
+              </template>
               <span>{{ group.entries.length }} 条目</span>
             </header>
 
-            <div class="analysis-entry-list">
+            <div class="analysis-entry-list" @dragover.prevent @drop.prevent.stop="dropAnalysisEntry(group.id)">
               <article
                 v-for="entry in group.entries"
                 :key="entry.entryId"
                 :class="['analysis-entry', { 'is-excluded': !entry.selected, 'is-editing': isEditing(group, entry) }]"
                 draggable="true"
-                @dragstart="draggedEntry = { entryId: entry.entryId, groupId: group.id }"
-                @dragend="draggedEntry = null"
+                @dragstart.stop="draggedEntry = { entryId: entry.entryId, groupId: group.id }"
+                @dragend.stop="draggedEntry = null"
                 @dragover.prevent
-                @drop.prevent="dropAnalysisEntry(group.id, entry.entryId)"
+                @drop.prevent.stop="dropAnalysisEntry(group.id, entry.entryId)"
               >
                 <template v-if="!isEditing(group, entry)">
                   <span class="drag-mark" aria-hidden="true">⠿</span>
@@ -308,6 +368,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                       <h4>{{ entry.title }}</h4>
                       <span :class="`is-${entry.confidence}`">{{ confidenceLabel(entry) }}</span>
                       <span v-if="entry.manuallyLocked" class="is-locked">人工锁定</span>
+                      <span v-if="entry.groupLocked" class="is-locked">分组已锁定</span>
                     </div>
                     <p>{{ rangeLabel(entry) }} · {{ entry.sourceComment }}</p>
                     <div v-if="entry.warnings?.length" class="analysis-entry-warning">
