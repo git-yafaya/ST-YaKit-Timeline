@@ -31,6 +31,8 @@ const searchQuery = ref('');
 const selectedGroupId = ref('');
 const statusFilter = ref<TimelineStatusFilter>('all');
 const selectedSource = ref<TimelineEntrySummary | null>(null);
+const sourceExpanded = ref(false);
+const copyNotice = ref('');
 
 const groupOptions = computed<readonly DeepListboxOption[]>(() => {
   if (props.groups.length === 0) return [{ value: '', label: '时间线分组：无', disabled: true }];
@@ -104,6 +106,19 @@ function toggleEntry(entry: TimelineEntrySummary): void {
 
 function closeSource(): void {
   selectedSource.value = null;
+  sourceExpanded.value = false;
+  copyNotice.value = '';
+}
+
+async function copySource(): Promise<void> {
+  const content = selectedSource.value?.contentPreview;
+  if (!content) return;
+  try {
+    await navigator.clipboard.writeText(content);
+    copyNotice.value = '已复制正文';
+  } catch {
+    copyNotice.value = '复制失败，请手动选择正文';
+  }
 }
 
 function onKeydown(event: KeyboardEvent): void {
@@ -258,12 +273,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <h2>{{ selectedSource.title }}</h2>
             <p>只读预览</p>
           </div>
+          <div class="source-dialog-actions">
+            <button type="button" @click="sourceExpanded = !sourceExpanded">{{ sourceExpanded ? '收起' : '展开全文' }}</button>
+            <button type="button" :disabled="!selectedSource.contentPreview" @click="copySource">复制</button>
+            <small v-if="copyNotice">{{ copyNotice }}</small>
+          </div>
           <button type="button" aria-label="关闭正文预览" @click="closeSource">×</button>
         </header>
         <div class="source-dialog-body">
           <div class="source-dialog-meta">原条目：{{ selectedSource.originalComment }}</div>
           <div class="source-dialog-content">
-            {{ selectedSource.contentPreview ?? '正文尚未读取。' }}
+            {{ selectedSource.contentPreview ? (sourceExpanded ? selectedSource.contentPreview : selectedSource.contentPreview.slice(0, 1000) + (selectedSource.contentPreview.length > 1000 ? '…' : '')) : '正文尚未读取。' }}
           </div>
         </div>
       </section>

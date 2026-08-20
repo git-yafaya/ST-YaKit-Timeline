@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  createSillyTavernWorldbookAdapter,
   parseWorldInfoEntries,
   readCurrentHostScope,
   readLastAssistantMessageText,
@@ -179,5 +180,48 @@ describe('read-only SillyTavern adapter', () => {
 
     stop();
     expect(removeListener).toHaveBeenCalledWith('message_received', registered);
+  });
+
+  it('写入适配器只修改 disable，并在保存前再次确认当前绑定世界书', async () => {
+    const source = {
+      entries: {
+        7: { uid: 7, comment: '阶段一', content: '正文一', disable: false, order: 10 },
+        9: { uid: 9, comment: '阶段二', content: '正文二', disable: true, order: 20 },
+      },
+    };
+    const loadWorldInfo = vi.fn().mockResolvedValue(source);
+    const saveWorldInfo = vi.fn().mockResolvedValue(undefined);
+    installContext({
+      characterId: 0,
+      characters: [character('角色主世界书')],
+      loadWorldInfo,
+      saveWorldInfo,
+    });
+
+    const adapter = createSillyTavernWorldbookAdapter();
+    await adapter.setEntryEnabled(7, false);
+    await adapter.setEntryEnabled(9, true);
+    await adapter.saveWorldbook();
+
+    expect(source.entries[7].disable).toBe(false);
+    expect(source.entries[9].disable).toBe(true);
+    expect(saveWorldInfo).toHaveBeenCalledOnce();
+    const [, saved] = saveWorldInfo.mock.calls[0] as [string, typeof source, boolean];
+    expect(saved.entries[7]).toMatchObject({ uid: 7, comment: '阶段一', content: '正文一', disable: true, order: 10 });
+    expect(saved.entries[9]).toMatchObject({ uid: 9, comment: '阶段二', content: '正文二', disable: false, order: 20 });
+    expect(saveWorldInfo).toHaveBeenCalledWith('角色主世界书', expect.any(Object), true);
+  });
+
+  it('绑定世界书变化时拒绝保存暂存开关', async () => {
+    const source = { entries: { 7: { uid: 7, comment: '阶段一', content: '正文一', disable: false } } };
+    const loadWorldInfo = vi.fn().mockResolvedValue(source);
+    const saveWorldInfo = vi.fn().mockResolvedValue(undefined);
+    const characters = [character('角色主世界书')];
+    installContext({ characterId: 0, characters, loadWorldInfo, saveWorldInfo });
+    const adapter = createSillyTavernWorldbookAdapter();
+    await adapter.setEntryEnabled(7, false);
+    characters[0].data.extensions.world = '另一本世界书';
+    await expect(adapter.saveWorldbook()).rejects.toThrow('已变化');
+    expect(saveWorldInfo).not.toHaveBeenCalled();
   });
 });

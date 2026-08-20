@@ -257,3 +257,49 @@ export function appendChatRuntimeLog(state: ChatTimelineState, log: ChatRuntimeL
     logs: [...state.logs, { ...log }].slice(-MAX_RUNTIME_LOGS),
   };
 }
+
+export function setChatGroupMode(
+  state: ChatTimelineState,
+  groupId: string,
+  mode: GroupMode,
+): ChatTimelineState {
+  if (!groupId) return cloneChatState(state);
+  const next = cloneChatState(state);
+  next.groups[groupId] = next.groups[groupId] ?? { manualEnabledEntryIds: [], mode: 'auto' };
+  next.groups[groupId] = { ...next.groups[groupId], mode };
+  return next;
+}
+
+export function setChatGroupActiveEntry(
+  state: ChatTimelineState,
+  groupId: string,
+  entryId: EntryId | undefined,
+): ChatTimelineState {
+  if (!groupId) return cloneChatState(state);
+  const next = cloneChatState(state);
+  const group = next.groups[groupId] ?? { manualEnabledEntryIds: [], mode: 'auto' as const };
+  next.groups[groupId] = { ...group };
+  if (entryId === undefined) delete next.groups[groupId].activeEntryId;
+  else next.groups[groupId].activeEntryId = entryId;
+  return next;
+}
+
+export function setChatManualEntryEnabled(
+  state: ChatTimelineState,
+  groupId: string,
+  entryId: EntryId,
+  enabled: boolean,
+): ChatTimelineState {
+  if (!groupId) return cloneChatState(state);
+  const next = cloneChatState(state);
+  const group = next.groups[groupId] ?? { manualEnabledEntryIds: [], mode: 'manual' as const };
+  const key = String(entryId);
+  const ids = group.manualEnabledEntryIds.filter(id => String(id) !== key);
+  if (enabled) ids.push(entryId);
+  next.groups[groupId] = { ...group, manualEnabledEntryIds: ids };
+  return next;
+}
+
+export function clearChatRuntimeLogs(state: ChatTimelineState): ChatTimelineState {
+  return { ...cloneChatState(state), logs: [] };
+}

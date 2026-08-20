@@ -1,4 +1,5 @@
 import type { WorldbookSnapshot } from '@/st/sillytavern-adapter';
+import type { ChatGroupState } from '@/storage/chat-state';
 import type { ManagedTimelineEntry, WorldbookTimelineConfig } from '@/storage/worldbook-config';
 import type { OverviewGroupSummary } from '@/ui/pages/overview';
 import type { TimelineGroupDetail } from '@/ui/pages/timeline';
@@ -16,18 +17,19 @@ function entryWarning(entry: ManagedTimelineEntry, sourceExists: boolean): strin
 export function buildOverviewGroupSummaries(
   config: WorldbookTimelineConfig | null,
   worldbook: WorldbookSnapshot | null,
+  groupStates: Readonly<Record<string, ChatGroupState>> = {},
 ): OverviewGroupSummary[] {
   if (!config || !worldbook || config.worldbookKey !== worldbook.key) return [];
   const sources = new Map(worldbook.entries.map(entry => [String(entry.id), entry]));
   return config.groups.map(group => {
     const enabledEntries = group.entries.filter(entry => sources.get(String(entry.entryId))?.enabled);
-    const missingEntry = group.entries.find(entry => !sources.has(String(entry.entryId)));
-    const warning = group.blockReason || (missingEntry ? entryWarning(missingEntry, false) : undefined);
+    const warningEntry = group.entries.find(entry => !sources.has(String(entry.entryId)) || entry.stale || entry.warnings.length > 0);
+    const warning = group.blockReason || (warningEntry ? entryWarning(warningEntry, Boolean(sources.get(String(warningEntry.entryId)))) : undefined);
     const active = enabledEntries.length === 1 ? enabledEntries[0] : undefined;
     return {
       id: group.id,
       kind: 'route',
-      mode: 'auto',
+      mode: groupStates[group.id]?.mode ?? 'auto',
       name: group.name,
       warning,
       activeEntry: active ? {
@@ -42,6 +44,7 @@ export function buildOverviewGroupSummaries(
 export function buildTimelineGroupDetails(
   config: WorldbookTimelineConfig | null,
   worldbook: WorldbookSnapshot | null,
+  groupStates: Readonly<Record<string, ChatGroupState>> = {},
 ): TimelineGroupDetail[] {
   if (!config || !worldbook || config.worldbookKey !== worldbook.key) return [];
   const sources = new Map(worldbook.entries.map(entry => [String(entry.id), entry]));
@@ -50,9 +53,7 @@ export function buildTimelineGroupDetails(
       const source = sources.get(String(entry.entryId));
       const warning = group.blockReason || entryWarning(entry, Boolean(source));
       return {
-        contentPreview: source?.content.length && source.content.length > 800
-          ? `${source.content.slice(0, 800)}…`
-          : source?.content ?? '',
+        contentPreview: source?.content ?? '',
         enabled: source?.enabled ?? false,
         entryId: entry.entryId,
         originalComment: source?.comment || entry.originalComment,
@@ -66,7 +67,7 @@ export function buildTimelineGroupDetails(
     return {
       id: group.id,
       name: group.name,
-      mode: 'auto',
+      mode: groupStates[group.id]?.mode ?? 'auto',
       activeEntryTitle: activeEntries.length === 1 ? activeEntries[0].title : undefined,
       entries,
     };

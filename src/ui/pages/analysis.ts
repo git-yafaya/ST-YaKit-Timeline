@@ -43,3 +43,13 @@ export interface AnalysisErrorState {
   message: string;
   rawOutput?: string;
 }
+
+export type AnalysisDiffStatus = 'added' | 'changed' | 'removed' | 'unchanged';
+
+export interface AnalysisDiffItem {
+  entryId: EntryId;
+  newRange?: string;
+  oldRange?: string;
+  status: AnalysisDiffStatus;
+  title: string;
+}

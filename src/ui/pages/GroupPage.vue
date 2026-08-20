@@ -18,6 +18,7 @@ const emit = defineEmits<{
   createGroup: [name: string];
   deleteGroup: [groupId: string];
   mergeGroup: [sourceGroupId: string, targetGroupId: string];
+  moveEntries: [sourceGroupId: string, targetGroupId: string, entryIds: readonly EntryId[]];
   renameGroup: [groupId: string, name: string];
   reorderEntries: [groupId: string, orderedEntryIds: readonly EntryId[]];
   reorderGroups: [orderedGroupIds: readonly string[]];
@@ -173,6 +174,13 @@ function reorder<T>(values: readonly T[], source: T, target: T): T[] {
 }
 
 function dropGroup(targetGroupId: string): void {
+  if (draggedEntryId.value !== null && currentGroup.value && currentGroup.value.id !== targetGroupId) {
+    const sourceGroupId = currentGroup.value.id;
+    const entryId = draggedEntryId.value;
+    draggedEntryId.value = null;
+    emit('moveEntries', sourceGroupId, targetGroupId, [entryId]);
+    return;
+  }
   const sourceGroupId = draggedGroupId.value;
   draggedGroupId.value = null;
   if (!sourceGroupId || sourceGroupId === targetGroupId) return;
@@ -337,7 +345,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <div v-else class="group-detail-empty">
           <span aria-hidden="true">◇</span>
           <h3>此分组还没有条目</h3>
-          <p>条目归属编辑能力将在配置适配层接入后启用。</p>
+          <p>可拖拽条目到左侧其他分组完成跨组移动。</p>
         </div>
       </section>
     </div>

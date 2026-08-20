@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import type { ControlStatus } from '@/timeline/control-lock';
+
 withDefaults(
   defineProps<{
     characterName?: string;
+    controlStatus?: ControlStatus;
     runtimeNotice?: string;
     rollbackPrompt?: {
       from: string;
@@ -21,7 +24,8 @@ withDefaults(
 defineEmits<{
   confirmRollback: [];
   getCurrentTime: [];
-  rejectRollback: [];
+    rejectRollback: [];
+  takeControl: [];
 }>();
 </script>
 
@@ -60,6 +64,12 @@ defineEmits<{
     <div v-if="runtimeNotice" class="context-notice" role="status" aria-live="polite">
       <span aria-hidden="true">!</span>
       <p>{{ runtimeNotice }}</p>
+    </div>
+
+    <div v-if="controlStatus === 'other'" class="context-notice context-notice--control" role="status">
+      <span aria-hidden="true">◎</span>
+      <p>其他标签页正在控制当前世界书。</p>
+      <button type="button" @click="$emit('takeControl')">接管控制权</button>
     </div>
 
     <div v-if="rollbackPrompt" class="context-rollback" role="alert">

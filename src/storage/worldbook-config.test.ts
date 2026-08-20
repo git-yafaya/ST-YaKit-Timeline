@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildWorldbookTimelineConfig,
+  detectWorldbookConfigStale,
   getDraftApplicationIssue,
   loadWorldbookTimelineConfig,
+  mergeWorldbookTimelineConfig,
+  deleteTimelineGroup,
+  createTimelineGroup,
   saveWorldbookTimelineConfig,
 } from '@/storage/worldbook-config';
 import type { WorldbookSnapshot } from '@/st/sillytavern-adapter';
@@ -151,5 +155,57 @@ describe('worldbook timeline config', () => {
     const config = await buildWorldbookTimelineConfig(draft, worldbook);
     expect(saveWorldbookTimelineConfig(config)).toBe(false);
     expect(extensionSettings.st_yafaya_timeline).toBe(previous);
+  });
+
+  it('重新分析保留人工锁定字段，并把未重新识别的旧映射安全停用', async () => {
+    const previous = await buildWorldbookTimelineConfig(draft, worldbook, 12345);
+    const locked = previous.groups[0].entries[0];
+    const preserved = {
+      ...previous,
+      groups: [{
+        ...previous.groups[0],
+        entries: [{
+          ...locked,
+          displayTitle: '人工标题',
+          manualFields: ['displayTitle'],
+          titleLocked: true,
+        }, previous.groups[0].entries[1]],
+      }],
+    };
+    const nextDraft: AnalysisDraft = {
+      candidateCount: 1,
+      groups: [{
+        id: 'ai-group-1',
+        name: '主线剧情',
+        entries: [{
+          ...draft.groups[0].entries[0],
+          title: 'AI 新标题',
+        }],
+      }],
+    };
+
+    const merged = await mergeWorldbookTimelineConfig(preserved, nextDraft, worldbook, 99999);
+    expect(merged.groups[0].entries[0]).toMatchObject({ displayTitle: '人工标题', titleLocked: true });
+    expect(merged.groups[0].entries[1]).toMatchObject({ entryId: 18, managed: false, stale: true });
+    expect(merged.groups[0].blocked).toBe(true);
+  });
+
+  it('分组编辑不删除世界书条目，删除组会移到未分组并停止纳管', async () => {
+    const previous = await buildWorldbookTimelineConfig(draft, worldbook, 12345);
+    const withManual = createTimelineGroup(previous, '人工组');
+    const deleted = deleteTimelineGroup(withManual, 'ai-group-1');
+    const ungrouped = deleted.groups.find(group => group.id === '__ungrouped__');
+    expect(ungrouped?.entries).toHaveLength(2);
+    expect(ungrouped?.entries.every(entry => entry.managed === false)).toBe(true);
+    expect(deleted.groups.some(group => group.id === 'ai-group-1')).toBe(false);
+  });
+
+  it('检测正文 Hash 变化但保留旧配置继续运行', async () => {
+    const previous = await buildWorldbookTimelineConfig(draft, worldbook, 12345);
+    const changedBook = { ...worldbook, entries: worldbook.entries.map(entry => entry.id === 17 ? { ...entry, content: '改过的正文' } : entry) };
+    const result = await detectWorldbookConfigStale(previous, changedBook);
+    expect(result.changed).toBe(true);
+    expect(result.config.groups[0].entries[0]).toMatchObject({ managed: true, stale: true });
+    expect(result.config.groups[0].entries[0].warnings[0]).toContain('正文');
   });
 });

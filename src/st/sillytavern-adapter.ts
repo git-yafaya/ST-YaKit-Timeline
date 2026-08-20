@@ -1,3 +1,5 @@
+import type { EntryId } from '@/timeline/types';
+
 export type HostScopeStatus =
   | 'ready'
   | 'unavailable'
@@ -45,6 +47,7 @@ interface SillyTavernHostContext {
   eventSource?: HostEventSource;
   eventTypes?: Record<string, unknown>;
   loadWorldInfo?: (name: string) => Promise<unknown>;
+  saveWorldInfo?: (name: string, data: unknown, immediately?: boolean) => Promise<unknown> | unknown;
 }
 
 interface SillyTavernHostApi {
@@ -112,6 +115,45 @@ function entryId(entry: Record<string, unknown>, fallback: string): string | num
   return typeof entry.uid === 'number' || typeof entry.uid === 'string' ? entry.uid : fallback;
 }
 
+function cloneWorldInfo(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('世界书数据格式无效');
+  }
+  return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+}
+
+function characterScopeToken(context: SillyTavernHostContext): string {
+  const character = currentCharacter(context);
+  return [
+    String(context.characterId ?? ''),
+    character?.ref.id ?? '',
+    character ? boundWorldbookName(character.raw) : '',
+  ].join('\u0000');
+}
+
+function assertCurrentBoundWorldbook(context: SillyTavernHostContext, worldbookKey: string): string {
+  const character = currentCharacter(context);
+  if (!character) throw new Error('当前未选择角色卡，已阻止世界书写入');
+  const bound = boundWorldbookName(character.raw);
+  if (!bound || bound !== worldbookKey) {
+    throw new Error('当前角色绑定的世界书已变化，已阻止写入');
+  }
+  return characterScopeToken(context);
+}
+
+function findRawWorldbookEntry(worldInfo: Record<string, unknown>, wantedEntryId: EntryId): Record<string, unknown> {
+  const entries = recordValue(worldInfo.entries);
+  if (!entries) throw new Error('世界书条目数据格式无效');
+  const wanted = String(wantedEntryId);
+  for (const [key, value] of Object.entries(entries)) {
+    const entry = recordValue(value);
+    if (!entry) continue;
+    const id = entryId(entry, key);
+    if (String(id) === wanted) return entry;
+  }
+  throw new Error(`目标世界书条目不存在：${wanted}`);
+}
+
 export function parseWorldInfoEntries(worldInfo: unknown): WorldInfoEntrySnapshot[] | null {
   const world = recordValue(worldInfo);
   const entries = recordValue(world?.entries);
@@ -127,6 +169,92 @@ export function parseWorldInfoEntries(worldInfo: unknown): WorldInfoEntrySnapsho
       enabled: entry.disable !== true,
     }];
   });
+}
+
+export interface WorldbookWriteAdapter {
+  readCurrentWorldbook: () => Promise<WorldbookSnapshot | null>;
+  saveWorldbook: () => Promise<void>;
+  setEntryEnabled: (entryId: EntryId, enabled: boolean) => Promise<void>;
+}
+
+interface PendingWorldbookWrite {
+  scopeToken: string;
+  worldbookKey: string;
+  worldInfo: Record<string, unknown>;
+}
+
+/**
+ * 世界书写入的唯一适配入口。
+ *
+ * 适配层不暴露正文编辑能力：setEntryEnabled 只允许改目标条目的 disable，
+ * saveWorldbook 使用立即保存，调用方必须在保存后自行复读并校验。
+ */
+export function createSillyTavernWorldbookAdapter(): WorldbookWriteAdapter {
+  let pending: PendingWorldbookWrite | null = null;
+
+  const adapter: WorldbookWriteAdapter & { discardPendingChanges: () => void } = {
+    readCurrentWorldbook: async () => {
+      const snapshot = await readCurrentHostScope();
+      return snapshot.worldbook;
+    },
+
+    setEntryEnabled: async (entryId, enabled) => {
+      try {
+        const context = getContext();
+        if (!context || typeof context.loadWorldInfo !== 'function') {
+          throw new Error('当前 SillyTavern 无法读取世界书，已阻止写入');
+        }
+        const worldbook = await readCurrentHostScope();
+        if (!worldbook.worldbook) throw new Error(worldbook.message || '当前角色没有可写入的世界书');
+
+        const scopeToken = assertCurrentBoundWorldbook(context, worldbook.worldbook.key);
+        if (
+          !pending ||
+          pending.worldbookKey !== worldbook.worldbook.key ||
+          pending.scopeToken !== scopeToken
+        ) {
+          const loaded = await context.loadWorldInfo(worldbook.worldbook.key);
+          pending = {
+            scopeToken,
+            worldbookKey: worldbook.worldbook.key,
+            worldInfo: cloneWorldInfo(loaded),
+          };
+        }
+
+        const entry = findRawWorldbookEntry(pending.worldInfo, entryId);
+        entry.disable = !enabled;
+      } catch (error) {
+        pending = null;
+        throw error;
+      }
+    },
+
+    saveWorldbook: async () => {
+      if (!pending) return;
+      const context = getContext();
+      if (!context || typeof context.saveWorldInfo !== 'function') {
+        throw new Error('当前 SillyTavern 无法保存世界书，已阻止写入');
+      }
+      const scopeToken = assertCurrentBoundWorldbook(context, pending.worldbookKey);
+      if (scopeToken !== pending.scopeToken) {
+        pending = null;
+        throw new Error('当前角色或世界书已变化，已阻止保存');
+      }
+
+      const savedWorldbookKey = pending.worldbookKey;
+      const savedWorldInfo = pending.worldInfo;
+      try {
+        await context.saveWorldInfo(savedWorldbookKey, savedWorldInfo, true);
+        pending = null;
+      } catch (error) {
+        pending = null;
+        throw error;
+      }
+    },
+    // 仅供引擎在控制权丢失时撤销未保存批次，不暴露正文或原生字段编辑能力。
+    discardPendingChanges: () => { pending = null; },
+  };
+  return adapter;
 }
 
 function unavailableSnapshot(message: string): HostScopeSnapshot {

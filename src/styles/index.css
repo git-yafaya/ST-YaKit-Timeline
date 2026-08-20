@@ -366,6 +366,21 @@ button {
   line-height: 18px;
 }
 
+.context-notice--control {
+  align-items: center;
+}
+
+.context-notice--control button {
+  margin-left: auto;
+  padding: 5px 9px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .context-rollback {
   align-items: center;
   justify-content: space-between;
@@ -1316,6 +1331,27 @@ h2 {
   background: var(--tl-surface-hover);
 }
 
+.source-dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.source-dialog-actions button {
+  width: auto !important;
+  height: auto !important;
+  padding: 5px 8px;
+  border: 1px solid var(--tl-border) !important;
+  color: var(--tl-text) !important;
+  font-size: 11px !important;
+}
+
+.source-dialog-actions small {
+  color: var(--tl-success);
+  white-space: nowrap;
+}
+
 .source-dialog-body {
   overflow-y: auto;
   padding: 20px;
@@ -2101,6 +2137,66 @@ h2 {
 .analysis-draft-notice p {
   margin-top: 4px;
   color: var(--tl-text-muted);
+}
+
+.analysis-diff {
+  margin-bottom: 16px;
+  border: 1px solid var(--tl-border);
+  border-radius: var(--tl-radius);
+  background: var(--tl-surface);
+}
+
+.analysis-diff > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--tl-border);
+}
+
+.analysis-diff > header p {
+  margin-top: 4px;
+  color: var(--tl-text-muted);
+  font-size: 12px;
+}
+
+.analysis-diff > header > span {
+  color: var(--tl-text-muted);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+}
+
+.analysis-diff-list {
+  display: grid;
+  gap: 8px;
+  padding: 12px 16px 16px;
+}
+
+.analysis-diff-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--tl-border);
+  border-radius: 6px;
+  background: var(--tl-surface-hover);
+}
+
+.analysis-diff-item.is-added { border-left-color: var(--tl-success); }
+.analysis-diff-item.is-changed { border-left-color: var(--tl-warning); }
+.analysis-diff-item.is-removed { border-left-color: var(--tl-danger); }
+
+.analysis-diff-item small,
+.analysis-diff-item p {
+  color: var(--tl-text-muted);
+  font-size: 11px;
+}
+
+.analysis-diff-item small {
+  display: block;
+  margin-top: 3px;
 }
 
 .analysis-summary {

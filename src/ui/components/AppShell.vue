@@ -3,10 +3,12 @@ import { onMounted, onUnmounted } from 'vue';
 import ContextBar from '@/ui/components/ContextBar.vue';
 import TopNav from '@/ui/components/TopNav.vue';
 import type { TimelinePage } from '@/ui/state';
+import type { ControlStatus } from '@/timeline/control-lock';
 
 defineProps<{
   activePage: TimelinePage;
   characterName?: string;
+  controlStatus?: ControlStatus;
   runtimeNotice?: string;
   rollbackPrompt?: {
     from: string;
@@ -22,6 +24,7 @@ const emit = defineEmits<{
   confirmRollback: [];
   getCurrentTime: [];
   rejectRollback: [];
+  takeControl: [];
   selectPage: [page: TimelinePage];
 }>();
 
@@ -48,6 +51,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
       />
       <ContextBar
         :character-name="characterName"
+        :control-status="controlStatus"
         :runtime-notice="runtimeNotice"
         :rollback-prompt="rollbackPrompt"
         :story-time="storyTime"
@@ -56,6 +60,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         @confirm-rollback="$emit('confirmRollback')"
         @get-current-time="$emit('getCurrentTime')"
         @reject-rollback="$emit('rejectRollback')"
+        @take-control="$emit('takeControl')"
       />
 
       <main class="timeline-content">

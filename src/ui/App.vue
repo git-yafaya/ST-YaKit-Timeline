@@ -4,12 +4,24 @@ import { AnalysisValidationError, runTimelineScan } from '@/analysis/scanner';
 import { generateTimelineAnalysis } from '@/st/ai-adapter';
 import {
   buildWorldbookTimelineConfig,
+  createTimelineGroup,
+  deleteTimelineGroup,
   getDraftApplicationIssue,
+  detectWorldbookConfigStale,
+  isWorldbookTimelineConfig,
   loadWorldbookTimelineConfig,
+  mergeTimelineGroups,
+  mergeWorldbookTimelineConfig,
+  moveTimelineEntries,
+  renameTimelineGroup,
+  reorderTimelineEntries,
+  reorderTimelineGroups,
   saveWorldbookTimelineConfig,
+  splitTimelineGroup,
   type WorldbookTimelineConfig,
 } from '@/storage/worldbook-config';
 import {
+  createSillyTavernWorldbookAdapter,
   readCurrentHostScope,
   readLastAssistantMessageText,
   watchCurrentHostScope,
@@ -17,6 +29,7 @@ import {
   type HostScopeSnapshot,
 } from '@/st/sillytavern-adapter';
 import { formatStoryTime } from '@/timeline/date';
+import { syncAutomaticTimeline, toggleManualTimelineEntry } from '@/timeline/engine';
 import { parseWlogTime } from '@/timeline/wlog';
 import {
   applyStoryTimeCandidate as applyStoryTimeCandidateToState,
@@ -25,9 +38,15 @@ import {
   restoreChatTimelineState,
 } from '@/timeline/runtime';
 import {
+  appendChatRuntimeLog,
   bindChatTimelineState,
+  clearChatRuntimeLogs,
   loadChatTimelineState,
   saveChatTimelineState,
+  setChatGroupActiveEntry,
+  setChatGroupMode,
+  setChatManualEntryEnabled,
+  type ChatRuntimeLog,
   type ChatTimelineState,
 } from '@/storage/chat-state';
 import AppShell from '@/ui/components/AppShell.vue';
@@ -35,6 +54,7 @@ import { getPageLabel } from '@/ui/navigation';
 import AnalysisPage from '@/ui/pages/AnalysisPage.vue';
 import type {
   AnalysisDraft,
+  AnalysisDiffItem,
   AnalysisEntryPatch,
   AnalysisErrorState,
   AnalysisProgress,
@@ -68,18 +88,16 @@ import { detectSillyTavernTheme, resolveTheme, type ResolvedTheme, watchSillyTav
 import TimelinePageView from '@/ui/pages/TimelinePage.vue';
 import { closeTimeline, type TimelinePage, uiState } from '@/ui/state';
 import { buildOverviewGroupSummaries, buildTimelineGroupDetails } from '@/ui/worldbook-view';
+import { TimelineControlLock, type ControlStatus } from '@/timeline/control-lock';
+import type { EntryId } from '@/timeline/types';
 
 const pageTitle = computed(() => getPageLabel(uiState.activePage));
-const managementGroups: readonly GroupManagementSummary[] = [];
 const analysisDraft = ref<AnalysisDraft | null>(null);
 const analysisProgress = ref<AnalysisProgress | null>(null);
 const analysisError = ref<AnalysisErrorState | null>(null);
 const analysisNotice = ref('');
 const analysisApplying = ref(false);
-const runtimeLogs: readonly TimelineLogEntry[] = [];
-const systemLogs: readonly TimelineLogEntry[] = [];
-const runtimeLogSummary: RuntimeLogSummary | null = null;
-const systemLogSummary: SystemLogSummary | null = null;
+const systemLogs = ref<TimelineLogEntry[]>([]);
 const settings = reactive<SettingsSnapshot>(loadSettings(DEFAULT_SETTINGS));
 const modelCatalogs = reactive<ModelCatalogs>({
   sillytavern: { status: 'idle', models: [], message: '' },
@@ -105,8 +123,51 @@ const chatTimelineState = ref<ChatTimelineState | null>(null);
 const runtimeNotice = ref('');
 const timeActionBusy = ref(false);
 const worldbookConfig = ref<WorldbookTimelineConfig | null>(null);
-const overviewGroups = computed(() => buildOverviewGroupSummaries(worldbookConfig.value, hostScope.value.worldbook));
-const timelineGroups = computed(() => buildTimelineGroupDetails(worldbookConfig.value, hostScope.value.worldbook));
+const worldbookAdapter = createSillyTavernWorldbookAdapter();
+const controlLock = new TimelineControlLock();
+const controlStatus = ref<ControlStatus>('unsupported');
+const controlWorldbookKey = ref('');
+const overviewGroups = computed(() => buildOverviewGroupSummaries(
+  worldbookConfig.value,
+  hostScope.value.worldbook,
+  chatTimelineState.value?.groups ?? {},
+));
+const timelineGroups = computed(() => buildTimelineGroupDetails(
+  worldbookConfig.value,
+  hostScope.value.worldbook,
+  chatTimelineState.value?.groups ?? {},
+));
+const managementGroups = computed<readonly GroupManagementSummary[]>(() => {
+  const config = worldbookConfig.value;
+  if (!config || !hostScope.value.worldbook || config.worldbookKey !== hostScope.value.worldbook.key) return [];
+  const sources = new Map(hostScope.value.worldbook.entries.map(entry => [String(entry.id), entry]));
+  return config.groups.map(group => ({
+    id: group.id,
+    name: group.name,
+    isUngrouped: group.id === '__ungrouped__',
+    entries: group.entries.map(entry => ({
+      entryId: entry.entryId,
+      originalComment: sources.get(String(entry.entryId))?.comment || entry.originalComment,
+      origin: entry.manualFields.length > 0 || entry.titleLocked ? 'manual' as const : 'ai' as const,
+      rangeLabel: `${entry.effectiveStartDate} ～ ${entry.effectiveEndDate ?? '∞'}`,
+      title: entry.displayTitle,
+      warning: group.blockReason || entry.warnings[0] || (entry.stale ? '当前映射可能已过期。' : undefined),
+    })),
+  }));
+});
+const runtimeLogs = computed<readonly TimelineLogEntry[]>(() => chatTimelineState.value?.logs ?? []);
+const runtimeLogSummary = computed<RuntimeLogSummary>(() => {
+  const last = [...runtimeLogs.value].reverse().find(log => log.category === 'worldbook' || log.category === 'time');
+  return {
+    recentSwitch: last?.occurredAt,
+    statusLabel: chatTimelineState.value?.currentTime ? '已获得有效故事时间' : '等待有效故事时间',
+  };
+});
+const systemLogSummary = computed<SystemLogSummary>(() => ({
+  controlLabel: controlStatus.value === 'owner' ? '当前标签页持有控制权' : controlStatus.value === 'other' ? '其他标签页持有控制权' : '尚未取得控制权',
+  recentError: systemLogs.value.find(log => log.level === 'error' || log.level === 'warning')?.description,
+  statusLabel: hostScope.value.status === 'ready' ? '插件运行中' : hostScope.value.message || '等待宿主状态',
+}));
 const characterName = computed(() => {
   if (hostScope.value.character) return hostScope.value.character.name;
   return hostScope.value.status === 'no_character' ? '未选择角色' : '正在读取';
@@ -126,12 +187,46 @@ const analysisSourceMessage = computed(() => {
   return hostScope.value.message || '当前角色世界书尚不可读取。';
 });
 const draftApplicationIssue = computed(() => {
-  if (worldbookConfig.value) return '当前世界书已有正式配置，重新分析结果需经过差异合并，不能直接覆盖。';
   return getDraftApplicationIssue(analysisDraft.value, hostScope.value.worldbook);
 });
 const canApplyAnalysisDraft = computed(() => (
   Boolean(analysisDraft.value) && !analysisApplying.value && draftApplicationIssue.value === null
 ));
+const analysisDiff = computed<readonly AnalysisDiffItem[]>(() => {
+  const existing = worldbookConfig.value;
+  const draft = analysisDraft.value;
+  if (!existing || !draft) return [];
+  const oldEntries = existing.groups.flatMap(group => group.entries);
+  const oldById = new Map(oldEntries.map(entry => [String(entry.entryId), entry]));
+  const used = new Set<string>();
+  const diff: AnalysisDiffItem[] = [];
+  for (const draftGroup of draft.groups) {
+    for (const entry of draftGroup.entries.filter(item => item.selected)) {
+      const old = oldById.get(String(entry.entryId));
+      const newRange = `${entry.contentStartDate ?? '起点待确认'} ～ ${entry.boundaryDate ?? '∞'}`;
+      if (!old) {
+        diff.push({ entryId: entry.entryId, newRange, status: 'added', title: entry.title });
+        continue;
+      }
+      used.add(String(old.entryId));
+      const oldRange = `${old.effectiveStartDate} ～ ${old.effectiveEndDate ?? '∞'}`;
+      const changed = old.displayTitle !== entry.title.trim()
+        || old.effectiveStartDate !== entry.contentStartDate
+        || (old.boundaryDate ?? '') !== (entry.boundaryDate ?? '');
+      diff.push({ entryId: entry.entryId, newRange, oldRange, status: changed ? 'changed' : 'unchanged', title: entry.title });
+    }
+  }
+  for (const old of oldEntries) {
+    if (used.has(String(old.entryId))) continue;
+    diff.push({
+      entryId: old.entryId,
+      oldRange: `${old.effectiveStartDate} ～ ${old.effectiveEndDate ?? '∞'}`,
+      status: 'removed',
+      title: old.displayTitle,
+    });
+  }
+  return diff;
+});
 const hostTheme = ref<ResolvedTheme>(detectSillyTavernTheme());
 const resolvedTheme = computed(() => resolveTheme(settings.general.theme, hostTheme.value));
 const storyTimeLabel = computed(() => {
@@ -154,6 +249,110 @@ let analysisAbortController: AbortController | undefined;
 let analysisRequestVersion = 0;
 let activeAnalysisScopeKey = '';
 let analysisDraftScopeKey = '';
+let stopWatchingControl: (() => void) | undefined;
+
+function logTime(): string {
+  return new Date().toLocaleString('zh-CN', { hour12: false });
+}
+
+function appendSystemLog(level: TimelineLogEntry['level'], title: string, description: string, category = 'system'): void {
+  systemLogs.value = [
+    {
+      category,
+      description,
+      id: `system-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      level,
+      occurredAt: logTime(),
+      title,
+    },
+    ...systemLogs.value,
+  ].slice(0, 100);
+}
+
+function appendRuntimeLog(state: ChatTimelineState, log: Omit<ChatRuntimeLog, 'id' | 'occurredAt'>): ChatTimelineState {
+  return appendChatRuntimeLog(state, {
+    ...log,
+    id: `runtime-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    occurredAt: logTime(),
+  });
+}
+
+async function ensureWorldbookControl(worldbookKey: string | null, force = false): Promise<boolean> {
+  if (!worldbookKey) {
+    controlLock.release();
+    controlWorldbookKey.value = '';
+    controlStatus.value = 'unsupported';
+    return false;
+  }
+  if (controlWorldbookKey.value !== worldbookKey) {
+    controlLock.release();
+    controlWorldbookKey.value = worldbookKey;
+    controlStatus.value = controlLock.status(worldbookKey);
+  }
+  const acquired = force
+    ? controlLock.takeover(worldbookKey)
+    : await controlLock.acquire(worldbookKey);
+  controlStatus.value = controlLock.status(worldbookKey);
+  if (acquired && controlStatus.value === 'owner') {
+    runtimeNotice.value = controlStatus.value === 'owner' && runtimeNotice.value.includes('控制权')
+      ? ''
+      : runtimeNotice.value;
+  }
+  return acquired;
+}
+
+async function syncCurrentTimeline(reason: string, expectedScopeKey = hostScopeKey(hostScope.value)): Promise<void> {
+  const config = worldbookConfig.value;
+  const state = chatTimelineState.value;
+  const worldbook = hostScope.value.worldbook;
+  if (!config || !state?.currentTime || !worldbook || config.worldbookKey !== worldbook.key) return;
+  if (expectedScopeKey !== hostScopeKey(hostScope.value)) return;
+
+  const hasControl = await ensureWorldbookControl(worldbook.key);
+  if (!hasControl) {
+    runtimeNotice.value = '当前世界书由其他标签页控制；自动切换已暂停，可接管后继续。';
+    appendSystemLog('warning', '自动切换暂停', '其他标签页持有当前世界书控制权。', 'control');
+    return;
+  }
+
+  const result = await syncAutomaticTimeline({
+    adapter: worldbookAdapter,
+    config,
+    currentTime: state.currentTime,
+    state,
+    hasControl: () => controlLock.hasControl(worldbook.key),
+  });
+  if (expectedScopeKey !== hostScopeKey(hostScope.value)) return;
+
+  let nextState = state;
+  for (const group of result.groups) {
+    if (group.targetEntryId !== undefined && (group.status === 'synced' || group.status === 'unchanged')) {
+      nextState = setChatGroupActiveEntry(nextState, group.groupId, group.targetEntryId);
+    }
+    if (group.status === 'synced') {
+      nextState = appendRuntimeLog(nextState, {
+        category: 'worldbook',
+        description: `${group.message}（${reason}）`,
+        level: 'success',
+        title: '自动切换完成',
+      });
+    } else if (group.status === 'blocked' || group.status === 'error') {
+      nextState = appendRuntimeLog(nextState, {
+        category: 'worldbook',
+        description: `${group.message}（分组：${group.groupId}）`,
+        level: group.status === 'error' ? 'error' : 'warning',
+        title: group.status === 'error' ? '自动切换失败' : '自动切换已阻断',
+      });
+    }
+  }
+  if (nextState !== state) persistChatState(nextState);
+  const failure = result.groups.find(group => group.status === 'blocked' || group.status === 'error');
+  if (failure) {
+    runtimeNotice.value = `部分时间线组未切换：${failure.message}`;
+  } else if (result.changed && settings.general.showSwitchNotifications) {
+    runtimeNotice.value = '已按当前故事时间完成世界书条目切换。';
+  }
+}
 
 function hostScopeKey(snapshot: HostScopeSnapshot): string {
   return [snapshot.character?.id ?? '', snapshot.chatId ?? '', snapshot.worldbook?.key ?? ''].join('\u0000');
@@ -212,16 +411,33 @@ async function refreshHostScope(): Promise<void> {
     analysisDraftScopeKey = '';
   }
   hostScope.value = snapshot;
-  const config = snapshot.worldbook
+  let config = snapshot.worldbook
     ? loadWorldbookTimelineConfig(snapshot.worldbook.key)
     : null;
+  if (config && snapshot.worldbook) {
+    const freshness = await detectWorldbookConfigStale(config, snapshot.worldbook);
+    if (version !== hostScopeVersion) return;
+    if (freshness.changed) {
+      config = freshness.config;
+      saveWorldbookTimelineConfig(config);
+      appendSystemLog('warning', '检测到世界书正文变化', '旧时间线配置继续保留，建议重新分析当前世界书。', 'config');
+    }
+  }
   worldbookConfig.value = config;
   restoreChatState(snapshot, config);
+  void syncCurrentTimeline('进入当前聊天', nextScopeKey);
 }
 
 onMounted(() => {
   stopWatchingHostTheme = watchSillyTavernTheme(theme => {
     hostTheme.value = theme;
+  });
+  stopWatchingControl = controlLock.onChange((key, status) => {
+    if (key === controlWorldbookKey.value) controlStatus.value = status;
+    if (status === 'other' && key === controlWorldbookKey.value) {
+      runtimeNotice.value = '其他标签页已取得当前世界书控制权，自动切换已暂停。';
+      appendSystemLog('warning', '控制权变更', '当前标签页不再拥有世界书写控制权。', 'control');
+    }
   });
   stopWatchingHostScope = watchCurrentHostScope(() => refreshHostScope());
   stopWatchingHostRuntime = watchCurrentHostRuntime(() => processLatestAssistantMessage());
@@ -232,6 +448,8 @@ onBeforeUnmount(() => {
   stopWatchingHostTheme?.();
   stopWatchingHostScope?.();
   stopWatchingHostRuntime?.();
+  stopWatchingControl?.();
+  controlLock.close();
   analysisAbortController?.abort();
   if (aiSaveResetTimer !== undefined) globalThis.clearTimeout(aiSaveResetTimer);
 });
@@ -261,6 +479,7 @@ async function startAnalysis(mode: AnalysisScanMode): Promise<void> {
   analysisError.value = null;
   analysisNotice.value = '';
   const aiSettings = { ...settings.ai };
+  appendSystemLog('info', '开始世界书分析', `${mode === 'quick' ? '快速' : '深度'}扫描已开始。`, 'analysis');
 
   try {
     const draft = await runTimelineScan({
@@ -281,12 +500,14 @@ async function startAnalysis(mode: AnalysisScanMode): Promise<void> {
     ) return;
     analysisDraft.value = draft;
     analysisDraftScopeKey = scopeKey;
+    appendSystemLog('success', '世界书分析完成', `生成 ${draft.groups.length} 个候选时间线组。`, 'analysis');
   } catch (error) {
     if (requestVersion !== analysisRequestVersion || controller.signal.aborted) return;
     analysisError.value = {
       message: error instanceof Error ? error.message : 'AI 分析失败',
       rawOutput: error instanceof AnalysisValidationError ? error.rawOutput : undefined,
     };
+    appendSystemLog('error', '世界书分析失败', analysisError.value.message, 'analysis');
   } finally {
     if (requestVersion === analysisRequestVersion) {
       analysisProgress.value = null;
@@ -313,7 +534,7 @@ function showMissingTimeNotice(): void {
     : '⚠ 当前聊天尚未获得有效故事时间，请让 AI 输出完整 <wlog>。';
 }
 
-function applyStoryTimeCandidate(nextTime: NonNullable<ReturnType<typeof parseWlogTime>>): void {
+async function applyStoryTimeCandidate(nextTime: NonNullable<ReturnType<typeof parseWlogTime>>): Promise<void> {
   const state = chatTimelineState.value;
   if (!state) return;
 
@@ -335,13 +556,12 @@ function applyStoryTimeCandidate(nextTime: NonNullable<ReturnType<typeof parseWl
   }
   if (result.kind === 'forward' && result.jumpDays > settings.automation.largeJumpNoticeDays) {
     runtimeNotice.value = `ℹ 检测到较大时间跳跃（${result.jumpDays} 天），已按新日期记录故事时间。`;
-    return;
-  }
-  if (result.kind === 'same_date') {
+  } else if (result.kind === 'same_date') {
     runtimeNotice.value = '故事时间已更新；日期未变化，未操作世界书。';
     return;
   }
-  runtimeNotice.value = '故事时间已更新；当前阶段尚未执行世界书条目开关切换。';
+  runtimeNotice.value = '故事时间已更新，正在同步世界书条目…';
+  await syncCurrentTimeline(result.kind === 'initial' ? '首次获得故事时间' : '故事时间前进');
 }
 
 async function processLatestAssistantMessage(): Promise<void> {
@@ -352,7 +572,7 @@ async function processLatestAssistantMessage(): Promise<void> {
     showMissingTimeNotice();
     return;
   }
-  applyStoryTimeCandidate(nextTime);
+  await applyStoryTimeCandidate(nextTime);
 }
 
 async function getCurrentTime(): Promise<void> {
@@ -366,17 +586,19 @@ async function getCurrentTime(): Promise<void> {
       showMissingTimeNotice();
       return;
     }
-    applyStoryTimeCandidate(nextTime);
+    await applyStoryTimeCandidate(nextTime);
   } finally {
     timeActionBusy.value = false;
   }
 }
 
-function confirmRollback(): void {
+async function confirmRollback(): Promise<void> {
   const state = chatTimelineState.value;
   if (!state?.pendingRollback) return;
-  if (persistChatState(confirmStoryTimeRollback(state))) {
-    runtimeNotice.value = '已确认应用时间倒退；当前阶段尚未执行世界书条目开关切换。';
+  const nextState = confirmStoryTimeRollback(state);
+  if (persistChatState(nextState)) {
+    runtimeNotice.value = '已确认应用时间倒退，正在同步世界书条目…';
+    await syncCurrentTimeline('确认时间倒退');
   }
 }
 
@@ -439,6 +661,21 @@ function createAnalysisGroup(name: string): void {
   };
 }
 
+function reorderAnalysisEntries(groupId: string, orderedEntryIds: readonly EntryId[]): void {
+  if (!analysisDraft.value) return;
+  const lookup = new Map(analysisDraft.value.groups.find(group => group.id === groupId)?.entries.map(entry => [String(entry.entryId), entry]));
+  const group = analysisDraft.value.groups.find(item => item.id === groupId);
+  if (!group) return;
+  const ordered = orderedEntryIds
+    .map(entryId => lookup.get(String(entryId)))
+    .filter((entry): entry is typeof group.entries[number] => Boolean(entry));
+  for (const entry of group.entries) if (!ordered.includes(entry)) ordered.push(entry);
+  analysisDraft.value = {
+    ...analysisDraft.value,
+    groups: analysisDraft.value.groups.map(item => item.id === groupId ? { ...item, entries: ordered } : item),
+  };
+}
+
 async function applyAnalysisDraft(): Promise<void> {
   const draft = analysisDraft.value;
   const worldbook = hostScope.value.worldbook;
@@ -452,8 +689,12 @@ async function applyAnalysisDraft(): Promise<void> {
   analysisApplying.value = true;
   analysisError.value = null;
   analysisNotice.value = '';
+  const hadExistingConfig = worldbookConfig.value !== null;
   try {
-    const config = await buildWorldbookTimelineConfig(draft, worldbook);
+    const config = hadExistingConfig
+      && worldbookConfig.value
+      ? await mergeWorldbookTimelineConfig(worldbookConfig.value, draft, worldbook)
+      : await buildWorldbookTimelineConfig(draft, worldbook);
     if (scopeKey !== hostScopeKey(hostScope.value)) {
       analysisError.value = { message: '角色、聊天或绑定世界书已变化，正式配置未保存。' };
       return;
@@ -473,7 +714,10 @@ async function applyAnalysisDraft(): Promise<void> {
     }
     analysisDraft.value = null;
     analysisDraftScopeKey = '';
-    analysisNotice.value = '时间线配置已保存；当前聊天尚无有效时间时，不会修改世界书条目开关。';
+    analysisNotice.value = hadExistingConfig
+      ? '重新分析结果已与旧配置合并；旧映射未被直接删除，需人工处理的条目已停止自动切换。'
+      : '时间线配置已保存；当前聊天尚无有效时间时，不会修改世界书条目开关。';
+    await syncCurrentTimeline('配置保存', scopeKey);
     selectPage('overview');
   } catch (error) {
     analysisError.value = { message: error instanceof Error ? error.message : '正式配置生成失败。' };
@@ -486,6 +730,219 @@ function inspectTimeline(): void {
   selectPage('timeline');
 }
 
+async function changeGroupMode(groupId: string, mode: 'auto' | 'manual'): Promise<void> {
+  const state = chatTimelineState.value;
+  if (!state || !worldbookConfig.value) return;
+  const group = worldbookConfig.value.groups.find(item => item.id === groupId);
+  if (!group || group.blocked) {
+    runtimeNotice.value = group?.blockReason || '当前分组存在异常，暂不能切换运行模式。';
+    return;
+  }
+  const nextState = setChatGroupMode(state, groupId, mode);
+  if (!persistChatState(nextState)) return;
+  runtimeNotice.value = mode === 'manual'
+    ? '已切换为手动模式；插件不会再自动改动该组开关。'
+    : '已切换为自动模式，正在按当前故事时间校准…';
+  if (mode === 'auto' && nextState.currentTime) await syncCurrentTimeline('切换为自动模式');
+}
+
+async function toggleEntry(groupId: string, entryId: EntryId, enabled: boolean): Promise<void> {
+  const state = chatTimelineState.value;
+  const config = worldbookConfig.value;
+  const worldbook = hostScope.value.worldbook;
+  if (!state || !config || !worldbook) return;
+  if (state.groups[groupId]?.mode !== 'manual') {
+    runtimeNotice.value = '自动模式下不能手动改动条目开关，请先切换为手动模式。';
+    return;
+  }
+  const hasControl = await ensureWorldbookControl(worldbook.key);
+  if (!hasControl) {
+    runtimeNotice.value = '当前标签页没有世界书控制权，已阻止手动写入。';
+    return;
+  }
+  try {
+    const result = await toggleManualTimelineEntry({
+      adapter: worldbookAdapter,
+      config,
+      entryId,
+      enabled,
+      groupId,
+      hasControl: () => controlLock.hasControl(worldbook.key),
+    });
+    let nextState = state;
+    if (result.status === 'synced' || result.status === 'unchanged') {
+      nextState = setChatManualEntryEnabled(nextState, groupId, entryId, enabled);
+      nextState = setChatGroupActiveEntry(nextState, groupId, enabled ? entryId : undefined);
+    }
+    nextState = appendRuntimeLog(nextState, {
+      category: 'worldbook',
+      description: result.message,
+      level: result.status === 'error' ? 'error' : result.status === 'blocked' ? 'warning' : 'success',
+      title: result.status === 'blocked' || result.status === 'error' ? '手动开关未完成' : '手动开关已更新',
+    });
+    persistChatState(nextState);
+    runtimeNotice.value = result.message;
+  } catch (error) {
+    runtimeNotice.value = error instanceof Error ? error.message : '手动世界书写入失败。';
+  }
+}
+
+function deferConflict(groupId: string, entryId: EntryId): void {
+  runtimeNotice.value = `已暂不处理分组 ${groupId} 的条目 ${String(entryId)}；该组仍保持安全阻断。`;
+}
+
+function resolveConflict(groupId: string, entryId: EntryId): void {
+  runtimeNotice.value = `条目 ${String(entryId)} 的冲突不能自动覆盖；请重新分析或在分组管理中人工修正后再试。`;
+  appendSystemLog('warning', '配置冲突待处理', `分组 ${groupId} 的条目 ${String(entryId)} 仍保持阻断。`, 'config');
+}
+
+async function takeWorldbookControl(): Promise<void> {
+  if (!controlWorldbookKey.value) return;
+  if (!await ensureWorldbookControl(controlWorldbookKey.value, true)) return;
+  runtimeNotice.value = '已接管当前世界书控制权，正在重新校准自动时间线。';
+  appendSystemLog('info', '接管世界书控制权', `已接管 ${controlWorldbookKey.value}。`, 'control');
+  await syncCurrentTimeline('接管控制权');
+}
+
+async function saveTimelineConfig(nextConfig: WorldbookTimelineConfig, notice: string): Promise<void> {
+  const worldbook = hostScope.value.worldbook;
+  if (!worldbook || nextConfig.worldbookKey !== worldbook.key) {
+    runtimeNotice.value = '当前角色或世界书已变化，配置未保存。';
+    return;
+  }
+    if (!saveWorldbookTimelineConfig(nextConfig)) {
+    runtimeNotice.value = '配置保存失败：无法写入 SillyTavern 扩展设置。';
+    return;
+  }
+  worldbookConfig.value = nextConfig;
+  if (chatTimelineState.value) {
+    persistChatState(bindChatTimelineState(
+      chatTimelineState.value,
+      worldbook.key,
+      nextConfig.groups.map(group => group.id),
+    ));
+  }
+  runtimeNotice.value = notice;
+  appendSystemLog('success', '时间线配置已保存', notice, 'config');
+  await syncCurrentTimeline('分组配置变更');
+}
+
+function configWithGroups(): WorldbookTimelineConfig | null {
+  const current = worldbookConfig.value;
+  const worldbook = hostScope.value.worldbook;
+  if (current) return current;
+  if (!worldbook) return null;
+  return { groups: [], updatedAt: Date.now(), worldbookKey: worldbook.key, worldbookName: worldbook.name };
+}
+
+async function createGroup(name: string): Promise<void> {
+  const config = configWithGroups();
+  if (!config) return;
+  await saveTimelineConfig(createTimelineGroup(config, name), `已创建分组「${name.trim()}」。`);
+}
+
+async function renameGroup(groupId: string, name: string): Promise<void> {
+  const config = worldbookConfig.value;
+  if (!config) return;
+  await saveTimelineConfig(renameTimelineGroup(config, groupId, name), '分组名称已保存。');
+}
+
+async function mergeGroup(sourceGroupId: string, targetGroupId: string): Promise<void> {
+  const config = worldbookConfig.value;
+  if (!config) return;
+  await saveTimelineConfig(mergeTimelineGroups(config, sourceGroupId, targetGroupId), '分组已合并；世界书正文未被修改。');
+}
+
+async function splitGroup(sourceGroupId: string, name: string, movedEntryIds: readonly EntryId[]): Promise<void> {
+  const config = worldbookConfig.value;
+  if (!config) return;
+  await saveTimelineConfig(splitTimelineGroup(config, sourceGroupId, name, movedEntryIds), '分组已拆分；世界书正文未被修改。');
+}
+
+async function deleteGroup(groupId: string): Promise<void> {
+  const config = worldbookConfig.value;
+  if (!config) return;
+  await saveTimelineConfig(deleteTimelineGroup(config, groupId), '分组已删除，条目已移至未分组且停止自动切换。');
+}
+
+async function reorderGroups(orderedGroupIds: readonly string[]): Promise<void> {
+  const config = worldbookConfig.value;
+  if (!config) return;
+  await saveTimelineConfig(reorderTimelineGroups(config, orderedGroupIds), '分组顺序已保存。');
+}
+
+async function reorderEntries(groupId: string, orderedEntryIds: readonly EntryId[]): Promise<void> {
+  const config = worldbookConfig.value;
+  if (!config) return;
+  await saveTimelineConfig(reorderTimelineEntries(config, groupId, orderedEntryIds), '条目顺序已保存。');
+}
+
+async function moveEntries(sourceGroupId: string, targetGroupId: string, entryIds: readonly EntryId[]): Promise<void> {
+  const config = worldbookConfig.value;
+  if (!config) return;
+  await saveTimelineConfig(moveTimelineEntries(config, sourceGroupId, targetGroupId, entryIds), '条目已跨组移动；已保留为人工配置。');
+}
+
+function clearLogs(view: 'runtime' | 'system'): void {
+  if (view === 'system') {
+    systemLogs.value = [];
+    return;
+  }
+  if (chatTimelineState.value) persistChatState(clearChatRuntimeLogs(chatTimelineState.value));
+}
+
+function exportConfig(): void {
+  const config = worldbookConfig.value;
+  if (!config) {
+    runtimeNotice.value = '当前世界书尚未建立可导出的时间线配置。';
+    return;
+  }
+  const payload = JSON.stringify({ version: 1, config }, null, 2);
+  const url = globalThis.URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `st-yafaya-timeline-${config.worldbookKey}.json`;
+  anchor.click();
+  globalThis.URL.revokeObjectURL(url);
+  appendSystemLog('info', '配置已导出', '导出文件仅包含当前世界书时间线配置，不包含 API Key。', 'config');
+  runtimeNotice.value = '时间线配置已导出。';
+}
+
+async function importConfig(file: File): Promise<void> {
+  const worldbook = hostScope.value.worldbook;
+  if (!worldbook) {
+    runtimeNotice.value = '当前世界书不可读取，无法导入配置。';
+    return;
+  }
+  try {
+    const raw: unknown = JSON.parse(await file.text());
+    const payload = raw && typeof raw === 'object' && !Array.isArray(raw)
+      ? (raw as { config?: unknown }).config ?? raw
+      : raw;
+    if (!isWorldbookTimelineConfig(payload)) {
+      runtimeNotice.value = '导入失败：文件不是有效的时间线配置。';
+      return;
+    }
+    if (payload.worldbookKey !== worldbook.key) {
+      runtimeNotice.value = '导入失败：配置所属世界书与当前角色绑定世界书不一致。';
+      return;
+    }
+    const sourceIds = new Set(worldbook.entries.map(entry => String(entry.id)));
+    const missing = payload.groups.flatMap(group => group.entries)
+      .filter(entry => !sourceIds.has(String(entry.entryId)));
+    const confirmation = [
+      `即将导入 ${payload.groups.length} 个时间线组。`,
+      missing.length > 0 ? `${missing.length} 个原条目当前不存在，将保留为 stale 并停止自动切换。` : '',
+      '确认后会更新插件配置；不会直接修改世界书正文或未受管条目。',
+    ].filter(Boolean).join('\n');
+    if (!globalThis.confirm(confirmation)) return;
+    await saveTimelineConfig({ ...payload, worldbookName: worldbook.name }, '配置已导入；当前聊天自动组正在重新校准。');
+    appendSystemLog('info', '配置已导入', `已校验并导入 ${payload.groups.length} 个时间线组。`, 'config');
+  } catch (error) {
+    runtimeNotice.value = error instanceof Error ? `导入失败：${error.message}` : '导入失败：JSON 文件无法读取。';
+  }
+}
+
 function saveGeneral(nextSettings: GeneralSettings): void {
   settings.general = { ...nextSettings };
   saveGeneralSettings(nextSettings);
@@ -495,6 +952,7 @@ function saveAi(nextSettings: AiSettings): void {
   const saved = saveAiSettings(nextSettings);
   aiSaveStatus.value = saved ? 'saved' : 'error';
   aiSaveMessage.value = saved ? 'AI 设置已保存' : '保存失败：无法写入 SillyTavern 扩展设置';
+  appendSystemLog(saved ? 'success' : 'error', saved ? 'AI 设置已保存' : 'AI 设置保存失败', aiSaveMessage.value, 'settings');
   if (saved) settings.ai = { ...nextSettings };
 
   if (aiSaveResetTimer !== undefined) globalThis.clearTimeout(aiSaveResetTimer);
@@ -546,6 +1004,7 @@ async function testConnection(nextSettings: AiSettings): Promise<void> {
     if (connectionVersion !== connectionRequestVersions[provider]) return;
     connection.status = 'connected';
     connection.message = `连接成功，可用模型 ${models.length} 个`;
+    appendSystemLog('success', 'API 连接测试成功', connection.message, 'api');
     if (modelVersion === modelRequestVersions[provider]) {
       catalog.models = models;
       catalog.status = 'loaded';
@@ -556,6 +1015,7 @@ async function testConnection(nextSettings: AiSettings): Promise<void> {
     const message = error instanceof Error ? error.message : '连接测试失败';
     connection.status = 'error';
     connection.message = message;
+    appendSystemLog('error', 'API 连接测试失败', message, 'api');
     if (modelVersion === modelRequestVersions[provider]) {
       catalog.models = [];
       catalog.status = 'error';
@@ -578,6 +1038,7 @@ function changeTheme(theme: ThemeMode): void {
         v-if="uiState.open"
         :active-page="uiState.activePage"
         :character-name="characterName"
+        :control-status="controlStatus"
         :runtime-notice="runtimeNotice"
         :rollback-prompt="rollbackPrompt"
         :story-time="storyTimeLabel"
@@ -587,6 +1048,7 @@ function changeTheme(theme: ThemeMode): void {
         @confirm-rollback="confirmRollback"
         @get-current-time="getCurrentTime"
         @reject-rollback="rejectRollback"
+        @take-control="takeWorldbookControl"
         @select-page="selectPage"
       >
         <Transition name="timeline-page" mode="out-in">
@@ -605,13 +1067,25 @@ function changeTheme(theme: ThemeMode): void {
             v-else-if="uiState.activePage === 'timeline'"
             key="timeline"
             :groups="timelineGroups"
+            @change-mode="changeGroupMode"
+            @defer-conflict="deferConflict"
+            @resolve-conflict="resolveConflict"
             @start-analysis="openAnalysis"
+            @toggle-entry="toggleEntry"
           />
 
           <GroupPage
             v-else-if="uiState.activePage === 'groups'"
             key="groups"
             :groups="managementGroups"
+            @create-group="createGroup"
+            @delete-group="deleteGroup"
+            @merge-group="mergeGroup"
+            @move-entries="moveEntries"
+            @rename-group="renameGroup"
+            @reorder-entries="reorderEntries"
+            @reorder-groups="reorderGroups"
+            @split-group="splitGroup"
             @start-analysis="openAnalysis"
           />
 
@@ -619,6 +1093,7 @@ function changeTheme(theme: ThemeMode): void {
             v-else-if="uiState.activePage === 'analysis'"
             key="analysis"
             :draft="analysisDraft"
+            :diff="analysisDiff"
             :allow-apply="canApplyAnalysisDraft"
             :apply-blocked-message="draftApplicationIssue ?? ''"
             :applying="analysisApplying"
@@ -631,6 +1106,7 @@ function changeTheme(theme: ThemeMode): void {
             @apply-draft="applyAnalysisDraft"
             @create-group="createAnalysisGroup"
             @discard-draft="discardAnalysisDraft"
+            @reorder-entries="reorderAnalysisEntries"
             @start-analysis="startAnalysis"
             @toggle-entry="toggleAnalysisEntry"
             @update-entry="updateAnalysisEntry"
@@ -643,6 +1119,7 @@ function changeTheme(theme: ThemeMode): void {
             :runtime-summary="runtimeLogSummary"
             :system-logs="systemLogs"
             :system-summary="systemLogSummary"
+            @clear-logs="clearLogs"
           />
 
           <SettingsPage
@@ -654,6 +1131,8 @@ function changeTheme(theme: ThemeMode): void {
             :model-catalogs="modelCatalogs"
             :settings="settings"
             @request-models="requestModels"
+            @export-config="exportConfig"
+            @import-config="importConfig"
             @save-ai="saveAi"
             @save-automation="saveAutomation"
             @save-general="saveGeneral"
